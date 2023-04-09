@@ -1,0 +1,4 @@
+class ParsingException(Exception):
+    pass
+
+

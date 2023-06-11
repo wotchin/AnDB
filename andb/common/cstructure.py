@@ -38,6 +38,7 @@ class Field:
 
 class CharField(Field):
     def __init__(self, name=None, num=1):
+        """It is always unsigned."""
         if num > 1:
             # default value is an empty char array
             super(CharField, self).__init__(name, CTYPE_TYPE_CHAR_ARRAY, num, bytes(num))
@@ -115,11 +116,7 @@ class CStructure(metaclass=StructureMeta):
             real_value = getattr(self, k)
             # append default values if not set
             if isinstance(real_value, Field):
-                if field.num > 1:
-                    for _ in range(field.num):
-                        values.append(field.default)
-                else:
-                    values.append(field.default)
+                values.append(field.default)
             else:
                 if field.num > 1:
                     if isinstance(real_value, list):
@@ -130,6 +127,7 @@ class CStructure(metaclass=StructureMeta):
                         raise ValueError('%s should be a list or bytes.' % k)
 
                 else:
+                    # We don't receive an array contains one element!
                     values.append(real_value)
         try:
             return struct.pack(self.__cformat__, *values)
@@ -153,19 +151,17 @@ class CStructure(metaclass=StructureMeta):
                 setattr(self, k, value)
                 i += 1
 
-    def size(self):
-        return struct.calcsize(self.__cformat__)
+    @classmethod
+    def size(cls):
+        return struct.calcsize(cls.__cformat__)
 
     def __eq__(self, other):
         if not isinstance(other, CStructure):
             return False
-        return self.__dict__ == other.__dict__
+        return (self.__cformat__ == self.__cformat__ and
+                self.pack() == other.pack())
+
+    def __hash__(self):
+        return hash((self.__cformat__, self.pack()))
 
 
-def bytes_to_hex(b):
-    h = list()
-    for i, ch in enumerate(b):
-        if i % 8 == 0:
-            h.append('\n')
-        h.append('%02x' % ch)
-    return ' '.join(h)

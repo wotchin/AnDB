@@ -111,7 +111,6 @@ def fixture_page_update(page):
     lsn = page.header.lsn
     idx0 = 0
     item0 = page.select(idx0)
-    print(item0)
     lsn += 1
     # set the same length empty bytes
     assert page.update(lsn, idx0, bytes(len(item0))) == idx0

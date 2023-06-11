@@ -5,13 +5,14 @@ from andb.common.cstructure import Integer8Field
 from andb.common.cstructure import Integer4Field
 
 from andb.constants.values import PAGE_SIZE
-from tests.unit.test_storage_page import test_item_id_data, test_page
+from andb.common.utils import is_array_like
 
 
 class PageHeader(CStructure):
     lsn: int = Integer8Field()
     checksum: int = Integer4Field()
     flags: int = Integer4Field()
+    reserved: int = Integer4Field()
     lower: int = Integer4Field()
     upper: int = Integer4Field()
 
@@ -68,6 +69,9 @@ class ItemIdData:
             return False
         return self.to_uint4() == other.to_uint4()
 
+    def __hash__(self):
+        return self.to_uint4()
+
 
 INVALID_ITEM_ID = -1
 INVALID_BYTES = bytes()
@@ -83,12 +87,21 @@ def _get_item_ids_parser(length):
     class Inner:
         @staticmethod
         def pack(uint4_list):
-            obj.item_ids = uint4_list
+            # CString doesn't receive an array contains one element, so we should
+            # covert `uint4_list` to adapt this scenario.
+            if length == 1 and is_array_like(uint4_list):
+                obj.item_ids = uint4_list[0]
+            else:
+                obj.item_ids = uint4_list
             return obj.pack()
 
         @staticmethod
         def unpack(data):
             obj.unpack(data)
+            # CString doesn't receive an array contains one element, so we should
+            # wrap `item_ids` using a list.
+            if length == 1:
+                return [obj.item_ids]
             return obj.item_ids
 
     return Inner()
@@ -105,7 +118,10 @@ class Page:
         """
         self.header = PageHeader()
         self.item_ids = []  # array of ItemIdData
-        self.items = bytes()
+        # Here, we use bytearray instead of bytes since bytearray is mutable but
+        # bytes is immutable. That means, if we use bytes, we have to copy-on-write.
+        # This copy-on-write operation will introduce lots of overhead.
+        self.items = bytearray()
 
     def item_data_size(self):
         return len(self.items)
@@ -139,11 +155,10 @@ class Page:
         # allocate new ItemId
         self.item_ids.append(ItemIdData(offset=offset, flags=flag, length=length))
         # then, put the data into the items array
-        self.items = data + self.items  # put into the first place
+        self.items = bytearray(data) + self.items  # put into the first place
         # finally, update some fields
         self.header.lsn = lsn
         self.header.checksum = 0  # todo: unset
-        self.header.flags = 0  # todo: unset
         self.header.lower = self.header.size() + self.item_ids_size()
         self.header.upper = PAGE_SIZE - self.item_data_size()
         # return just put index of the whole item_ids list
@@ -165,7 +180,6 @@ class Page:
         self.header.lsn = lsn
         item_id.flag = ItemIdFlags.DEAD
         self.header.checksum = 0  # todo: unset
-        self.header.flags = 0  # todo: unset
         return True
 
     def rollback_delete(self, old_lsn: int, item_idx: int) -> bool:
@@ -179,7 +193,6 @@ class Page:
         self.header.lsn = old_lsn
         item_id.flag = ItemIdFlags.NORMAL
         self.header.checksum = 0  # todo: unset
-        self.header.flags = 0  # todo: unset
         return True
 
     def select(self, item_idx: int) -> bytes:
@@ -200,7 +213,7 @@ class Page:
         # but we need to convert the offset in the filed `self.items`.
         # this is a small formula to get data bytes
         offset_of_items = self.item_data_size() - (PAGE_SIZE - offset)
-        item_data = self.items[offset_of_items: (offset_of_items + length)]
+        item_data = bytes(self.items[offset_of_items: (offset_of_items + length)])
         return item_data
 
     def update(self, lsn: int, item_idx: int, data: bytes) -> int:
@@ -222,11 +235,10 @@ class Page:
             # use inplace-update
             offset = item_id.offset
             offset_of_items = self.item_data_size() - (PAGE_SIZE - offset)
-            # modify but bytes type is immutable
-            self.items = self.items[:offset_of_items] + data + self.items[(offset_of_items + length):]
+            # The following is bytearray's benefit.
+            self.items[offset_of_items: (offset_of_items + length)] = data
             self.header.lsn = lsn
             self.header.checksum = 0  # todo: unset
-            self.header.flags = 0  # todo: unset
             return item_idx
         else:
             # use append-only
@@ -271,7 +283,6 @@ class Page:
         self.item_ids = new_item_ids
         self.items = new_data
         self.header.lsn = lsn
-        self.header.flags = 0  # todo: unset
         self.header.checksum = 0  # todo: unset
         self.header.upper = new_upper
         self.header.lower = self.header.size() + self.item_ids_size()
@@ -283,12 +294,11 @@ class Page:
         self.items = bytes()
 
         self.header.lsn = lsn
-        self.header.flags = 0  # unused
         self.header.lower = self.header.size() + self.item_ids_size()
         self.header.upper = PAGE_SIZE
         self.header.checksum = 0  # todo: unset
 
-    def pack(self):
+    def pack(self) -> bytes:
         """Serialize the class to bytes."""
         serialized_data = self.header.pack()
         serialized_data += _get_item_ids_parser(len(self.item_ids)).pack(
@@ -313,7 +323,7 @@ class Page:
         # parse item ids
         item_ids_size = page.header.lower - page_header_size
         chunk = data[deserialized_position: (deserialized_position + item_ids_size)]
-        for id_uint4 in tuple(_get_item_ids_parser(len(chunk) // ItemIdData.BYTES).unpack(chunk)):
+        for id_uint4 in _get_item_ids_parser(len(chunk) // ItemIdData.BYTES).unpack(chunk):
             item_id = ItemIdData()
             item_id.set_uint4(id_uint4)
             page.item_ids.append(item_id)
@@ -325,7 +335,7 @@ class Page:
     def allocate(lsn=0):
         page = Page()
         page.header.lsn = lsn
-        page.header.flags = 0  # unused
+        page.header.flags = 0
         page.header.lower = page.header.size() + page.item_ids_size()
         page.header.upper = PAGE_SIZE
         page.header.checksum = 0  # todo: unset
@@ -337,3 +347,7 @@ class Page:
         return (other.item_ids == self.item_ids) and (
             other.header == self.header
         ) and (other.items == self.items)
+
+    def __hash__(self):
+        return hash((tuple(self.item_ids), self.header.pack(), self.items))
+

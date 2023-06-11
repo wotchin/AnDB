@@ -1,7 +1,8 @@
 import struct
-import time
 
 # Constants for struct packing/unpacking
+from andb.storage.xact.mgr import TransactionManager
+
 INT_FORMAT = 'i'
 LONG_FORMAT = 'q'
 # todo: this page header size should be set by calculating
@@ -14,67 +15,12 @@ PAGE_FREE_SPACE_OFFSET = 0
 PAGE_TUPLE_COUNT_OFFSET = 4
 
 # Constants for transaction status
-STATUS_ACTIVE = 0
-STATUS_COMMITTED = 1
-STATUS_ABORTED = 2
 
 # Constants for logging
 LOG_TYPE_INSERT = 0
 LOG_TYPE_UPDATE = 1
 LOG_TYPE_DELETE = 2
 
-# Constants for indexing
-INDEX_PAGE_SIZE = 4096
-INDEX_NODE_HEADER_SIZE = 12
-INDEX_LEAF_HEADER_SIZE = 8
-INDEX_KEY_FORMAT = 'i'
-INDEX_POINTER_FORMAT = 'q'
-INDEX_KEY_SIZE = struct.calcsize(INDEX_KEY_FORMAT)
-INDEX_POINTER_SIZE = struct.calcsize(INDEX_POINTER_FORMAT)
-INDEX_NODE_MAX_KEYS = (INDEX_PAGE_SIZE - INDEX_NODE_HEADER_SIZE) // (INDEX_KEY_SIZE + INDEX_POINTER_SIZE)
-INDEX_LEAF_MAX_KEYS = (INDEX_PAGE_SIZE - INDEX_LEAF_HEADER_SIZE) // (INDEX_KEY_SIZE + INDEX_POINTER_SIZE)
-
-
-class TransactionManager:
-    def __init__(self):
-        self.active_transactions = {}
-
-    def begin_transaction(self, transaction_id):
-        if transaction_id not in self.active_transactions:
-            self.active_transactions[transaction_id] = {
-                'status': STATUS_ACTIVE,
-                'start_time': time.time(),
-                'last_lsn': None,
-                'undo_log': []
-            }
-
-    def commit_transaction(self, transaction_id):
-        if transaction_id in self.active_transactions:
-            transaction = self.active_transactions[transaction_id]
-            if transaction['status'] == STATUS_ACTIVE:
-                transaction['status'] = STATUS_COMMITTED
-                transaction['last_lsn'] = self._generate_lsn()
-                self._flush_transaction(transaction_id)
-
-    def abort_transaction(self, transaction_id):
-        if transaction_id in self.active_transactions:
-            transaction = self.active_transactions[transaction_id]
-            if transaction['status'] == STATUS_ACTIVE:
-                transaction['status'] = STATUS_ABORTED
-                transaction['last_lsn'] = self._generate_lsn()
-                self._undo_transaction(transaction_id)
-
-    def _generate_lsn(self):
-        # TODO: Implement the generation of Log Sequence Number (LSN)
-        return int(time.time())
-
-    def _flush_transaction(self, transaction_id):
-        # TODO: Implement the flushing of modified pages and logs associated with the transaction
-        pass
-
-    def _undo_transaction(self, transaction_id):
-        # TODO: Implement the undoing of modifications made by the transaction using the undo log
-        pass
 
 
 class LogManager:

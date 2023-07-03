@@ -2,7 +2,18 @@ from andb.constants.values import PAGE_SIZE
 from andb.storage.engines.heap.bptree import BPlusTree, TuplePointer, create_node
 
 
-def test_bplus_tree():
+class SimpleBPlusTree(BPlusTree):
+
+    def load_page(self, pageno):
+        super().load_page(pageno)
+
+    def _need_to_split(self, node):
+        """In the raw BPlusTree, key and value should be bytes."""
+        fixed_order = 4
+        return len(node.keys) > fixed_order
+
+
+def test_raw_bplus_tree():
     lsn = 0
 
     def next_lsn():
@@ -11,6 +22,22 @@ def test_bplus_tree():
         return lsn
 
     tree = BPlusTree()
+    tree.insert(next_lsn(), b'fruit', b"apple")
+    tree.insert(next_lsn(), b'meat', b"beef")
+    tree.insert(next_lsn(), b'fruit', b"orange")
+    assert tree.search(b'fruit') == [b'apple', b'orange']
+    assert tree.search_range(b'fruit', b'z') == [[b'apple', b'orange'], [b'beef']]
+
+
+def test_simple_bplus_tree():
+    lsn = 0
+
+    def next_lsn():
+        nonlocal lsn
+        lsn += 1
+        return lsn
+
+    tree = SimpleBPlusTree()
     tree.insert(next_lsn(), 5, "apple")
     tree.insert(next_lsn(), 3, "banana")
     tree.insert(next_lsn(), 5, "orange")
@@ -59,7 +86,7 @@ def test_bplus_tree_page():
         lsn += 1
         return lsn
 
-    tree = BPlusTree()
+    tree = SimpleBPlusTree()
     tree.insert(next_lsn(), b'hello', TuplePointer(1, 1))
     tree.insert(next_lsn(), b'world', TuplePointer(2, 1))
     assert (tree.search(b'hello')) == [TuplePointer(1, 1)]

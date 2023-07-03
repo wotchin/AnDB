@@ -36,3 +36,18 @@ def bytes_to_hex(b):
         h.append('%02x' % ch)
     return ' '.join(h)
 
+
+def get_the_nearest_two_power_number(value):
+    # keep 1 bit to test overflow
+    rv = value & 0xefffffff
+    rv |= (rv >> 1)
+    rv |= (rv >> 2)
+    rv |= (rv >> 4)
+    rv |= (rv >> 8)
+    rv |= (rv >> 16)
+    rv += 1
+    if rv > 0xefffffff:
+        rv >>= 1
+    return rv
+
+

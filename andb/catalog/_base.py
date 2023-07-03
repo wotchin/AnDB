@@ -1,3 +1,0 @@
-# oid ranges
-OID_TYPE_START = 1000
-OID_TYPE_END = 1100

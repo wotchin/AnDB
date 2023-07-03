@@ -48,6 +48,13 @@ class CharField(Field):
         self.pretty_ctype = 'char'
 
 
+class TextField(Field):
+    def __init__(self, name=None, num=1):
+        # default value is an empty char array
+        super(TextField, self).__init__(name, CTYPE_TYPE_CHAR_ARRAY, 1, bytes(0))
+        self.pretty_ctype = 'text'
+
+
 class Integer4Field(Field):
     def __init__(self, name=None, unsigned=False, num=1):
         if unsigned:

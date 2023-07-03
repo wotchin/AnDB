@@ -1,0 +1,3 @@
+class TupleDesc:
+    pass
+

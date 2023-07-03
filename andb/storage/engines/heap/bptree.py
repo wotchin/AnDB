@@ -52,6 +52,10 @@ class BPlusNode:
     def pack(self):
         pass
 
+    @abc.abstractmethod
+    def load_factor(self):
+        pass
+
 
 class InternalNode(BPlusNode):
     def __init__(self):
@@ -107,6 +111,14 @@ class InternalNode(BPlusNode):
             node.children.append(child_node)
 
         return node
+
+    def load_factor(self):
+        total_size = PAGE_SIZE - PageHeader.size()
+        used_size = 0
+        child_field_size = 4
+        for k in self.keys:
+            used_size += len(k) + child_field_size
+        return used_size / total_size
 
 
 class LeafNode(BPlusNode):
@@ -165,6 +177,16 @@ class LeafNode(BPlusNode):
                 values.append(p)
             node.key_value_pairs.append(values)
         return node
+
+    def load_factor(self):
+        total_size = PAGE_SIZE - PageHeader.size()
+        used_size = 0
+        value_length_field_size = 4
+        for i, k in enumerate(self.keys):
+            used_size += len(k) + value_length_field_size
+            used_size += len(self.key_value_pairs[i]) * TuplePointer.size()
+        return used_size / total_size
+
 
 
 def create_node(serialized_node):
@@ -304,8 +326,8 @@ class BPlusTree:
     def _need_to_split(self, node):
         """This method is just for demonstrating. We should override it according
         the size of data or other rules."""
-        fixed_order = 4
-        return len(node.keys) > fixed_order
+        max_load_factor = 0.5
+        return node.load_factor() > max_load_factor
 
     def _find_parent(self, node):
         current_node = self.root

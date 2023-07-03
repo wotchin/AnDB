@@ -1,15 +1,41 @@
+from andb.storage.buffer import BufferManager
+from andb.storage.engines.heap.bptree import BPlusTree
+from andb.catalog.andb_class import ANDB_CLASS, AndbClassTuple, RelationKinds
+from andb.catalog.type import BUILTIN_TYPES
+
+
+class BufferedBPTree(BPlusTree):
+    def __init__(self, relation, bufmgr: BufferManager):
+        super().__init__()
+        self.relation = relation
+        self.bufmgr = bufmgr
+
+    def load_page(self, pageno):
+        return self.bufmgr.get_page(self.relation, pageno).page
+
+    def _need_to_split(self, node):
+        # todo: user-defined load factor
+        return super()._need_to_split(node)
+
+
+# todo: using type catalog
+class TableField:
+    def __init__(self, name, type_name):
+        self.name = name
+        self.type_oid = BUILTIN_TYPES.get_type_oid(type_name)
+
 
 class HeapOrientedTable:
-    def __init__(self, table_name):
-        self.table_name = table_name
-        self.buffer_manager = BufferManager()
-        self.log_manager = LogManager()
-        self.transaction_manager = TransactionManager()
-        self.index_manager = IndexManager()
-
-    def create_table(self):
-        # TODO: Implement the creation of the table
+    def __init__(self):
         pass
+
+    def create_table(self, table_name, table_schema='andb', fields=None):
+        oid = ANDB_CLASS.allocate_oid()
+        # todo: not supported atomic DDL yet
+        t = AndbClassTuple(oid=oid, name=table_name, kind=RelationKinds.HEAP_TABLE)
+        ANDB_CLASS.add(t)
+        # todo: fields, schema, data file
+        return oid
 
     def drop_table(self):
         # TODO: Implement the dropping of the table

@@ -1,59 +1,92 @@
 import os
 
-# Constants for buffer management
-BUFFER_SIZE = 10
+from andb.runtime import global_vars
+from andb.constants import filename
+from andb.constants.values import PAGE_SIZE
+from andb.common.replacement.lru import LRUCache
+from andb.common.file_operation import file_size, file_extend, file_write, file_read, file_lseek
+from andb.common.utils import get_the_nearest_two_power_number
+from andb.storage.common.page import Page
+
+PAGE_TYPE_HEAP = 'heap'
+PAGE_TYPE_INDEX = 'index'
+
+SIXTEEN_MB = 1024 * 1024 * 16
+
+
+def get_next_allocation_size(v, upper=SIXTEEN_MB):
+    sz = get_the_nearest_two_power_number(v) << 1
+    if sz > upper:
+        return upper
+    return sz
+
+
+class BufferPage:
+    def __init__(self, relation, page, pageno):
+        self.relation = relation
+        self.page = page
+        self.pageno = pageno
+        self.ref = 0
+
+    def ref_increase(self):
+        self.ref += 1
+
+    def ref_decrease(self):
+        self.ref -= 1
 
 
 class BufferManager:
     def __init__(self):
-        self.buffer = {}
-        self.page_directory = {}
+        self.cache = LRUCache(capacity=global_vars.buffer_pool_size)
+        self.page_directory = os.path.realpath(os.path.join(
+            global_vars.data_directory, filename.BASE_DIR
+        ))
 
-    def get_page(self, page_id):
-        if page_id in self.buffer:
-            page = self.buffer[page_id]
-            page.next_free_slot += 1
-            return page
-        else:
-            page = self._read_page_from_disk(page_id)
-            if len(self.buffer) >= BUFFER_SIZE:
-                victim_page_id = self._select_victim_page()
-                self._write_page_to_disk(victim_page_id)
-                del self.buffer[victim_page_id]
-            self.buffer[page_id] = page
-            return page
+    def get_page(self, relation, pageno) -> BufferPage:
+        key = (relation, pageno)
+        page = self.cache.get(key)
+        if page is None:
+            page = self._read_page_from_disk(relation, pageno)
+            self.cache.put(key, page)
+        return page
 
-    def pin_page(self, page_id):
-        if page_id in self.buffer:
-            self.buffer[page_id].pinned = True
+    def pin_page(self, relation, pageno):
+        key = (relation, pageno)
+        self.cache.pin(key)
 
-    def unpin_page(self, page_id):
-        if page_id in self.buffer:
-            self.buffer[page_id].pinned = False
+    def unpin_page(self, relation, pageno):
+        key = (relation, pageno)
+        self.cache.pin(key)
 
-    def flush_buffer(self):
-        for page_id in self.buffer:
-            self._write_page_to_disk(page_id)
-        self.buffer = {}
+    def sync(self):
+        for buffer_page in self.cache:
+            self._write_page_to_disk(buffer_page)
+        self.cache = {}
 
-    def _read_page_from_disk(self, page_id):
-        # keynote: another thinking is segment form.
-        file_path = f"pages/{page_id}.bin"
-        if not os.path.exists(file_path):
-            return Page(page_id)
-        with open(file_path, "rb") as file:
-            data = file.read()
-        return Page.from_bytes(data)
+    def sync_evicted_pages(self):
+        evicted = self.cache.get_evicted_list()
+        for buffer_page in evicted:
+            self._write_page_to_disk(buffer_page)
+        evicted.clear()
 
-    def _write_page_to_disk(self, page_id):
-        page = self.buffer[page_id]
-        data = page.to_bytes()
-        file_path = f"pages/{page_id}.bin"
-        with open(file_path, "wb") as file:
-            file.write(data)
+    @staticmethod
+    def _read_page_from_disk(relation, pageno):
+        assert pageno * PAGE_SIZE >= file_size(relation.fd)
+        offset = pageno * PAGE_SIZE
+        file_lseek(relation.fd, offset)
+        data = file_read(relation.fd, PAGE_SIZE)
+        page = Page.unpack(data)
+        return BufferPage(relation, page, pageno)
 
-    def _select_victim_page(self):
-        # TODO: Implement the page eviction algorithm (LRU or Clock-Sweep)
-        # For now, return a random page as a placeholder
-        return next(iter(self.buffer.keys()))
+    @staticmethod
+    def _write_page_to_disk(buffer_page: BufferPage):
+        page = buffer_page.page
+        data = page.pack()
+        pageno = buffer_page.pageno
+        fz = file_size(buffer_page.relation.fd)
+        if fz <= (PAGE_SIZE * pageno):
+            file_extend(buffer_page.relation.fd, get_next_allocation_size(fz * 2))
+        file_lseek(buffer_page.relation.fd, PAGE_SIZE * pageno)
+        # not sync
+        file_write(buffer_page.relation.fd, data)
 

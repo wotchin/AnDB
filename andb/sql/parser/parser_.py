@@ -4,6 +4,7 @@ from .lexer import SQLLexer
 from .ast.base import ASTNode
 from .ast.explain import Explain
 from .ast.alter import AlterTable
+from .ast.create import CreateIndex, CreateTable
 from .ast.union import Union
 from .ast.select import Select
 from .ast.insert import Insert
@@ -74,6 +75,7 @@ class SQLParser(sly.Parser):
     @_(
         'explain',
         'alter_table',
+        'create',
         'union',
         'select',
         'delete',
@@ -519,3 +521,30 @@ class SQLParser(sly.Parser):
                 f"WHERE clause must contain boolean condition not: {str(where)}")
 
         return Delete(table=p.from_table, where=where)
+
+    # DDL
+    @_('defined_columns COMMA defined_column')
+    def defined_columns(self, p):
+        p.defined_columns.append(p.defined_column)
+        return p.defined_columns
+
+    @_('defined_column')
+    def defined_columns(self, p):
+        return [p.defined_column]
+
+    @_('id id')
+    def defined_column(self, p):
+        return [p.id0, p.id1]
+
+    @_('CREATE TABLE identifier LPAREN defined_columns RPAREN')
+    def create(self, p):
+        return CreateTable(name=p.identifier, columns=p.defined_columns)
+
+    @_('CREATE INDEX identifier ON identifier LPAREN result_columns RPAREN',
+       'CREATE INDEX identifier ON identifier LPAREN result_columns RPAREN USING identifier')
+    def create(self, p):
+        index_type = getattr(p, 'identifier2', None)
+        return CreateIndex(
+            name=p.identifier0, table_name=p.identifier1,
+            columns=p.result_columns, index_type=index_type
+        )

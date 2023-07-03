@@ -18,6 +18,7 @@ class Join(ASTNode):
         self.right = right
         self.join_type = join_type
         self.condition = condition
+        self.implicit = kwargs.get('implicit', False)
 
 
 class BinaryTreeNode:

@@ -51,3 +51,6 @@ def get_the_nearest_two_power_number(value):
     return rv
 
 
+def touch(path):
+    with open(path, 'w+') as f:
+        f.write('')

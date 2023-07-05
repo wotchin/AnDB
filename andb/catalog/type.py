@@ -1,7 +1,8 @@
 from functools import partial
 
 from andb.common import hash_functions
-from .oid import OID_TYPE_START, INVALID_OID
+from ._base import CatalogTuple, CatalogTable
+from .oid import INVALID_OID
 
 VARIABLE_LENGTH = 0
 
@@ -91,29 +92,43 @@ class TextType(AndbBaseType):
     hash_func = hash_functions.hash_string
 
 
-class TypeDefiner:
-    def __init__(self):
-        self._oid = OID_TYPE_START
-        self.defined = None
+class AndbTypeTuple(CatalogTuple):
+    __fields__ = {
+        'oid': 'bigint',
+        'type_name': 'text',
+        'type_bytes': 'integer',
+        'type_char': 'char'
+    }
 
-    def define(self):
-        types = (
+    def __init__(self, defined_type):
+        self.oid = defined_type.oid
+        self.type_name = defined_type.type_name
+        self.type_bytes = defined_type.type_bytes
+        self.type_char = defined_type.type_char
+        self.type_default = defined_type.type_default
+
+    def __lt__(self, other):
+        return self.oid < other.oid
+
+
+class AndbTypeTable(CatalogTable):
+    __tablename__ = 'andb_type'
+
+    def init(self):
+        builtin_types = (
             IntegerType, BigintType, RealType, DoubleType,
             BooleanType, CharType, VarcharType, TextType
         )
+        for t in builtin_types:
+            self.insert(AndbTypeTuple(t))
 
-        # todo: check
-        self.defined = types
-
-    # todo: use dict
     def get_type_meta(self, name):
-        for type_ in self.defined:
-            if name == type_.type_name:
-                return type_
+        for r in self.rows:
+            if name == r.type_name:
+                return r
 
     def get_type_oid(self, name):
         meta = self.get_type_meta(name)
         return meta.oid if meta else INVALID_OID
 
 
-BUILTIN_TYPES = TypeDefiner()

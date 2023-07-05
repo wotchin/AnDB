@@ -1,7 +1,12 @@
+import os
+
+from andb.catalog.class_ import RelationKinds
+from andb.catalog.oid import OID_DATABASE_ANDB
+from andb.catalog.syscache import CATALOG_ANDB_CLASS, CATALOG_ANDB_TYPE, CATALOG_ANDB_ATTRIBUTE
 from andb.storage.buffer import BufferManager
 from andb.storage.engines.heap.bptree import BPlusTree
-from andb.catalog.andb_class import ANDB_CLASS, AndbClassTuple, RelationKinds
-from andb.catalog.type import BUILTIN_TYPES
+from andb.common.utils import touch
+from andb.constants.filename import BASE_DIR
 
 
 class BufferedBPTree(BPlusTree):
@@ -22,19 +27,24 @@ class BufferedBPTree(BPlusTree):
 class TableField:
     def __init__(self, name, type_name):
         self.name = name
-        self.type_oid = BUILTIN_TYPES.get_type_oid(type_name)
+        self.type_oid = CATALOG_ANDB_TYPE.get_type_oid(type_name)
 
 
 class HeapOrientedTable:
     def __init__(self):
         pass
 
-    def create_table(self, table_name, table_schema='andb', fields=None):
-        oid = ANDB_CLASS.allocate_oid()
+    def create_table(self, table_name, fields, database_oid=OID_DATABASE_ANDB):
         # todo: not supported atomic DDL yet
-        t = AndbClassTuple(oid=oid, name=table_name, kind=RelationKinds.HEAP_TABLE)
-        ANDB_CLASS.add(t)
+        oid = CATALOG_ANDB_CLASS.create(name=table_name,
+                                        kind=RelationKinds.HEAP_TABLE,
+                                        database_oid=database_oid)
         # todo: fields, schema, data file
+        # fields format: (name, type_name, notnull)
+        CATALOG_ANDB_ATTRIBUTE.define_table_fields(class_oid=oid, fields=fields)
+        touch(
+            os.path.join(BASE_DIR, str(database_oid), str(oid))
+        )
         return oid
 
     def drop_table(self):

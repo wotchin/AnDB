@@ -9,3 +9,4 @@ buffer_pool_size = 512
 unix_like_env = (platform.uname().system != 'Windows')
 
 buffer_manager: 'BufferManager' = None
+lsn_manager = None

@@ -206,3 +206,13 @@ if __name__ == "__main__":
 
     # Close the WriteAheadLog
     wal.close()
+
+
+class LsnManager:
+    def __init__(self):
+        self.current_lsn = 0
+
+    def next_lsn(self):
+        self.current_lsn += 1
+        return self.current_lsn
+

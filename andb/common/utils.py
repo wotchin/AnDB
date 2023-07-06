@@ -51,6 +51,17 @@ def get_the_nearest_two_power_number(value):
     return rv
 
 
-def touch(path):
-    with open(path, 'w+') as f:
-        f.write('')
+def memoize(func):
+    """a generic cache, which won't cache unhashable types."""
+    memtbl = {}
+
+    @functools.wraps(func)
+    def wrapper(*args):
+        if args in memtbl:
+            return memtbl[args]
+        else:
+            rv = func(*args)
+            memtbl[args] = rv
+            return rv
+
+    return wrapper

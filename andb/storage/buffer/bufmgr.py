@@ -38,9 +38,6 @@ class BufferPage:
 class BufferManager:
     def __init__(self):
         self.cache = LRUCache(capacity=global_vars.buffer_pool_size)
-        self.page_directory = os.path.realpath(os.path.join(
-            global_vars.data_directory, filename.BASE_DIR
-        ))
 
     def get_page(self, relation, pageno) -> BufferPage:
         key = (relation, pageno)
@@ -49,6 +46,13 @@ class BufferManager:
             page = self._read_page_from_disk(relation, pageno)
             self.cache.put(key, page)
         return page
+
+    def clean_relation(self, relation):
+        keys = list(self.cache.keys())
+        for key in keys:
+            r, p = key
+            if r == relation:
+                self.cache.pop(key)
 
     def pin_page(self, relation, pageno):
         key = (relation, pageno)
@@ -59,9 +63,9 @@ class BufferManager:
         self.cache.pin(key)
 
     def sync(self):
-        for buffer_page in self.cache:
+        for buffer_page in self.cache.items():
             self._write_page_to_disk(buffer_page)
-        self.cache = {}
+        # self.cache = {}
 
     def sync_evicted_pages(self):
         evicted = self.cache.get_evicted_list()
@@ -71,7 +75,13 @@ class BufferManager:
 
     @staticmethod
     def _read_page_from_disk(relation, pageno):
-        assert pageno * PAGE_SIZE >= file_size(relation.fd)
+        filesize = file_size(relation.fd)
+        assert pageno * PAGE_SIZE >= filesize
+        if pageno * PAGE_SIZE == filesize:
+            # need to allocate
+            # todo: create_node of Btree
+            # todo: use relation.lsn
+            return BufferPage(relation, Page.allocate(), pageno)
         offset = pageno * PAGE_SIZE
         file_lseek(relation.fd, offset)
         data = file_read(relation.fd, PAGE_SIZE)

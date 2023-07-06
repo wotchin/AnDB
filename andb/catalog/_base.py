@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from andb.constants.filename import CATALOG_DIR
 
 
-class CatalogTuple(ABC):
+class CatalogForm(ABC):
     __fields__ = {}
 
     def _extract_field_values(self, o):
@@ -44,7 +44,7 @@ class CatalogTable:
         pass
 
     def insert(self, row):
-        assert isinstance(row, CatalogTuple)
+        assert isinstance(row, CatalogForm)
         # todo: binary search
         self.rows.append(row)
         self.rows.sort()
@@ -69,8 +69,8 @@ class CatalogTable:
         return results
 
     def update(self, old, new):
-        assert isinstance(old, CatalogTuple)
-        assert isinstance(new, CatalogTuple)
+        assert isinstance(old, CatalogForm)
+        assert isinstance(new, CatalogForm)
 
         i = 0
         while i < len(self.rows):
@@ -94,5 +94,7 @@ class CatalogTable:
 
     def save(self):
         filename = os.path.join(CATALOG_DIR, self.__tablename__)
-        with open(filename, 'w+b') as f:
-            f.write(pickle.dumps(self.rows))
+        f = open(filename, 'w+b')
+        f.write(pickle.dumps(self.rows))
+        os.fsync(f.fileno())
+        f.close()

@@ -2,3 +2,4 @@ PAGE_SIZE = 1024 * 8  # 8kb
 WAL_SEGMENT_SIZE = 1024 * 16  # 16kb
 MAX_OPEN_FILES = 1024
 
+MAX_TABLE_COLUMNS = 64  # 8 * 8 due to nulls

@@ -85,8 +85,14 @@ class LRUCache(BaseCache):
         node.next = self.tail
         self.tail.prev = node
 
-    def __iter__(self):
+    def items(self):
         node = self.head.next
         while node is not self.tail:
             yield node.value
             node = node.next
+
+    def keys(self):
+        return self.cache.keys()
+
+    def __iter__(self):
+        return self.items()

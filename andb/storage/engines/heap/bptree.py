@@ -188,7 +188,6 @@ class LeafNode(BPlusNode):
         return used_size / total_size
 
 
-
 def create_node(serialized_node):
     # Get header first, then determine this node is leaf or not.
     header = PageHeader()

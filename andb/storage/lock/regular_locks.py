@@ -8,3 +8,16 @@ SHARE_ROW_EXCLUSIVE_LOCK = 6  # EXCLUSIVE MODE
 EXCLUSIVE_LOCK = 7  # SHARE/SELECT...FOR UPDATE
 ACCESS_EXCLUSIVE_LOCK = 8  # ALTER TABLE, DROP TABLE
 MAX_LOCK_MODE = ACCESS_EXCLUSIVE_LOCK
+
+LOCK_NOT_AVAILABLE = 0
+LOCK_OK = 1
+LOCK_ALREADY_HELD = 2
+
+
+def lock_acquire(tag, lock_mode, dont_wait, wait_seconds):
+    return LOCK_OK
+
+
+def lock_release(tag, lock_mode):
+    return True
+

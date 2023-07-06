@@ -7,3 +7,8 @@ from builtins import (
 
 class BufferOverflow(Exception):
     pass
+
+
+class RollbackError(Exception):
+    pass
+

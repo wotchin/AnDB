@@ -1,6 +1,7 @@
 from andb.catalog.oid import OID_RELATION_START
-from ._base import CatalogTable, CatalogTuple
+from ._base import CatalogTable, CatalogForm
 from .oid import OID_RELATION_END, OID_DATABASE_ANDB, INVALID_OID
+from .database import _ANDB_DATABASE
 
 
 class RelationKinds:
@@ -8,7 +9,7 @@ class RelationKinds:
     BTREE_INDEX = 'b'
 
 
-class AndbClassTuple(CatalogTuple):
+class AndbClassForm(CatalogForm):
     __fields__ = {
         'oid': 'bigint',
         'database_oid': 'bigint',
@@ -42,14 +43,15 @@ class AndbClassTable(CatalogTable):
         if next_oid > OID_RELATION_END:
             return INVALID_OID
 
-        results = self.search(lambda r: r.database_oid == database_oid)
+        results = _ANDB_DATABASE.search(lambda r: r.oid == database_oid)
         if len(results) == 0:
             return INVALID_OID
 
         self.insert(
-            AndbClassTuple(oid=next_oid, name=name,
-                           kind=kind, database_oid=database_oid)
+            AndbClassForm(oid=next_oid, name=name,
+                          kind=kind, database_oid=database_oid)
         )
         return next_oid
 
 
+_ANDB_CLASS = AndbClassTable()

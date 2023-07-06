@@ -1,11 +1,11 @@
 import struct
 from collections import OrderedDict
 
-CTYPE_BIG_ENDIAN = '>'
 CTYPE_LITTLE_ENDIAN = '<'
 
 CTYPE_TYPE_CHAR = 'c'
 CTYPE_TYPE_CHAR_ARRAY = 's'
+CTYPE_TYPE_PASCAL_STRING = 'p'
 CTYPE_TYPE_SHORT = 'H'
 CTYPE_TYPE_INT4 = 'i'
 CTYPE_TYPE_UINT4 = 'I'
@@ -13,6 +13,7 @@ CTYPE_TYPE_INT8 = 'q'
 CTYPE_TYPE_UINT8 = 'Q'
 CTYPE_TYPE_FLOAT4 = 'f'
 CTYPE_TYPE_FLOAT8 = 'd'
+CTYPE_TYPE_BOOL = '?'
 
 
 class Field:
@@ -172,3 +173,9 @@ class CStructure(metaclass=StructureMeta):
         return hash((self.__cformat__, self.pack()))
 
 
+def pack(fmt_flag, v):
+    return struct.pack(f'{CTYPE_LITTLE_ENDIAN}{fmt_flag}', v)
+
+
+def unpack(fmt_flag, b):
+    return struct.unpack(f'{CTYPE_LITTLE_ENDIAN}{fmt_flag}', b)[0]

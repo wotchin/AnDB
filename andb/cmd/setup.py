@@ -27,4 +27,4 @@ def initialize_data_dir(path):
         catalog_table.init()
 
     # create a default database -- andb
-    os.mkdir(os.path.join(BASE_DIR, OID_DATABASE_ANDB))
+    os.mkdir(os.path.join(BASE_DIR, str(OID_DATABASE_ANDB)))

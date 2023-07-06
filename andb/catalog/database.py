@@ -1,8 +1,8 @@
-from ._base import CatalogTable, CatalogTuple
+from ._base import CatalogTable, CatalogForm
 from .oid import OID_RELATION_END, OID_DATABASE_ANDB
 
 
-class AndbDatabaseTuple(CatalogTuple):
+class AndbDatabaseForm(CatalogForm):
     __fields__ = {
         'oid': 'bigint',
         'name': 'text',
@@ -17,8 +17,10 @@ class AndbDatabaseTuple(CatalogTuple):
 
 
 class AndbDatabaseTable(CatalogTable):
+    __tablename__ = 'andb_database'
+
     def init(self):
-        self.insert(AndbDatabaseTuple(
+        self.insert(AndbDatabaseForm(
             oid=OID_DATABASE_ANDB,
             name='andb'
         ))
@@ -33,7 +35,7 @@ class AndbDatabaseTable(CatalogTable):
         if next_oid > OID_RELATION_END:
             return False
 
-        self.insert(AndbDatabaseTuple(
+        self.insert(AndbDatabaseForm(
             oid=next_oid,
             name=name
         ))
@@ -46,3 +48,6 @@ class AndbDatabaseTable(CatalogTable):
 
         self.delete(lambda r: r.name == name)
         return True
+
+
+_ANDB_DATABASE = AndbDatabaseTable()

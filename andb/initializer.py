@@ -1,5 +1,10 @@
+from andb.storage.buffer import BufferManager
+from andb.storage.engines.heap.wal import LsnManager
+from andb.runtime import global_vars
+
+
 def init_buffer_pool():
-    pass
+    global_vars.buffer_manager = BufferManager()
 
 
 def init_runtime():
@@ -7,7 +12,7 @@ def init_runtime():
 
 
 def init_storage():
-    pass
+    global_vars.lsn_manager = LsnManager()
 
 
 def init_shared_resource():
@@ -16,3 +21,8 @@ def init_shared_resource():
 
 def init_logger():
     pass
+
+
+def init_all_database_components():
+    init_buffer_pool()
+    init_storage()

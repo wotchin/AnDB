@@ -97,3 +97,8 @@ def directio_file_open(filepath, flags, mode=FILE_MODE):
 def file_remove(fd: FileDescriptor):
     file_close(fd)
     os.remove(fd.filepath)
+
+
+def touch(path):
+    with open(path, 'w+') as f:
+        f.write('')

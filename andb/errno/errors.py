@@ -12,3 +12,7 @@ class BufferOverflow(Exception):
 class RollbackError(Exception):
     pass
 
+
+class WALError(Exception):
+    pass
+

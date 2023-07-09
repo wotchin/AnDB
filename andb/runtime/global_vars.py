@@ -5,6 +5,7 @@ import platform
 
 data_directory = 'data'
 buffer_pool_size = 512
+wal_buffer_size = 10
 
 unix_like_env = (platform.uname().system != 'Windows')
 

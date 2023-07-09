@@ -11,7 +11,7 @@ from andb.constants.values import MAX_TABLE_COLUMNS, PAGE_SIZE
 from andb.errno.errors import RollbackError
 from andb.storage.buffer import BufferManager
 from andb.storage.engines.heap.bptree import BPlusTree
-from andb.storage.lock import regular_locks
+from andb.storage.lock import rlock
 from andb.runtime import global_vars
 from andb.storage.common.page import INVALID_BYTES
 
@@ -144,7 +144,7 @@ def search_relation(relation_name, database_name, kind):
     return results[0].oid
 
 
-def open_relation(oid, lock_mode=regular_locks.NO_LOCK):
+def open_relation(oid, lock_mode=rlock.NO_LOCK):
     if oid in __relcache:
         relation = __relcache[oid]
     else:
@@ -162,17 +162,17 @@ def open_relation(oid, lock_mode=regular_locks.NO_LOCK):
         __relcache[oid] = relation
 
     # try to get lock
-    if lock_mode != regular_locks.NO_LOCK:
-        regular_locks.lock_acquire(oid, lock_mode, False, 0)
+    if lock_mode != rlock.NO_LOCK:
+        rlock.lock_acquire(oid, lock_mode, False, 0)
 
     relation.refcount += 1
     return relation
 
 
-def close_relation(oid, lock_mode=regular_locks.NO_LOCK):
+def close_relation(oid, lock_mode=rlock.NO_LOCK):
     relation = __relcache[oid]
-    if lock_mode != regular_locks.NO_LOCK:
-        regular_locks.lock_release(relation.oid, lock_mode)
+    if lock_mode != rlock.NO_LOCK:
+        rlock.lock_release(relation.oid, lock_mode)
     relation.refcount -= 1
     if relation.refcount == 0:
         relation.opened = False
@@ -203,7 +203,7 @@ def hot_drop_table(table_name, database_oid=OID_DATABASE_ANDB):
     # todo: atomic
     oid = results[0].oid
     # todo: try to get lock and close fd if it opened
-    relation = open_relation(oid, regular_locks.ACCESS_EXCLUSIVE_LOCK)
+    relation = open_relation(oid, rlock.ACCESS_EXCLUSIVE_LOCK)
     file_close(relation.fd)
     os.unlink(os.path.join(BASE_DIR, str(database_oid), str(oid)))
     CATALOG_ANDB_ATTRIBUTE.delete(lambda r: r.class_oid == oid)
@@ -211,7 +211,7 @@ def hot_drop_table(table_name, database_oid=OID_DATABASE_ANDB):
 
     # clean buffer
     global_vars.buffer_manager.clean_relation(relation)
-    close_relation(oid, regular_locks.ACCESS_EXCLUSIVE_LOCK)
+    close_relation(oid, rlock.ACCESS_EXCLUSIVE_LOCK)
     return True
 
 
@@ -219,7 +219,7 @@ def hot_simple_insert(relation: Relation, python_tuple):
     # no redo and undo log here, only update cached page
     # todo: find from fsm first
     buffer_page = global_vars.buffer_manager.get_page(relation, relation.last_pageno())
-    lsn = global_vars.lsn_manager.next_lsn()
+    lsn = global_vars.lsn_manager.max_lsn()
     return buffer_page.pageno, buffer_page.page.insert(
         lsn, HeapTuple(python_tuple).to_bytes(relation.attrs))
 
@@ -232,7 +232,7 @@ def hot_simple_update(relation: Relation, pageno, tid, python_tuple):
 
 def hot_simple_delete(relation: Relation, pageno, tid):
     buffer_page = global_vars.buffer_manager.get_page(relation, pageno)
-    lsn = global_vars.lsn_manager.next_lsn()
+    lsn = global_vars.lsn_manager.max_lsn()
     return buffer_page.page.delete(lsn, tid)
 
 

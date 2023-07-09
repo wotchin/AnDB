@@ -1,6 +1,7 @@
 from andb.storage.buffer import BufferManager
-from andb.storage.engines.heap.wal import LsnManager
+from andb.storage.engines.heap.redo import WALManager
 from andb.runtime import global_vars
+from andb.storage.lock import lwlock
 
 
 def init_buffer_pool():
@@ -12,7 +13,8 @@ def init_runtime():
 
 
 def init_storage():
-    global_vars.lsn_manager = LsnManager()
+    global_vars.lsn_manager = WALManager()
+    lwlock.init_lwlock()
 
 
 def init_shared_resource():

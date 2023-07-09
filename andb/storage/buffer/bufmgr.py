@@ -1,12 +1,10 @@
-import os
-
-from andb.runtime import global_vars
-from andb.constants import filename
-from andb.constants.values import PAGE_SIZE
-from andb.common.replacement.lru import LRUCache
 from andb.common.file_operation import file_size, file_extend, file_write, file_read, file_lseek
+from andb.common.replacement.lru import LRUCache
 from andb.common.utils import get_the_nearest_two_power_number
+from andb.constants.values import PAGE_SIZE
+from andb.runtime import global_vars
 from andb.storage.common.page import Page
+from andb.storage.lock.lwlock import LWLockName, lwlock_acquire, lwlock_release
 
 PAGE_TYPE_HEAP = 'heap'
 PAGE_TYPE_INDEX = 'index'
@@ -27,6 +25,7 @@ class BufferPage:
         self.page = page
         self.pageno = pageno
         self.ref = 0
+        self.dirty = False
 
     def ref_increase(self):
         self.ref += 1
@@ -48,11 +47,13 @@ class BufferManager:
         return page
 
     def clean_relation(self, relation):
+        lwlock_acquire(LWLockName.BUFFER_UPDATE)
         keys = list(self.cache.keys())
         for key in keys:
             r, p = key
             if r == relation:
                 self.cache.pop(key)
+        lwlock_release(LWLockName.BUFFER_UPDATE)
 
     def pin_page(self, relation, pageno):
         key = (relation, pageno)
@@ -63,15 +64,22 @@ class BufferManager:
         self.cache.pin(key)
 
     def sync(self):
+        lwlock_acquire(LWLockName.BUFFER_UPDATE)
         for buffer_page in self.cache.items():
-            self._write_page_to_disk(buffer_page)
-        # self.cache = {}
+            if buffer_page.dirty:
+                self._write_page_to_disk(buffer_page)
+                buffer_page.dirty = False
+        lwlock_release(LWLockName.BUFFER_UPDATE)
 
     def sync_evicted_pages(self):
+        lwlock_acquire(LWLockName.BUFFER_UPDATE)
         evicted = self.cache.get_evicted_list()
         for buffer_page in evicted:
-            self._write_page_to_disk(buffer_page)
+            if buffer_page.dirty:
+                self._write_page_to_disk(buffer_page)
+                buffer_page.dirty = False
         evicted.clear()
+        lwlock_release(LWLockName.BUFFER_UPDATE)
 
     @staticmethod
     def _read_page_from_disk(relation, pageno):
@@ -99,4 +107,3 @@ class BufferManager:
         file_lseek(buffer_page.relation.fd, PAGE_SIZE * pageno)
         # not sync
         file_write(buffer_page.relation.fd, data)
-

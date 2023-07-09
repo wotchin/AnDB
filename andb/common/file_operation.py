@@ -53,7 +53,11 @@ def file_close(fd: FileDescriptor):
 
 def file_write(fd: FileDescriptor, data: bytes, sync=False):
     fd_no = _FD_SLRU.get(fd.filepath).fd
+    old_position = file_tell(fd)
     n = os.write(fd_no, data)
+    # todo: this assertion only raises on Windows?
+    # todo: it writes 0x0D automatically!! need to fix it.
+    # assert len(data) + old_position == file_tell(fd)
     if n >= 0 and sync:
         os.fsync(fd_no)
     return n
@@ -83,6 +87,7 @@ def file_size(fd: FileDescriptor):
 def file_extend(fd: FileDescriptor, size=1024):
     old_position = file_tell(fd)
     file_lseek(fd, 0, os.SEEK_END)
+    # todo: use stream?
     rv = file_write(fd, bytes(size), sync=True)
     file_lseek(fd, old_position, os.SEEK_SET)
     return rv

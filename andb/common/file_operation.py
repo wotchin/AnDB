@@ -11,10 +11,16 @@ FILE_MODE = stat.S_IWUSR | stat.S_IRUSR
 
 
 class FileDescriptor:
-    def __init__(self, fd, filepath, flags):
-        self.file_object = os.fdopen(fd, 'wb+', 0)
+    def __init__(self, filepath, flags, mode):
         self.filepath = filepath
-        self._flags = flags
+        self.flags = flags
+        self.mode = mode
+
+        self.file_object = self._open()
+
+    def _open(self):
+        fd_no = os.open(self.filepath, self.flags, self.mode)
+        return os.fdopen(fd_no, 'wb+', 0)
 
     def close(self):
         if self.file_object.closed:
@@ -22,8 +28,26 @@ class FileDescriptor:
         os.fsync(self.file_object.fileno())
         self.file_object.close()
 
+    def reopen(self):
+        if not self.file_object.closed:
+            return
+        self.file_object = self._open()
 
-_FD_SLRU = LRUCache(MAX_OPEN_FILES)
+
+class SLRU(LRUCache):
+    def __init__(self):
+        super().__init__(MAX_OPEN_FILES)
+
+    def get(self, key):
+        v = super().get(key)
+        if not v:
+            return v
+        # prevent unexpected exit
+        v.reopen()
+        return v
+
+
+_FD_SLRU = SLRU()
 
 
 def file_open(filepath, flags, mode=FILE_MODE):
@@ -31,8 +55,7 @@ def file_open(filepath, flags, mode=FILE_MODE):
     fd = _FD_SLRU.get(filepath)
     if fd:
         return fd
-    fd = FileDescriptor(os.open(filepath, flags, mode),
-                        filepath, flags)
+    fd = FileDescriptor(filepath, flags, mode)
     _FD_SLRU.put(filepath, fd)
     for evicted in _FD_SLRU.get_evicted_list():
         evicted.close()

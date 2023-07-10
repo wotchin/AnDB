@@ -110,7 +110,7 @@ class WALPage:
         header = cls.Header()
         header.unpack(data[:header.size()])
         record_data = data[header.size():]
-        o = cls(start_lsn=header.lsn, remaining_size=header.last_page_written_size)
+        o = cls(start_lsn=header.lsn, written_size=header.last_page_written_size)
         # parse record data
         i = 0
         while i < len(record_data):
@@ -148,10 +148,6 @@ class WALManager:
         self.broken_page_written = False
 
         self.current_wal_fd = None
-
-    # def next_lsn(self):
-    #     self.write += 1
-    #     return self.write
 
     def max_lsn(self):
         return self.write_lsn

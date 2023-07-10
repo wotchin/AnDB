@@ -12,21 +12,15 @@ FILE_MODE = stat.S_IWUSR | stat.S_IRUSR
 
 class FileDescriptor:
     def __init__(self, fd, filepath, flags):
-        self.fd = fd
+        self.file_object = os.fdopen(fd, 'wb+', 0)
         self.filepath = filepath
-        self.flags = flags
-        self.closed = False
-        # todo: add lock?
+        self._flags = flags
 
     def close(self):
-        if self.closed:
+        if self.file_object.closed:
             return
-        if unix_like_env:
-            os.fdatasync(self.fd)
-        else:
-            os.fsync(self.fd)
-        os.close(self.fd)
-        self.closed = True
+        os.fsync(self.file_object.fileno())
+        self.file_object.close()
 
 
 _FD_SLRU = LRUCache(MAX_OPEN_FILES)
@@ -52,25 +46,22 @@ def file_close(fd: FileDescriptor):
 
 
 def file_write(fd: FileDescriptor, data: bytes, sync=False):
-    fd_no = _FD_SLRU.get(fd.filepath).fd
     old_position = file_tell(fd)
-    n = os.write(fd_no, data)
-    # todo: this assertion only raises on Windows?
-    # todo: it writes 0x0D automatically!! need to fix it.
-    # assert len(data) + old_position == file_tell(fd)
+    n = fd.file_object.write(data)
+    assert len(data) + old_position == file_tell(fd)
     if n >= 0 and sync:
-        os.fsync(fd_no)
+        os.fsync(fd.file_object.fileno())
     return n
 
 
 def file_read(fd: FileDescriptor, n):
-    fd_no = _FD_SLRU.get(fd.filepath).fd
-    return os.read(fd_no, n)
+    fd = _FD_SLRU.get(fd.filepath)
+    return fd.file_object.read(n)
 
 
 def file_lseek(fd: FileDescriptor, offset, whence=os.SEEK_SET):
-    fd_no = _FD_SLRU.get(fd.filepath).fd
-    return os.lseek(fd_no, offset, whence)
+    fd = _FD_SLRU.get(fd.filepath)
+    return fd.file_object.seek(offset, whence)
 
 
 def file_tell(fd: FileDescriptor):

@@ -234,14 +234,8 @@ class WALManager:
                 file_extend(self.current_wal_fd, size=WAL_SEGMENT_SIZE)
             flush_location = self.flush_lsn % WAL_SEGMENT_SIZE
             write_location = self.write_lsn % WAL_SEGMENT_SIZE
-            # todo: this assert
-            # assert flush_location == file_tell(self.current_wal_fd)
 
-            # if write_location - flush_location >= WAL_PAGE_SIZE:
-            #     data = wal_page.pack()
-            # else:
-            #     data_size = write_location - flush_location
-            #     data = wal_page.pack()[flush_location % WAL_PAGE_SIZE: flush_location % WAL_PAGE_SIZE + data_size]
+            assert flush_location == file_tell(self.current_wal_fd)
 
             # determine if write_location and flush_location in a same page
             n = flush_location // WAL_PAGE_SIZE

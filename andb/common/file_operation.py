@@ -69,6 +69,7 @@ def file_close(fd: FileDescriptor):
 
 
 def file_write(fd: FileDescriptor, data: bytes, sync=False):
+    fd = _FD_SLRU.get(fd.filepath)
     old_position = file_tell(fd)
     n = fd.file_object.write(data)
     assert len(data) + old_position == file_tell(fd)
@@ -88,7 +89,8 @@ def file_lseek(fd: FileDescriptor, offset, whence=os.SEEK_SET):
 
 
 def file_tell(fd: FileDescriptor):
-    return file_lseek(fd, 0, os.SEEK_CUR)
+    fd = _FD_SLRU.get(fd.filepath)
+    return fd.file_object.tell()
 
 
 def file_size(fd: FileDescriptor):

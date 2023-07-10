@@ -34,6 +34,9 @@ class WALRecord:
         self.header.action = action
         self.data = data
 
+        # there is some padding bytes follows the tuple due to align
+        self.padding = 0
+
     def pack(self):
         return self.header.pack() + self.data
 
@@ -66,14 +69,18 @@ class WALPage:
         self.header = self.Header()
         self.header.lsn = start_lsn  # address of the page
         self.header.last_page_written_size = written_size
-        self.records = []
-        self.records_size = 0
+        self.records = bytearray()
+
+    @property
+    def records_size(self):
+        return len(self.records)
 
     def is_full(self):
         assert self.records_size + self.header.size() <= WAL_PAGE_SIZE
         # If remaining space of the page cannot contain a record header,
         # we also think the page is full.
-        return (WAL_PAGE_SIZE - WALRecord.Header.size()) <= (self.records_size + self.header.size()) <= WAL_PAGE_SIZE
+        current_size = self.records_size + self.header.size()
+        return (WAL_PAGE_SIZE - WALRecord.Header.size()) <= current_size <= WAL_PAGE_SIZE
 
     def calc_remaining_size(self, record: WALRecord):
         record_size = record.header.total_size
@@ -89,21 +96,18 @@ class WALPage:
         if remaining > 0:
             return False
 
-        self.records.append(record)
-        self.records_size += record.header.total_size
+        self.records += record.pack()
+
+        if self.header.size() + self.records_size + WALRecord.Header.size() >= WAL_PAGE_SIZE:
+            # padding with blank bytes
+            padding_size = WAL_PAGE_SIZE - (self.header.size() + self.records_size)
+            self.records += bytes(padding_size)
+            record.padding = padding_size  # mark
         return True
 
     def pack(self):
-        records_bytes = bytearray()
-        for record in self.records:
-            records_bytes += record.pack()
-
-        assert self.header.size() + len(records_bytes) <= WAL_PAGE_SIZE
-        if self.header.size() + len(records_bytes) > (WAL_PAGE_SIZE - WALRecord.Header.size()):
-            # padding with blank bytes
-            padding_size = WAL_PAGE_SIZE - (self.header.size() + len(records_bytes))
-            records_bytes += bytes(padding_size)
-        return self.header.pack() + bytes(records_bytes)
+        assert self.header.size() + self.records_size <= WAL_PAGE_SIZE
+        return self.header.pack() + bytes(self.records)
 
     @classmethod
     def unpack(cls, data):
@@ -163,9 +167,16 @@ class WALManager:
 
         # get the first not full WAL page
         wal_page = None
-        for p in self.wal_buffer:
+        i = 0
+        while i < len(self.wal_buffer):
+            p = self.wal_buffer[i]
             if not p.is_full():
                 wal_page = p
+                break
+            i += 1
+
+        if i != len(self.wal_buffer):
+            assert not wal_page.is_full()
 
         # create a new WALPage because all WALPages are full, which
         # cannot contain any records
@@ -203,6 +214,7 @@ class WALManager:
             record = remaining_record
 
         self.write_lsn += record.header.total_size
+        self.write_lsn += record.padding  # if has
 
         if record.header.action == WALAction.COMMIT or \
                 len(self.wal_buffer) >= wal_buffer_size:
@@ -218,18 +230,22 @@ class WALManager:
             if self.current_wal_fd is None:
                 self.current_wal_fd = directio_file_open(
                     os.path.join(WAL_DIR, filename),
-                    os.O_RDWR | os.O_CREAT | os.O_APPEND
+                    os.O_RDWR | os.O_CREAT
                 )
             elif filename != os.path.basename(self.current_wal_fd.filepath):
                 file_close(self.current_wal_fd)
                 self.current_wal_fd = directio_file_open(
                     os.path.join(WAL_DIR, filename),
-                    os.O_RDWR | os.O_CREAT | os.O_APPEND
+                    os.O_RDWR | os.O_CREAT
                 )
                 # pre-allocate
                 file_extend(self.current_wal_fd, size=WAL_SEGMENT_SIZE)
+
             flush_location = self.flush_lsn % WAL_SEGMENT_SIZE
             write_location = self.write_lsn % WAL_SEGMENT_SIZE
+            if write_location < flush_location:
+                # this is because they are in the different segments
+                write_location += WAL_PAGE_SIZE  # adjustment
 
             assert flush_location == file_tell(self.current_wal_fd)
 
@@ -238,11 +254,12 @@ class WALManager:
             in_a_same_page = n * WAL_PAGE_SIZE <= flush_location <= write_location < (n + 1) * WAL_PAGE_SIZE
             if in_a_same_page:
                 data = wal_page.pack()[flush_location % WAL_PAGE_SIZE: write_location % WAL_PAGE_SIZE]
+                assert len(data) == write_location % WAL_PAGE_SIZE - flush_location % WAL_PAGE_SIZE
             else:
+                assert wal_page.is_full()
+                assert len(wal_page.pack()) == WAL_PAGE_SIZE
                 data = wal_page.pack()[flush_location % WAL_PAGE_SIZE:]
 
-            if wal_page.is_full():
-                assert len(wal_page.pack()) == WAL_PAGE_SIZE
             file_write(self.current_wal_fd, data, sync=True)
             self.flush_lsn += len(data)  # don't forget it!
             assert wal_page.header.lsn <= self.write_lsn

@@ -1,7 +1,5 @@
 from andb.constants.values import WAL_SEGMENT_SIZE
 from andb.storage.engines.heap.redo import lsn_to_filename, WALManager, WALRecord, WALAction
-import os
-from andb.constants.filename import WAL_DIR
 
 
 def test_wal():
@@ -12,13 +10,15 @@ def test_wal():
 
 def test_wal_manager():
     manager = WALManager()
-    for i in range(100):
+    for i in range(50000):
         record = WALRecord(i, action=WALAction.HEAP_INSERT, data=(str(i) * 100).encode())
         manager.write_record(record)
         if i % 5 == 0:
             commit_record = WALRecord(xid=i, action=WALAction.COMMIT, data=b'')
             manager.write_record(commit_record)
-            assert os.stat(os.path.join(WAL_DIR, '0000000000000000')).st_size >= manager.flush_lsn - 2
+            if manager.flush_lsn != manager.write_lsn:
+                assert False
+
             assert manager.flush_lsn == manager.write_lsn
 
     commit_record = WALRecord(xid=100, action=WALAction.COMMIT, data=b'')

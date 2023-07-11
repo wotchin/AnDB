@@ -10,17 +10,57 @@ def test_wal():
 
 def test_wal_manager():
     manager = WALManager()
-    for i in range(50000):
+    iterations = 50000  # 50000
+
+    test2_lsn = 0
+    for i in range(iterations):
         record = WALRecord(i, action=WALAction.HEAP_INSERT, data=(str(i) * 100).encode())
         manager.write_record(record)
         if i % 5 == 0:
             commit_record = WALRecord(xid=i, action=WALAction.COMMIT, data=b'')
             manager.write_record(commit_record)
-            if manager.flush_lsn != manager.write_lsn:
-                assert False
-
             assert manager.flush_lsn == manager.write_lsn
+            if i == 0:
+                test2_lsn = manager.flush_lsn
 
     commit_record = WALRecord(xid=100, action=WALAction.COMMIT, data=b'')
     manager.write_record(commit_record)
     assert manager.flush_lsn == manager.write_lsn
+
+    # test replay
+    record_generator = manager.replay(0)
+    for i in range(iterations):
+        record = next(record_generator)
+        assert record.header.xid == i
+        assert record.header.action == WALAction.HEAP_INSERT
+        assert record.data == (str(i) * 100).encode()
+
+        if i % 5 == 0:
+            commit_record = next(record_generator)
+            assert commit_record.header.xid == i
+            assert commit_record.header.action == WALAction.COMMIT
+            assert commit_record.data == b''
+
+    commit_record = next(record_generator)
+    assert commit_record.header.xid == 100
+    assert commit_record.header.action == WALAction.COMMIT
+    assert commit_record.data == b''
+
+    # test replay
+    record_generator = manager.replay(test2_lsn)
+    for i in range(1, iterations):
+        record = next(record_generator)
+        assert record.header.xid == i
+        assert record.header.action == WALAction.HEAP_INSERT
+        assert record.data == (str(i) * 100).encode()
+
+        if i % 5 == 0:
+            commit_record = next(record_generator)
+            assert commit_record.header.xid == i
+            assert commit_record.header.action == WALAction.COMMIT
+            assert commit_record.data == b''
+
+    commit_record = next(record_generator)
+    assert commit_record.header.xid == 100
+    assert commit_record.header.action == WALAction.COMMIT
+    assert commit_record.data == b''

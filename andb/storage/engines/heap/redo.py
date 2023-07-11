@@ -1,7 +1,7 @@
 import os
 
 from andb.common.cstructure import CStructure, Integer4Field, Integer8Field
-from andb.common.file_operation import directio_file_open, file_close, file_tell, file_extend, file_write
+from andb.common.file_operation import directio_file_open, file_close, file_tell, file_extend, file_write, file_read, file_lseek
 from andb.constants.filename import WAL_DIR
 from andb.constants.values import WAL_SEGMENT_SIZE, WAL_PAGE_SIZE
 from andb.errno.errors import WALError
@@ -10,7 +10,7 @@ from andb.storage.lock.lwlock import LWLockName, lwlock_release, lwlock_acquire
 
 
 class WALAction:
-    NONE = 0  # follow by previous page
+    TO_BE_CONTINUED = 0  # follow by previous page
     CHECKPOINT = 1
     COMMIT = 2
     ABORT = 3
@@ -22,6 +22,7 @@ class WALAction:
 class WALRecord:
     class Header(CStructure):
         total_size = Integer4Field(unsigned=True)
+        padding_size = Integer4Field(unsigned=True)
         xid = Integer8Field(unsigned=True)
         action = Integer4Field(unsigned=True)
 
@@ -35,7 +36,7 @@ class WALRecord:
         self.data = data
 
         # there is some padding bytes follows the tuple due to align
-        self.padding = 0
+        self.header.padding_size = 0
 
     def pack(self):
         return self.header.pack() + self.data
@@ -43,8 +44,8 @@ class WALRecord:
     @classmethod
     def unpack(cls, data):
         header = cls.Header()
-        header.unpack(data[header.size()])
-        real_data = (data[header.size():])
+        header.unpack(data[:header.size()])
+        real_data = data[header.size():]
         assert len(data) == header.total_size  # validate
         return cls(xid=header.xid, action=header.action, data=real_data)
 
@@ -102,7 +103,7 @@ class WALPage:
             # padding with blank bytes
             padding_size = WAL_PAGE_SIZE - (self.header.size() + self.records_size)
             self.records += bytes(padding_size)
-            record.padding = padding_size  # mark
+            record.header.padding_size = padding_size  # mark
         return True
 
     def pack(self):
@@ -122,15 +123,20 @@ class WALPage:
             if len(record_header_data) < WALRecord.Header.size():
                 # It is not enough to parse a record. In this case,
                 # the page is filled with blank bytes to align.
-                break
+                # The routine shouldn't run here as we check padding_size ahead.
+                assert False
             record_size = WALRecord.parse_record_size(record_header_data)
             if record_size == 0:
                 # Empty bytes will be parsed that record_size is zero, which means
                 # we parsed all valid records.
+                # A certain scenario is extended empty bytes for segment file.
                 break
             record = WALRecord.unpack(record_data[i: i + record_size])
             o.append_record(record)
             i += record.header.total_size
+            # if the record has a non-zero padding_size, it is the last one of page.
+            if record.header.padding_size > 0:
+                break
         return o
 
 
@@ -149,7 +155,6 @@ class WALManager:
         self.flush_lsn = 0
 
         self.wal_buffer = []  # contains WALPage
-        self.broken_page_written = False
 
         self.current_wal_fd = None
 
@@ -198,8 +203,8 @@ class WALManager:
 
             # split the record to tow new records
             written_size = record.header.total_size - WALRecord.Header.size() - remaining
-            written_record = WALRecord(record.header.xid, record.header.action, record.data[:written_size])
-            remaining_record = WALRecord(record.header.xid, WALAction.NONE, record.data[written_size:])
+            written_record = WALRecord(record.header.xid, WALAction.TO_BE_CONTINUED, record.data[:written_size])
+            remaining_record = WALRecord(record.header.xid, record.header.action, record.data[written_size:])
             success = wal_page.append_record(written_record)
             assert success
             assert WAL_PAGE_SIZE == len(wal_page.pack())
@@ -214,7 +219,7 @@ class WALManager:
             record = remaining_record
 
         self.write_lsn += record.header.total_size
-        self.write_lsn += record.padding  # if has
+        self.write_lsn += record.header.padding_size  # if has
 
         if record.header.action == WALAction.COMMIT or \
                 len(self.wal_buffer) >= wal_buffer_size:
@@ -272,3 +277,58 @@ class WALManager:
                 i -= 1
 
             i += 1
+
+    @staticmethod
+    def replay(lsn):
+        prev_filename = None
+        wal_fd = None
+
+        current_lsn = lsn
+        hold_incomplete_record = None
+        while True:
+            filename = os.path.join(WAL_DIR, lsn_to_filename(current_lsn))
+            if not os.path.exists(filename):
+                break
+            # close previous fd before opening new one
+            if filename != prev_filename:
+                if wal_fd is not None:
+                    file_close(wal_fd)
+                prev_filename = filename
+
+            wal_fd = directio_file_open(
+                filename,
+                os.O_RDWR | os.O_CREAT
+            )
+            lsn_segment = current_lsn % WAL_SEGMENT_SIZE
+            if lsn_segment % WAL_PAGE_SIZE != 0:
+                # align to page size
+                lsn_segment -= lsn_segment % WAL_PAGE_SIZE
+
+            file_lseek(wal_fd, lsn_segment)
+            page_bytes = file_read(wal_fd, WAL_PAGE_SIZE)
+            wal_page = WALPage.unpack(page_bytes)
+
+            i = 0
+            while i < len(wal_page.records):
+                record_size = WALRecord.parse_record_size(wal_page.records[i: i + WALRecord.Header.size()])
+                if record_size == 0:
+                    # reach padding empty bytes
+                    assert len(wal_page.records) - i <= WALRecord.Header.size()
+                    break
+                record = WALRecord.unpack(bytes(wal_page.records[i: i + record_size]))
+                if record.header.action == WALAction.TO_BE_CONTINUED:
+                    hold_incomplete_record = record
+                else:
+                    if hold_incomplete_record is not None:
+                        # concat incomplete record with current record
+                        data = hold_incomplete_record.data + record.data
+                        hold_incomplete_record = None
+                        record = WALRecord(xid=record.header.xid, action=record.header.action, data=data)
+                    # skip gotten record
+                    if i + record_size > current_lsn % WAL_PAGE_SIZE:
+                        yield record
+                i += record_size
+
+            # we have skipped some LSN in the first page, so we should clear this flag now
+            current_lsn -= current_lsn % WAL_PAGE_SIZE
+            current_lsn += WAL_PAGE_SIZE

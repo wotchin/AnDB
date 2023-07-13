@@ -4,26 +4,25 @@ from andb.catalog.class_ import RelationKinds
 from andb.catalog.oid import OID_DATABASE_ANDB, INVALID_OID
 from andb.catalog.syscache import CATALOG_ANDB_CLASS, CATALOG_ANDB_TYPE, CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_DATABASE
 from andb.catalog.type import VARIABLE_LENGTH, VARIABLE_TYPE_HEADER_LENGTH, VarcharType
-from andb.common.file_operation import directio_file_open, touch, file_size, file_close
+from andb.common.file_operation import directio_file_open, touch, file_size, file_close, file_write, file_open, \
+    file_remove
 from andb.constants.filename import BASE_DIR
 from andb.constants.strings import LITTLE_END
 from andb.constants.values import MAX_TABLE_COLUMNS, PAGE_SIZE
-from andb.errno.errors import RollbackError
-from andb.storage.buffer import BufferManager
-from andb.storage.engines.heap.bptree import BPlusTree
-from andb.storage.lock import rlock
+from andb.errno.errors import RollbackError, DDLException
 from andb.runtime import global_vars
 from andb.storage.common.page import INVALID_BYTES
+from andb.storage.engines.heap.bptree import BPlusTree, TuplePointer
+from andb.storage.lock import rlock
 
 
 class BufferedBPTree(BPlusTree):
-    def __init__(self, relation, bufmgr: BufferManager):
+    def __init__(self, relation):
         super().__init__()
         self.relation = relation
-        self.bufmgr = bufmgr
 
     def load_page(self, pageno):
-        return self.bufmgr.get_page(self.relation, pageno).page
+        return global_vars.buffer_manager.get_page(self.relation, pageno).page
 
     def _need_to_split(self, node):
         # todo: user-defined load factor
@@ -135,6 +134,10 @@ def search_relation(relation_name, database_name, kind):
         raise RollbackError('Not found the database.')
 
     database_oid = results[0].oid
+    return search_relation_by_db_oid(relation_name, database_oid, kind)
+
+
+def search_relation_by_db_oid(relation_name, database_oid, kind):
     results = CATALOG_ANDB_CLASS.search(
         lambda r: r.database_oid == database_oid and r.name == relation_name and r.kind == kind
     )
@@ -186,7 +189,7 @@ def hot_create_table(table_name, fields, database_oid=OID_DATABASE_ANDB):
                                     database_oid=database_oid)
     # todo: fields, schema, data file
     # fields format: (name, type_name, notnull)
-    CATALOG_ANDB_ATTRIBUTE.define_table_fields(class_oid=oid, fields=fields)
+    CATALOG_ANDB_ATTRIBUTE.define_relation_fields(class_oid=oid, fields=fields)
     touch(
         os.path.join(BASE_DIR, str(database_oid), str(oid))
     )
@@ -242,3 +245,87 @@ def hot_simple_select(relation: Relation, pageno, tid):
     if data == INVALID_BYTES:
         return ()
     return HeapTuple.from_bytes(data, relation.attrs).python_tuple
+
+
+def bt_create_index(index_name, table_name, fields, database_oid=OID_DATABASE_ANDB):
+    table_oid = search_relation_by_db_oid(table_name, database_oid, kind=RelationKinds.HEAP_TABLE)
+    table_relation = open_relation(table_oid, lock_mode=rlock.SHARE_LOCK)
+    attr_form_array = CATALOG_ANDB_ATTRIBUTE.search(lambda r: r.class_oid == table_oid)
+    index_attr_form_array = []
+    # only get index columns
+    for field in fields:
+        for attr in attr_form_array:
+            if attr.name == field:
+                index_attr_form_array.append(attr)
+
+    tree = BufferedBPTree(relation=None)
+    # todo: fix this lsn
+    lsn = global_vars.lsn_manager.max_lsn()
+    table_relation.last_pageno()
+    for pageno in range(table_relation.last_pageno()):
+        hot_page = global_vars.buffer_manager.get_page(table_relation, pageno)
+        for idx in range(len(hot_page.item_ids)):
+            tuple_data = hot_page.select(idx)
+            if tuple_data == INVALID_BYTES:
+                continue
+            heap_tuple = HeapTuple.from_bytes(tuple_data, attr_form_array).python_tuple
+            key_tuple = tuple(heap_tuple[attr.num] for attr in index_attr_form_array)
+            key_data = HeapTuple(python_tuple=key_tuple).to_bytes(index_attr_form_array)
+            tuple_pointer = TuplePointer(pageno, idx)
+            tree.insert(lsn, key_data, tuple_pointer.pack())
+
+    # generate final index file
+    index_oid = CATALOG_ANDB_CLASS.create(index_name, RelationKinds.BTREE_INDEX, database_oid)
+    index_fields = [(attr.name, CATALOG_ANDB_TYPE.get_type_name(attr.type_oid), attr.notnull)
+                    for attr in index_attr_form_array]
+    CATALOG_ANDB_ATTRIBUTE.define_relation_fields(class_oid=index_oid, fields=index_fields)
+    fd = file_open(os.path.join(BASE_DIR, str(database_oid), str(index_oid)),
+                   flags=os.O_RDWR | os.O_CREAT)
+    file_write(fd, data=tree.serialize(), sync=True)
+    return index_oid
+
+
+def bt_drop_index(index_name, database_oid=OID_DATABASE_ANDB):
+    results = CATALOG_ANDB_CLASS.search(lambda r: r.name == index_name and r.database_oid == database_oid)
+    if len(results) == 0:
+        raise DDLException('Not found the index name %s.' % index_name)
+
+    class_form = results[0]
+    CATALOG_ANDB_CLASS.delete(lambda r: r.name == index_name)
+    CATALOG_ANDB_ATTRIBUTE.delete(lambda r: r.class_oid == class_form.oid)
+    fd = file_open(os.path.join(BASE_DIR, str(database_oid), str(class_form.oid)), flags=os.O_RDWR)
+    file_remove(fd)
+
+
+def bt_simple_insert(relation: Relation, key, tuple_pointer):
+    tree = BufferedBPTree(relation)
+    # todo: lsn
+    lsn = global_vars.lsn_manager.max_lsn()
+    tree.insert(lsn, key, tuple_pointer.pack())
+
+
+def bt_update(relation: Relation, key, tuple_pointer):
+    tree = BufferedBPTree(relation)
+    # todo: lsn
+    lsn = global_vars.lsn_manager.max_lsn()
+    tree.delete(lsn, key)
+    tree.insert(lsn, key, tuple_pointer.pack())
+
+
+def bt_delete(relation: Relation, key):
+    tree = BufferedBPTree(relation)
+    # todo: lsn
+    lsn = global_vars.lsn_manager.max_lsn()
+    tree.delete(lsn, key)
+
+
+def bt_search(relation: Relation, key):
+    tree = BufferedBPTree(relation)
+    results = tree.search(key)
+
+    if len(results) == 0:
+        return ()
+    pointers = [
+        TuplePointer.unpack(TuplePointer(), data) for data in results
+    ]
+    return pointers

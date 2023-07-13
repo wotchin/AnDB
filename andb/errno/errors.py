@@ -16,3 +16,6 @@ class RollbackError(Exception):
 class WALError(Exception):
     pass
 
+class DDLException(Exception):
+    pass
+

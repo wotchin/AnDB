@@ -14,7 +14,7 @@ def test_heap_tuple():
         ('city', 'varchar2', False),
     )
     class_oid = 123456
-    CATALOG_ANDB_ATTRIBUTE.define_table_fields(class_oid=class_oid, fields=tuple_desc)
+    CATALOG_ANDB_ATTRIBUTE.define_relation_fields(class_oid=class_oid, fields=tuple_desc)
     attrs = CATALOG_ANDB_ATTRIBUTE.search(lambda r: r.class_oid == class_oid)
     h = HeapTuple((1, 'xiaoming', 'beijing'))
     h_bytes = h.to_bytes(attrs)

@@ -2,6 +2,7 @@ from andb.catalog.oid import OID_RELATION_START
 from ._base import CatalogTable, CatalogForm
 from .oid import OID_RELATION_END, OID_DATABASE_ANDB, INVALID_OID
 from .database import _ANDB_DATABASE
+from andb.errno.errors import DDLException
 
 
 class RelationKinds:
@@ -46,6 +47,9 @@ class AndbClassTable(CatalogTable):
         results = _ANDB_DATABASE.search(lambda r: r.oid == database_oid)
         if len(results) == 0:
             return INVALID_OID
+
+        if len(self.search(lambda r: r.name == name)) > 0:
+            raise DDLException('Cannot create a same name relation.')
 
         self.insert(
             AndbClassForm(oid=next_oid, name=name,

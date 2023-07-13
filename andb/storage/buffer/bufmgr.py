@@ -40,6 +40,7 @@ class BufferManager:
 
     def get_page(self, relation, pageno) -> BufferPage:
         key = (relation, pageno)
+        # todo: pined data cannot be evict
         page = self.cache.get(key)
         if page is None:
             page = self._read_page_from_disk(relation, pageno)

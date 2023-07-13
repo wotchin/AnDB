@@ -36,7 +36,7 @@ class AndbAttributeTable(CatalogTable):
     def get_table_fields(self, class_oid):
         return self.search(lambda r: r.class_oid == class_oid)
 
-    def define_table_fields(self, class_oid, fields):
+    def define_relation_fields(self, class_oid, fields):
         num = 0
         while num < len(fields):
             name, type_name, notnull = fields[num]

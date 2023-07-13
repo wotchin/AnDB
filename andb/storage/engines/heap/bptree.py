@@ -200,6 +200,9 @@ def create_node(serialized_node):
 
 
 class BPlusTree:
+    class Header(CStructure):
+        root_pageno = Integer4Field(unsigned=True)
+
     def __init__(self, root_node=None):
         self._next_pageno = 0
         if root_node:
@@ -365,13 +368,17 @@ class BPlusTree:
         for node in nodes:
             serialized_tree += node.pack()
         # set the first field to present the root page number
-        return (int.to_bytes(self.root.get_pageno(), 4, LITTLE_END) +
+        header = self.Header()
+        header.root_pageno = self.root.get_pageno()
+        return (header.pack() +
                 bytes(serialized_tree))
 
     @classmethod
     def deserialize(cls, serialized_tree) -> 'BPlusTree':
-        root_pageno = int.from_bytes(serialized_tree[:4], LITTLE_END)
-        page_bytes = serialized_tree[4:]
+        header = cls.Header()
+        header.unpack(serialized_tree[:header.size()])
+        root_pageno = header.root_pageno
+        page_bytes = serialized_tree[header.size():]
 
         def get_node_by_idx(i):
             return page_bytes[(i * PAGE_SIZE): ((i + 1) * PAGE_SIZE)]

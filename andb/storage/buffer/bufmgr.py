@@ -24,7 +24,6 @@ class BufferPage:
         self._page_data = None
         self._page = None
         self.pageno = pageno
-        self.ref = 0
         self._dirty = False
 
     def set_page(self, page):
@@ -44,12 +43,6 @@ class BufferPage:
         if not self._page_data:
             self._page_data = self._page.pack()
         return self._page_data
-
-    def ref_increase(self):
-        self.ref += 1
-
-    def ref_decrease(self):
-        self.ref -= 1
 
     def mark_dirty(self):
         self._dirty = True
@@ -149,7 +142,6 @@ class BufferManager:
 
     def get_page(self, relation, pageno) -> BufferPage:
         key = (relation, pageno)
-        # todo: pined data cannot be evict
         page = self.cache.get(key)
         if page is None:
             page = self._read_page_from_disk(relation, pageno)
@@ -177,14 +169,13 @@ class BufferManager:
                 self.cache.pop(key)
         lwlock_release(LWLockName.BUFFER_UPDATE)
 
-    def pin_page(self, relation, pageno):
-        # todo: pinned page cannot be evicted
-        key = (relation, pageno)
+    def pin_page(self, buffer_page):
+        key = (buffer_page.relation, buffer_page.pageno)
         self.cache.pin(key)
 
-    def unpin_page(self, relation, pageno):
-        key = (relation, pageno)
-        self.cache.pin(key)
+    def unpin_page(self, buffer_page):
+        key = (buffer_page.relation, buffer_page.pageno)
+        self.cache.unpin(key)
 
     def sync(self):
         lwlock_acquire(LWLockName.BUFFER_UPDATE)
@@ -192,6 +183,7 @@ class BufferManager:
             if buffer_page.dirty:
                 self._write_page_to_disk(buffer_page)
                 buffer_page.erase_dirty()
+        self.sync_evicted_pages()
         lwlock_release(LWLockName.BUFFER_UPDATE)
 
     def reset(self):
@@ -199,14 +191,12 @@ class BufferManager:
         self.cache.clear()
 
     def sync_evicted_pages(self):
-        lwlock_acquire(LWLockName.BUFFER_UPDATE)
         evicted = self.cache.get_evicted_list()
         for buffer_page in evicted:
             if buffer_page.dirty:
                 self._write_page_to_disk(buffer_page)
                 buffer_page.erase_dirty()
         evicted.clear()
-        lwlock_release(LWLockName.BUFFER_UPDATE)
 
     @staticmethod
     def _read_page_from_disk(relation, pageno):

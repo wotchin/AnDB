@@ -25,10 +25,10 @@ class BufferedBPTree(BPlusTree):
         header_size = BPlusTree.Header.size()
         root_pageno = self.deserialize_header(file_read(relation.fd, header_size)).root_pageno
         assert root_pageno >= 0
-        file_lseek(relation.fd, offset=(header_size + root_pageno * PAGE_SIZE))
-        root_page_data = file_read(relation.fd, PAGE_SIZE)
+        buffer_page = global_vars.buffer_manager.get_page(relation, root_pageno)
+        global_vars.buffer_manager.pin_page(buffer_page)
 
-        super().__init__(root_node=create_node(root_page_data))
+        super().__init__(root_node=buffer_page.page)
         self.relation = relation
         self.dirty_pageno = []
 
@@ -272,7 +272,7 @@ def hot_simple_insert(relation: Relation, python_tuple):
         if tid == INVALID_ITEM_ID:
             # still be error? raise the error
             raise RollbackError('cannot insert the tuple')
-
+    buffer_page.mark_dirty()
     return buffer_page.pageno, tid
 
 
@@ -286,7 +286,10 @@ def hot_simple_delete(relation: Relation, pageno, tid):
     # todo: update fsm? or only reorganize?
     buffer_page = global_vars.buffer_manager.get_page(relation, pageno)
     lsn = global_vars.xact_manager.max_lsn()
-    return buffer_page.page.delete(lsn, tid)
+    success = buffer_page.page.delete(lsn, tid)
+    if success:
+        buffer_page.mark_dirty()
+    return success
 
 
 def hot_simple_select(relation: Relation, pageno, tid):
@@ -294,6 +297,7 @@ def hot_simple_select(relation: Relation, pageno, tid):
     data = buffer_page.page.select(tid)
     if data == INVALID_BYTES:
         return ()
+    buffer_page.mark_dirty()
     return TupleData.from_bytes(data, relation.attrs).python_tuple
 
 
@@ -321,7 +325,9 @@ def bt_create_index(index_name, table_name, fields, database_oid=OID_DATABASE_AN
     last_pageno = table_relation.last_pageno()
     # iteration includes the last pageno
     for pageno in range(0, last_pageno + 1):
-        hot_page = global_vars.buffer_manager.get_page(table_relation, pageno).page
+        buffer_page = global_vars.buffer_manager.get_page(table_relation, pageno)
+        global_vars.buffer_manager.pin_page(buffer_page)
+        hot_page = buffer_page.page
         for idx in range(len(hot_page.item_ids)):
             tuple_data = hot_page.select(idx)
             if tuple_data == INVALID_BYTES:
@@ -331,6 +337,7 @@ def bt_create_index(index_name, table_name, fields, database_oid=OID_DATABASE_AN
             key_data = TupleData(python_tuple=key_tuple).to_bytes(index_attr_form_array)
             tuple_pointer = TuplePointer(pageno, idx)
             tree.insert(lsn, key_data, tuple_pointer)
+        global_vars.buffer_manager.unpin_page(buffer_page)
 
     close_relation(table_oid, lock_mode=rlock.SHARE_LOCK)
     fd = file_open(os.path.join(BASE_DIR, str(database_oid), str(index_oid)),

@@ -5,6 +5,7 @@ from andb.common import cstructure
 from ._base import CatalogForm, CatalogTable
 from .oid import INVALID_OID
 from andb.common.utils import memoize
+from andb.constants.strings import BIG_END
 
 VARIABLE_LENGTH = 0
 NULL_LENGTH = -1
@@ -61,6 +62,18 @@ class IntegerType(AndbBaseType):
     def cast_from_string(v):
         return int(v)
 
+    @classmethod
+    def to_bytes(cls, v):
+        # order-preserving for byte encoding
+        v += 0xffffffff >> 1
+        return int.to_bytes(v, length=cls.type_bytes, byteorder=BIG_END, signed=False)
+
+    @classmethod
+    def to_datum(cls, b):
+        v = int.from_bytes(b, byteorder=BIG_END, signed=False)
+        v -= 0xffffffff >> 1
+        return v
+
 
 class BigintType(AndbBaseType):
     oid = 1001
@@ -73,6 +86,18 @@ class BigintType(AndbBaseType):
     @staticmethod
     def cast_from_string(v):
         return int(v)
+
+    @classmethod
+    def to_bytes(cls, v):
+        # order-preserving for byte encoding
+        v += 0xffffffffffffffff >> 1
+        return int.to_bytes(v, length=cls.type_bytes, byteorder=BIG_END, signed=False)
+
+    @classmethod
+    def to_datum(cls, b):
+        v = int.from_bytes(b, byteorder=BIG_END, signed=False)
+        v -= 0xffffffffffffffff >> 1
+        return v
 
 
 class RealType(AndbBaseType):

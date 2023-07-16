@@ -204,7 +204,11 @@ def test_btree():
 
     bt_simple_insert(id_index_relation, key=(1, '0'), tuple_pointer=TuplePointer(0, 0))
     bt_simple_insert(id_index_relation, key=(1, '2'), tuple_pointer=TuplePointer(0, 0))
-    # todo: fix negative value
-    # results = bt_search_range(id_index_relation, start_key=(-1, '0'), end_key=(2, '2'))
     results = bt_search_range(id_index_relation, start_key=(0, '0'), end_key=(2, '2'))
     assert len(results) == 3
+
+    # test negative value
+    results = bt_search_range(id_index_relation, start_key=(-1, '0'), end_key=(2, '2'))
+    assert len(results) == 4
+
+    # todo: we haven't tested float byte-encoding whether support order-preserving.

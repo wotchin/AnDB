@@ -2,7 +2,7 @@ import abc
 
 from andb.common.cstructure import CStructure, Integer4Field
 from andb.storage.common.page import Page, INVALID_ITEM_ID, INVALID_BYTES, PAGE_SIZE, PageHeader
-from andb.constants.strings import LITTLE_END
+from andb.constants.strings import BIG_END
 
 INDEX_PAGE_FLAG_LEAF = 0b01
 INDEX_PAGE_FLAG_NOT_LEAF = 0b00
@@ -34,6 +34,8 @@ class BPlusNode:
         self._page_no = None
         self._state = self.STATE_NORMAL
 
+        self.dirty = False
+
     def get_pageno(self):
         assert self._page_no is not None
         return self._page_no
@@ -50,6 +52,14 @@ class BPlusNode:
 
     @abc.abstractmethod
     def pack(self):
+        pass
+
+    @staticmethod
+    def total_available_size():
+        return PAGE_SIZE - PageHeader.size()
+
+    @abc.abstractmethod
+    def used_size(self):
         pass
 
     @abc.abstractmethod
@@ -69,7 +79,7 @@ class InternalNode(BPlusNode):
         for i in range(0, len(self.keys)):
             # structure:
             # child pageno (4bytes), key (variable length)
-            data = (int.to_bytes(self.children[i].get_pageno(), 4, LITTLE_END) +
+            data = (int.to_bytes(self.children[i].get_pageno(), 4, BIG_END) +
                     self.keys[i])
             rv = page.insert(self.lsn, data)
             assert rv != INVALID_ITEM_ID
@@ -77,7 +87,7 @@ class InternalNode(BPlusNode):
         # number of keys, we have to traverse one more time.
         if len(self.children) == (len(self.keys) + 1):
             # avoid both empty
-            data = int.to_bytes(self.children[-1].get_pageno(), 4, LITTLE_END)
+            data = int.to_bytes(self.children[-1].get_pageno(), 4, BIG_END)
             rv = page.insert(self.lsn, data)
             assert rv != INVALID_ITEM_ID
         return page.pack()
@@ -93,7 +103,7 @@ class InternalNode(BPlusNode):
         for i in range(len(page.item_ids)):
             data = page.select(i)
             assert data != INVALID_BYTES
-            child_pageno = int.from_bytes(data[:4], LITTLE_END)
+            child_pageno = int.from_bytes(data[:4], BIG_END)
             key = data[4:]
             # Since the number of children is always one more than the
             # number of keys, we have to traverse one more time. But the last
@@ -112,12 +122,16 @@ class InternalNode(BPlusNode):
 
         return node
 
-    def load_factor(self):
-        total_size = PAGE_SIZE - PageHeader.size()
+    def used_size(self):
         used_size = 0
         child_field_size = 4
         for k in self.keys:
             used_size += len(k) + child_field_size
+        return used_size
+
+    def load_factor(self):
+        total_size = self.total_available_size()
+        used_size = self.used_size()
         return used_size / total_size
 
 
@@ -135,13 +149,15 @@ class LeafNode(BPlusNode):
         page.header.checksum = 0
         if self.next_leaf:
             page.header.reserved = self.next_leaf.get_pageno()
+        else:
+            page.header.reserved = INVALID_PAGE_NO
         for i in range(0, len(self.keys)):
             # structure:
             # value_length (4bytes), value (variable length), key (variable length)
             value_data = bytearray()
             for pointer in self.key_value_pairs[i]:
                 value_data += pointer.pack()
-            data = (int.to_bytes(len(value_data), 4, LITTLE_END) +
+            data = (int.to_bytes(len(value_data), 4, BIG_END) +
                     value_data +
                     self.keys[i])
 
@@ -166,7 +182,7 @@ class LeafNode(BPlusNode):
         for i in range(len(page.item_ids)):
             data = page.select(i)
             assert data != INVALID_BYTES
-            value_length = int.from_bytes(data[:4], LITTLE_END)
+            value_length = int.from_bytes(data[:4], BIG_END)
             value_data = data[4: 4 + value_length]
             key = data[4 + value_length:]
             node.keys.append(key)
@@ -178,13 +194,17 @@ class LeafNode(BPlusNode):
             node.key_value_pairs.append(values)
         return node
 
-    def load_factor(self):
-        total_size = PAGE_SIZE - PageHeader.size()
+    def used_size(self):
         used_size = 0
         value_length_field_size = 4
         for i, k in enumerate(self.keys):
             used_size += len(k) + value_length_field_size
             used_size += len(self.key_value_pairs[i]) * TuplePointer.size()
+        return used_size
+
+    def load_factor(self):
+        total_size = self.total_available_size()
+        used_size = self.used_size()
         return used_size / total_size
 
 
@@ -210,17 +230,24 @@ class BPlusTree:
         else:
             self.root = self._allocate_node(is_leaf=True)
 
+    def mark_dirty(self, node: BPlusNode):
+        node.dirty = True
+
     def insert(self, lsn, key, value):
         node = self._find_leaf_node(key)
         node.lsn = lsn
         index = self._find_index(node, key)
         if key in node.keys:
             # Key already exists, append the value to the existing key
-            # todo: detect if we can hold so many values
+            # detect if we can hold so many values
+            if node.total_available_size() - node.used_size() < len(value):
+                raise ValueError('cannot insert due to no available space.')
             node.key_value_pairs[index].append(value)
+            self.mark_dirty(node)
         else:
             node.keys.insert(index, key)
             node.key_value_pairs.insert(index, [value])
+            self.mark_dirty(node)
             if self._need_to_split(node):
                 self._split(lsn, node)
 
@@ -231,6 +258,7 @@ class BPlusTree:
             index = node.keys.index(key)
             node.key_value_pairs.pop(index)
             node.keys.pop(index)
+            self.mark_dirty(node)
 
     def search(self, key):
         node = self._find_leaf_node(key)
@@ -241,7 +269,7 @@ class BPlusTree:
             return []
 
     def search_range(self, start_key, end_key):
-        """Include the value of start_key but not end_key."""
+        """apart from the value of either start_key or end_key."""
         result = []
         node = self._find_leaf_node(start_key)
         index = self._find_index(node, start_key)
@@ -249,6 +277,9 @@ class BPlusTree:
         while node is not None:
             for i in range(index, len(node.keys)):
                 key = node.keys[i]
+                # skip start_key
+                if key == start_key:
+                    continue
                 if key < end_key:
                     result.append(node.key_value_pairs[i])
                 else:
@@ -275,6 +306,7 @@ class BPlusTree:
         else:
             node = InternalNode()
         node.set_pageno(self._allocate_pageno())
+        self.mark_dirty(node)
         return node
 
     def _find_leaf_node(self, key):
@@ -288,7 +320,7 @@ class BPlusTree:
             current_node = current_node.children[index]
         # Maybe, the key is just in a gap between two nodes.
         # if that, we should get the next leaf node.
-        if (len(current_node.keys) > 0 and (current_node.keys[-1] < key)
+        while (len(current_node.keys) > 0 and (current_node.keys[-1] < key)
                 and current_node.next_leaf):
             current_node = current_node.next_leaf
             if current_node.state == current_node.STATE_UNLOADED:
@@ -306,6 +338,7 @@ class BPlusTree:
         node.keys = node.keys[:mid]
         node.key_value_pairs = node.key_value_pairs[:mid]
         node.high_key = new_node.keys[0]  # Update the high key of the left node
+        self.mark_dirty(node)
 
         if node.next_leaf is not None:
             new_node.next_leaf = node.next_leaf
@@ -322,6 +355,8 @@ class BPlusTree:
             index = self._find_index(parent, node.keys[0])
             parent.keys.insert(index, new_node.keys[0])
             parent.children.insert(index + 1, new_node)
+            self.mark_dirty(parent)
+
             if self._need_to_split(parent):
                 self._split(lsn, parent)
 
@@ -374,16 +409,21 @@ class BPlusTree:
                 bytes(serialized_tree))
 
     @classmethod
-    def deserialize(cls, serialized_tree) -> 'BPlusTree':
+    def deserialize_header(cls, data):
         header = cls.Header()
-        header.unpack(serialized_tree[:header.size()])
+        header.unpack(data[:header.size()])
+        return header
+
+    @classmethod
+    def deserialize(cls, serialized_tree) -> 'BPlusTree':
+        header = cls.deserialize_header(serialized_tree)
         root_pageno = header.root_pageno
         page_bytes = serialized_tree[header.size():]
 
-        def get_node_by_idx(i):
+        def get_node_by_pageno(i):
             return page_bytes[(i * PAGE_SIZE): ((i + 1) * PAGE_SIZE)]
 
-        root_data = get_node_by_idx(root_pageno)
+        root_data = get_node_by_pageno(root_pageno)
         tree = cls(create_node(root_data))
         return tree
 

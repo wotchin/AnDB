@@ -9,12 +9,12 @@ from andb.common.utils import is_array_like
 
 
 class PageHeader(CStructure):
-    lsn: int = Integer8Field()
-    checksum: int = Integer4Field()
-    flags: int = Integer4Field()
-    reserved: int = Integer4Field()
-    lower: int = Integer4Field()
-    upper: int = Integer4Field()
+    lsn: int = Integer8Field(unsigned=True)
+    checksum: int = Integer4Field(unsigned=True)
+    flags: int = Integer4Field(unsigned=True)
+    reserved: int = Integer4Field(unsigned=True)
+    lower: int = Integer4Field(unsigned=True)
+    upper: int = Integer4Field(unsigned=True)
 
 
 class ItemIdFlags:

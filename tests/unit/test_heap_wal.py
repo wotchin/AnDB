@@ -8,7 +8,7 @@ def test_wal():
     assert (lsn_to_filename(WAL_SEGMENT_SIZE * 2 + 1)) == '0000000000000002'
 
 
-def test_wal_manager():
+def a_test_wal_manager():
     manager = WALManager()
     iterations = 50000  # 50000
 

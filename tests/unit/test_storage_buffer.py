@@ -39,5 +39,9 @@ def test_lrucache():
     cache.put(4, '4')
     assert list(cache) == ['b', '4']
 
+    assert len(list(cache.items())) > 0
+    cache.clear()
+    assert len(list(cache.items())) == 0
+
 
 test_lrucache()

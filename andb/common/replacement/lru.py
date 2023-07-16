@@ -22,6 +22,14 @@ class LRUCache(BaseCache):
         self.head.next = self.tail
         self.tail.prev = self.head
 
+    def clear(self):
+        self.cache.clear()
+        self.evicted.clear()
+        node = self.head.next
+        while node is not self.tail:
+            self._remove(node)
+            node = node.next
+
     def get(self, key):
         if key in self.cache:
             node = self.cache[key]

@@ -1,7 +1,8 @@
 import os
 
 from andb.common.cstructure import CStructure, Integer4Field, Integer8Field
-from andb.common.file_operation import directio_file_open, file_close, file_tell, file_extend, file_write, file_read, file_lseek
+from andb.common.file_operation import directio_file_open, file_close, file_tell, file_extend, file_write, file_read, \
+    file_lseek
 from andb.constants.filename import WAL_DIR
 from andb.constants.values import WAL_SEGMENT_SIZE, WAL_PAGE_SIZE
 from andb.errno.errors import WALError
@@ -12,11 +13,15 @@ from andb.storage.lock.lwlock import LWLockName, lwlock_release, lwlock_acquire
 class WALAction:
     TO_BE_CONTINUED = 0  # follow by previous page
     CHECKPOINT = 1
-    COMMIT = 2
-    ABORT = 3
-    HEAP_INSERT = 4
-    HEAP_DELETE = 5
-    HEAP_INPLACE_UPDATE = 6
+    BEGIN = 2
+    COMMIT = 3
+    ABORT = 4
+    HEAP_INSERT = 5
+    HEAP_DELETE = 6
+    HEAP_INPLACE_UPDATE = 7
+    BTREE_INSERT = 8
+    BTREE_DELETE = 9
+    BTREE_UPDATE = 10
 
 
 class WALRecord:
@@ -221,8 +226,9 @@ class WALManager:
         self.write_lsn += record.header.total_size
         self.write_lsn += record.header.padding_size  # if has
 
-        if record.header.action == WALAction.COMMIT or \
-                len(self.wal_buffer) >= wal_buffer_size:
+        if (record.header.action == WALAction.COMMIT or
+                record.header.action == WALAction.ABORT or
+                len(self.wal_buffer) >= wal_buffer_size):
             self.wal_buffer_flush()
 
         lwlock_release(LWLockName.WAL_WRITE)

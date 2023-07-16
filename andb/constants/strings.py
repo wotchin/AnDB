@@ -1,1 +1,1 @@
-LITTLE_END = 'little'
+BIG_END = 'big'

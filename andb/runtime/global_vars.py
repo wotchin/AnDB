@@ -10,4 +10,4 @@ wal_buffer_size = 10
 unix_like_env = (platform.uname().system != 'Windows')
 
 buffer_manager: 'BufferManager' = None
-lsn_manager = None
+xact_manager = None

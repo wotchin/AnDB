@@ -120,6 +120,8 @@ def file_remove(fd: FileDescriptor):
     os.remove(fd.filepath)
 
 
-def touch(path):
-    with open(path, 'w+') as f:
-        f.write('')
+def file_touch(filepath, startup_size=0):
+    fd = file_open(filepath, flags=os.O_RDWR | os.O_CREAT)
+    if startup_size > 0:
+        file_extend(fd, size=startup_size)
+    file_close(fd)

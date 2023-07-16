@@ -26,7 +26,8 @@ def test_raw_bplus_tree():
     tree.insert(next_lsn(), b'meat', b"beef")
     tree.insert(next_lsn(), b'fruit', b"orange")
     assert tree.search(b'fruit') == [b'apple', b'orange']
-    assert tree.search_range(b'fruit', b'z') == [[b'apple', b'orange'], [b'beef']]
+    assert tree.search_range(b'f', b'z') == [[b'apple', b'orange'], [b'beef']]
+    assert tree.search_range(b'fruit', b'z') == [[b'beef']]
 
 
 def test_simple_bplus_tree():
@@ -38,44 +39,46 @@ def test_simple_bplus_tree():
         return lsn
 
     tree = SimpleBPlusTree()
-    tree.insert(next_lsn(), 5, "apple")
-    tree.insert(next_lsn(), 3, "banana")
-    tree.insert(next_lsn(), 5, "orange")
-    assert tree.search(5) == ['apple', 'orange']
-    assert tree.search_range(0, 3) == []
-    assert (tree.search_range(3, 5)) == [['banana']]
-    assert (tree.search_range(5, 10)) == [['apple', 'orange']]
+    tree.insert(next_lsn(), b'5', "apple")
+    tree.insert(next_lsn(), b'3', "banana")
+    tree.insert(next_lsn(), b'5', "orange")
+    assert tree.search(b'5') == ['apple', 'orange']
+    assert tree.search_range(b'0', b'3') == []
+    assert (tree.search_range(b'3', b'5')) == []
+    assert (tree.search_range(b'2', b'5')) == [['banana']]
+    assert (tree.search_range(b'4', b'9')) == [['apple', 'orange']]
 
-    tree.insert(next_lsn(), 5, "pear0")
-    tree.insert(next_lsn(), 5, "pear1")
-    tree.insert(next_lsn(), 5, "pear2")
-    tree.insert(next_lsn(), 5, "pear3")
-    tree.insert(next_lsn(), 5, "pear4")
-    tree.insert(next_lsn(), 5, "pear5")
-    assert (tree.search_range(0, 10)) == [['banana'],
-                                          ['apple', 'orange', 'pear0', 'pear1', 'pear2', 'pear3', 'pear4', 'pear5']]
+    tree.insert(next_lsn(), b'5', "pear0")
+    tree.insert(next_lsn(), b'5', "pear1")
+    tree.insert(next_lsn(), b'5', "pear2")
+    tree.insert(next_lsn(), b'5', "pear3")
+    tree.insert(next_lsn(), b'5', "pear4")
+    tree.insert(next_lsn(), b'5', "pear5")
+    assert (tree.search_range(b'0', b'9')) == [['banana'],
+                                               ['apple', 'orange', 'pear0', 'pear1', 'pear2', 'pear3', 'pear4',
+                                                'pear5']]
 
     assert str(tree).strip() == """\
-Leaf Node<0>: Keys=[3, 5]
+Leaf Node<0>: Keys=[b'3', b'5']
   Values=[['banana'], ['apple', 'orange', 'pear0', 'pear1', 'pear2', 'pear3', 'pear4', 'pear5']]"""
 
-    assert tree.search(5) == ['apple', 'orange', 'pear0', 'pear1', 'pear2', 'pear3', 'pear4', 'pear5']
-    assert tree.search(6) == []
+    assert tree.search(b'5') == ['apple', 'orange', 'pear0', 'pear1', 'pear2', 'pear3', 'pear4', 'pear5']
+    assert tree.search(b'6') == []
 
-    tree.delete(next_lsn(), 5)
-    assert tree.search(5) == []
-    assert (tree.search_range(0, 10)) == [['banana']]
+    tree.delete(next_lsn(), b'5')
+    assert tree.search(b'5') == []
+    assert (tree.search_range(b'0', b'9')) == [['banana']]
 
-    tree.insert(next_lsn(), 2, 'second')
-    tree.insert(next_lsn(), 4, 'fourth')
-    tree.insert(next_lsn(), 5, 'fifth')
-    tree.insert(next_lsn(), 6, 'sixth')
+    tree.insert(next_lsn(), b'2', 'second')
+    tree.insert(next_lsn(), b'4', 'fourth')
+    tree.insert(next_lsn(), b'5', 'fifth')
+    tree.insert(next_lsn(), b'6', 'sixth')
 
-    assert tree.search(2) == ['second']
-    assert tree.search(6) == ['sixth']
-    assert tree.search(5) == ['fifth']
-    assert tree.search(4) == ['fourth']
-    assert (tree.search_range(0, 10)) == [['second'], ['banana'], ['fourth'], ['fifth'], ['sixth']]
+    assert tree.search(b'2') == ['second']
+    assert tree.search(b'6') == ['sixth']
+    assert tree.search(b'5') == ['fifth']
+    assert tree.search(b'4') == ['fourth']
+    assert (tree.search_range(b'0', b'9')) == [['second'], ['banana'], ['fourth'], ['fifth'], ['sixth']]
 
 
 def test_bplus_tree_page():

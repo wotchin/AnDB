@@ -1,5 +1,5 @@
 from andb.storage.buffer import BufferManager
-from andb.storage.engines.heap.redo import WALManager
+from andb.storage.xact import TransactionManager
 from andb.runtime import global_vars
 from andb.storage.lock import lwlock
 
@@ -13,7 +13,7 @@ def init_runtime():
 
 
 def init_storage():
-    global_vars.lsn_manager = WALManager()
+    global_vars.xact_manager = TransactionManager()
     lwlock.init_lwlock()
 
 

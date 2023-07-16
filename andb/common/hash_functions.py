@@ -1,3 +1,6 @@
+from andb.constants.strings import BIG_END
+
+
 def rot(x, k):
     return (x << k) | (x >> (32 - k))
 
@@ -113,7 +116,7 @@ def hash_any(v):
 
 
 def hash_int(v: int, length):
-    key = int.to_bytes(v, length, 'little')
+    key = int.to_bytes(v, length, BIG_END)
     return hash_bytes(key, len(key))
 
 
@@ -127,8 +130,8 @@ def test_hash_bytes():
 
 
 def test_hash_int():
-    assert (hash_int(1, 4)) == 1627631432
-    assert (hash_int(92, 4)) == 857227344
+    assert (hash_int(1, 4)) == 1690090532
+    assert (hash_int(92, 4)) == 1924947698
     try:
         hash_int(0xffffffffff, 4)
     except OverflowError:
@@ -136,7 +139,7 @@ def test_hash_int():
     else:
         raise
     assert (hash_int(0xffffffff, 4)) == 1462718007
-    assert (hash_int(0xffffffff, 8)) == 302020952
+    assert (hash_int(0xffffffff, 8)) == 388134217
 
 
 test_hash_bytes()

@@ -1,7 +1,8 @@
 import struct
 from collections import OrderedDict
 
-CTYPE_LITTLE_ENDIAN = '<'
+# big endian is friendly to keep order
+CTYPE_BIG_ENDIAN = '>'
 
 CTYPE_TYPE_CHAR = 'c'
 CTYPE_TYPE_CHAR_ARRAY = 's'
@@ -110,7 +111,7 @@ class StructureMeta(type):
                 format_.append(v.ctype)
 
         attrs['__mappings__'] = mappings
-        attrs['__cformat__'] = CTYPE_LITTLE_ENDIAN + ''.join(format_)
+        attrs['__cformat__'] = CTYPE_BIG_ENDIAN + ''.join(format_)
         return type.__new__(cls, name, bases, attrs)
 
 
@@ -172,10 +173,13 @@ class CStructure(metaclass=StructureMeta):
     def __hash__(self):
         return hash((self.__cformat__, self.pack()))
 
+    def __len__(self):
+        return self.size()
+
 
 def pack(fmt_flag, v):
-    return struct.pack(f'{CTYPE_LITTLE_ENDIAN}{fmt_flag}', v)
+    return struct.pack(f'{CTYPE_BIG_ENDIAN}{fmt_flag}', v)
 
 
 def unpack(fmt_flag, b):
-    return struct.unpack(f'{CTYPE_LITTLE_ENDIAN}{fmt_flag}', b)[0]
+    return struct.unpack(f'{CTYPE_BIG_ENDIAN}{fmt_flag}', b)[0]

@@ -1,5 +1,7 @@
 import functools
 
+from andb.constants.values import PAGE_SIZE
+
 
 def hook_function(function, prefunction=None, postfunction=None):
     # nothing to do
@@ -65,3 +67,11 @@ def memoize(func):
             return rv
 
     return wrapper
+
+
+def filesize_to_pageno(filesize):
+    return max(0, (filesize - 1) // PAGE_SIZE)
+
+
+def pageno_to_filesize(pageno):
+    return pageno * PAGE_SIZE

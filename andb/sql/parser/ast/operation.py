@@ -19,4 +19,3 @@ class BetweenOperation(Operation):
 
 class Function(Operation):
     pass
-

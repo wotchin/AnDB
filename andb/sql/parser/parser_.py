@@ -536,6 +536,10 @@ class SQLParser(sly.Parser):
     def defined_column(self, p):
         return [p.id0, p.id1]
 
+    @_('id id NOT NULL')
+    def defined_column(self, p):
+        return [p.id0, p.id1, True]
+
     @_('CREATE TABLE identifier LPAREN defined_columns RPAREN')
     def create(self, p):
         return CreateTable(name=p.identifier, columns=p.defined_columns)

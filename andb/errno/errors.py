@@ -1,21 +1,66 @@
-from builtins import (
-    FileExistsError,
-    ValueError,
-    FileNotFoundError
-)
+class AndbInternalError(Exception):
+    def __init__(self, msg):
+        super().__init__(msg)
+        self.errno = 0
+        self.msg = msg
 
 
-class BufferOverflow(Exception):
-    pass
+class RollbackError(AndbInternalError):
+    def __init__(self, msg):
+        super().__init__(msg)
+        self.errno = 1
 
 
-class RollbackError(Exception):
-    pass
+class FatalError(AndbInternalError):
+    def __init__(self, msg):
+        super().__init__(msg)
+        self.errno = 2
 
 
-class WALError(Exception):
-    pass
+class BufferOverflow(FatalError):
+    def __init__(self, msg):
+        super().__init__(msg)
 
-class DDLException(Exception):
-    pass
+        self.errno = 10
 
+
+class WALError(FatalError):
+    def __init__(self, msg):
+        super().__init__(msg)
+
+        self.errno = 11
+
+
+class DDLException(RollbackError):
+    def __init__(self, msg):
+        super().__init__(msg)
+
+        self.errno = 20
+
+
+class InitializationStageError(RollbackError):
+    def __init__(self, msg):
+        super().__init__(msg)
+
+        self.errno = 21
+
+
+class ExecutionStageError(RollbackError):
+    def __init__(self, msg):
+        super().__init__(msg)
+
+        self.errno = 22
+
+
+class FinalizationStageError(RollbackError):
+    def __init__(self, msg):
+        super().__init__(msg)
+
+        self.errno = 23
+
+
+class AnDBNotImplementedError(RollbackError):
+    def __init__(self, msg):
+        super().__init__(msg)
+
+        self.errno = 24

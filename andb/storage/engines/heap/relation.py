@@ -303,16 +303,25 @@ def hot_simple_select(relation: Relation, pageno, tid):
 
 def bt_create_index(index_name, table_name, fields, database_oid=OID_DATABASE_ANDB):
     table_oid = search_relation_by_db_oid(table_name, database_oid, kind=RelationKinds.HEAP_TABLE)
-    table_relation = open_relation(table_oid, lock_mode=rlock.SHARE_LOCK)
-    if not table_relation:
-        raise DDLException('cannot get the table.')
+    # only get index columns
+
     attr_form_array = CATALOG_ANDB_ATTRIBUTE.search(lambda r: r.class_oid == table_oid)
     index_attr_form_array = []
-    # only get index columns
     for field in fields:
         for attr in attr_form_array:
             if attr.name == field:
                 index_attr_form_array.append(attr)
+    if len(index_attr_form_array) != len(fields):
+        raise RollbackError('the index exists invalid field.')
+    return bt_create_index_internal(index_name, table_oid, attr_form_array, index_attr_form_array,
+                                    database_oid=OID_DATABASE_ANDB)
+
+
+def bt_create_index_internal(index_name, table_oid, attr_form_array, index_attr_form_array,
+                             database_oid=OID_DATABASE_ANDB):
+    table_relation = open_relation(table_oid, lock_mode=rlock.SHARE_LOCK)
+    if not table_relation:
+        raise DDLException('cannot get the table.')
 
     # generate final index file
     index_oid = CATALOG_ANDB_CLASS.create(index_name, RelationKinds.BTREE_INDEX, database_oid)

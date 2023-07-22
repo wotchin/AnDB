@@ -9,7 +9,7 @@ STATUS_COMMITTED = 1
 STATUS_ABORTED = 2
 
 INVALID_XID = 0
-RESERVED_XID = 1
+DUMMY_XID = 1  # for select
 FIRST_XID = 2
 XID_SIZE = 8
 MAX_XID = 0xffffffffffffffff  # 8 bytes
@@ -35,7 +35,6 @@ class TransactionManager:
         self.active_transactions = {}
 
     def begin_transaction(self, xid):
-        raise NotImplementedError('impl more')
         if xid in self.active_transactions:
             return
 
@@ -53,28 +52,32 @@ class TransactionManager:
             return
 
         transaction = self.active_transactions[xid]
-        if transaction['status'] == STATUS_ACTIVE:
-            transaction['status'] = STATUS_COMMITTED
+        assert transaction['status'] == STATUS_ACTIVE
+        transaction['status'] = STATUS_COMMITTED
 
-            wal_record = WALRecord(xid, WALAction.COMMIT, xid_to_bytes(xid))
-            # automatically flush to disk due to commit
-            self.wal_manager.write_record(wal_record)
-            transaction['last_lsn'] = self.wal_manager.max_lsn()
+        wal_record = WALRecord(xid, WALAction.COMMIT, b'')
+        # automatically flush to disk due to commit
+        self.wal_manager.write_record(wal_record)
+        transaction['last_lsn'] = self.wal_manager.max_lsn()
+
+        del self.active_transactions[xid]
 
     def abort_transaction(self, xid):
         if xid not in self.active_transactions:
             return
 
         transaction = self.active_transactions[xid]
-        if transaction['status'] == STATUS_ACTIVE:
-            transaction['status'] = STATUS_ABORTED
+        assert transaction['status'] == STATUS_ACTIVE
+        transaction['status'] = STATUS_ABORTED
 
-            wal_record = WALRecord(xid, WALAction.ABORT, xid_to_bytes(xid))
-            # automatically flush to disk due to abort
-            self.wal_manager.write_record(wal_record)
-            transaction['last_lsn'] = self.wal_manager.max_lsn()
-            # todo: implement undo chain
-            # self._undo_transaction(xid)
+        wal_record = WALRecord(xid, WALAction.ABORT, xid_to_bytes(xid))
+        # automatically flush to disk due to abort
+        self.wal_manager.write_record(wal_record)
+        transaction['last_lsn'] = self.wal_manager.max_lsn()
+        # todo: implement undo chain
+        # self._undo_transaction(xid)
+
+        del self.active_transactions[xid]
 
     def allocate_xid(self):
         slock.spinlock_aquire(self._xid_lock)

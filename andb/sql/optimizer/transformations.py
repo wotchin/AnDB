@@ -6,12 +6,17 @@ from andb.sql.parser.ast.insert import Insert
 from andb.sql.parser.ast.delete import Delete
 from andb.sql.parser.ast.update import Update
 from andb.sql.parser.ast.select import Select
-from andb.sql.parser.ast.identifier import Identifier
-from andb.errno.errors import AnDBNotImplementedError
+from andb.sql.parser.ast.join import Join
+from andb.sql.parser.ast.misc import Star
+from andb.errno.errors import AnDBNotImplementedError, InitializationStageError
+from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_CLASS
+from andb.catalog.oid import INVALID_OID
+from andb.storage.engines.heap.relation import RelationKinds
 from .base import BaseTransformation
-
+from andb.executor.operator.utils import ExprOperation
 
 # from .patterns import *
+from ...executor.operator.utils import expression_eval
 
 
 class CreateIndexTransformation(BaseTransformation):
@@ -43,54 +48,153 @@ class CreateTableTransformation(BaseTransformation):
         )
 
 
-class ConditionTransformation(BaseTransformation):
-    @staticmethod
-    def eval_(op, left, right):
-        if op == '+':
-            return left + right
-        elif op == '-':
-            return left - right
-        elif op == '*':
-            return left * right
-        elif op == '/':
-            return left / right
-        elif op == 'and':
-            if left is None or right is None:
-                return None  # null
-            else:
-                # todo: string type 'true' and 'false'
-                return left and right
-        elif op == 'or':
-            if left is None or right is None:
-                return None  # null
-            else:
-                # todo: string type 'true' and 'false'
-                return left or right
-        else:
-            raise NotImplementedError()
+# def get_table_attr_forms(table_name, database_oid):
+#     for class_form in CATALOG_ANDB_CLASS.search(lambda r: r.database_oid == database_oid
+#                                                           and r.name == table_name
+#                                                           and r.kind == RelationKinds.HEAP_TABLE):
+#         return CATALOG_ANDB_ATTRIBUTE.search(lambda r: r.class_oid == class_form.oid)
+#
+#     return []
+#
+#
+# def get_table_column_names(table_name, database_oid):
+#     attr_forms = get_table_attr_forms(table_name, database_oid)
+#     # todo: return type name?
+#     return [attr_form.name for attr_form in attr_forms]
 
+
+class ConditionTransformation(BaseTransformation):
     @staticmethod
     def match(ast) -> bool:
         return isinstance(ast, Condition)
 
     @staticmethod
     def on_transform(ast: Condition):
+        def swap(node: Condition):
+            # let column is at left hand side
+            if isinstance(node.right, TableColumn):
+                node.left, node.right = node.right, node.left
+            return node
+
         def dfs(node: Condition):
             if node is None:
                 return
+            if not isinstance(node, Condition):
+                return node
             left_node = dfs(node.left)
             right_node = dfs(node.right)
 
             # only convert constant
             if (not isinstance(left_node, TableColumn) and
                     not isinstance(right_node, TableColumn)):
-                return ConditionTransformation.eval_(node.expr.value, node.left, node.right)
+                return expression_eval(node.expr.value, node.left, node.right)
             else:
                 node.left = left_node
                 node.right = right_node
+                swap(node)
             return node
 
         return dfs(ast)
+
+
+#
+# class PredicatePushDownTransformation(BaseTransformation):
+#
+#
+#
+#     @staticmethod
+#     def match(query: LogicalQuery) -> bool:
+#         if not isinstance(query, LogicalQuery):
+#             return False
+#         if not query.condition:
+#             return False
+#
+#         # friendly to lookup
+#         scan_operators = {}
+#         for operator in query.scan_operators:
+#             scan_operators[operator.table_name] = operator
+#
+#         # todo: reuse group
+#         for condition in query.condition.get_iterator():
+#             # a constant value predicate
+#
+#                 if condition.left.table_name not in scan_operators:
+#                     raise
+#                 scan_operators[]
+#
+#
+#     @staticmethod
+#     def on_transform(ast):
+#         pass
+#
+#
+# class ColumnPruneTransformation(BaseTransformation):
+#     @staticmethod
+#     def match(ast) -> bool:
+#         return False
+#
+#     @staticmethod
+#     def on_transform(ast):
+#         return ast
+
+
+class QueryLogicalPlanTransformation(BaseTransformation):
+    # @staticmethod
+    # def _condition_dfs(table_attr_forms, node: Condition):
+    #     if node is None:
+    #         return None
+    #     if node.is_constant_condition():
+    #         table_name = node.left.table_name
+    #         table_oid = table_attr_forms[table_name][0].class_oid
+    #         return ScanOperator(table_name, table_oid=table_oid, condition=node)
+    #     left = QueryLogicalPlanTransformation._condition_dfs(table_attr_forms, node.left)
+    #     right = QueryLogicalPlanTransformation._condition_dfs(table_attr_forms, node.right)
+    #     if node.expr == ExprOperation.AND:
+    #         # todo:
+    #         pass
+    #     elif node.expr == ExprOperation.OR:
+    #         return AppendOperator([left, right])
+    #     raise
+
+    @staticmethod
+    def match(query) -> bool:
+        return isinstance(query, LogicalQuery) and len(query.children) == 0
+
+    @staticmethod
+    def process_non_join_scan(query: LogicalQuery):
+        assert len(query.scan_operators) == 1  # todo: support 0 in future
+        scan = query.scan_operators[0]
+
+        if not query.condition:
+            return scan
+        scan.condition = query.condition
+        scan.table_columns = []
+        for table_column in query.target_list:
+            # todo: because there may be function
+            if table_column.table_name == scan.table_name:
+                scan.table_columns.append(table_column)
+        # column prune:
+        # because this is non-join query, it is very simple. if this query has join clause, we have to
+        # add join column for the scan operator.
+        return scan
+
+    @staticmethod
+    def process_join_scan(query: LogicalQuery):
+        raise NotImplementedError()
+
+    @staticmethod
+    def on_transform(query: LogicalQuery):
+        if not query.join_operator:
+            query.children.append(
+                QueryLogicalPlanTransformation.process_non_join_scan(query)
+            )
+        else:
+            query.children.append(
+                QueryLogicalPlanTransformation.process_join_scan(query)
+            )
+
+        # todo: limit, group by, ...
+        return query
 
 
 class SelectTransformation(BaseTransformation):
@@ -99,8 +203,145 @@ class SelectTransformation(BaseTransformation):
         return isinstance(ast, Select)
 
     @staticmethod
-    def on_transform(ast: Select):
-        raise NotImplementedError()
+    def _supplement_table_name(where_condition: Condition, table_attr_forms):
+        for node in where_condition.get_iterator():
+            for arg in (node.left, node.right):
+                if not isinstance(arg, TableColumn):
+                    continue
+
+                if arg.table_name is not None:
+                    found = False
+                    for attr_form in table_attr_forms[arg.table_name]:
+                        if attr_form.name == arg.column_name:
+                            found = True
+                            break
+                    if not found:
+                        raise InitializationStageError(f"not found '{str(arg)}'.")
+                else:
+                    arg_table_name = None
+                    for table_name in table_attr_forms:
+                        for attr_form in table_attr_forms[table_name]:
+                            if attr_form.name == arg.column_name:
+                                if arg_table_name is not None:
+                                    raise InitializationStageError(
+                                        f'both table {arg_table_name} and {table_name} have'
+                                        f' the same column {arg.column_name}.')
+                                arg_table_name = table_name
+                    if arg_table_name is None:
+                        raise InitializationStageError(f"not found '{arg.column_name}'.")
+                    arg.table_name = arg_table_name
+        return where_condition
+
+    @classmethod
+    def on_transform(cls, ast: Select):
+        from_tables = {}
+        unchecked_tables = []
+        join_clause = None
+        table_attr_forms = {}
+
+        if isinstance(ast.from_table, Identifier):
+            unchecked_tables.append(ast.from_table.parts)
+        elif isinstance(ast.from_table, Join):
+            join_clause = ast.from_table
+            unchecked_tables.append(ast.from_table.left.parts)
+            unchecked_tables.append(ast.from_table.right.parts)
+        else:
+            raise NotImplementedError()
+
+        for table_name in unchecked_tables:
+            table_oid = CATALOG_ANDB_CLASS.get_relation_oid(table_name, database_oid=session_vars.database_oid,
+                                                            kind=RelationKinds.HEAP_TABLE)
+            if table_oid != INVALID_OID:
+                from_tables[table_name] = table_oid
+                table_attr_forms[table_name] = CATALOG_ANDB_ATTRIBUTE.get_table_forms(table_oid)
+            else:
+                raise InitializationStageError(f'not found the table {table_name}.')
+
+        target_columns = []
+        for target in ast.targets:
+            # parse star
+            if isinstance(target, Star):
+                for table_name in from_tables:
+                    for attr_form in table_attr_forms[table_name]:
+                        target_columns.append(TableColumn(table_name, attr_form.name))
+            elif isinstance(target, Identifier) and '.' in target.parts:
+                items = target.parts.split('.')
+                if len(items) != 2:
+                    raise InitializationStageError(f"syntax error: '{target.parts}'.")
+                table_name, column_name = items
+                if table_name not in from_tables:
+                    raise InitializationStageError(f"not found '{target.parts}'.")
+                found = False
+                for attr_form in table_attr_forms[table_name]:
+                    if attr_form.name == column_name:
+                        found = True
+                        break
+                if not found:
+                    raise InitializationStageError(f"not found '{target.parts}'.")
+                target_columns.append(TableColumn(table_name, column_name))
+            elif isinstance(target, Identifier):
+                target_column_name = target.parts
+                target_table_name = None
+                for table_name in from_tables:
+                    for attr_form in table_attr_forms[table_name]:
+                        if attr_form.name == target_column_name:
+                            if target_table_name is not None:
+                                raise InitializationStageError(f'both table {target_table_name} and {table_name} have'
+                                                               f' the same column {target_column_name}.')
+                            target_table_name = table_name
+                target_columns.append(TableColumn(target_table_name, target_column_name))
+            else:
+                # todo: function and agg
+                raise NotImplementedError('not supported this syntax.')
+
+        # projection_operator = ProjectionOperator(columns=target_columns)
+        if ast.where is not None:
+            where_condition = ConditionTransformation.on_transform(Condition(ast.where))
+            # supplement missing table name and check existing table name
+            where_condition = cls._supplement_table_name(where_condition, table_attr_forms)
+            # selection_operator = SelectionOperator(condition=where_condition)
+        else:
+            # selection_operator = None
+            where_condition = None
+
+        scan_operators = []
+        for table_name in from_tables:
+            scan_operators.append(ScanOperator(table_name, table_oid=from_tables[table_name]))
+
+        if join_clause:
+            if not join_clause.implicit:
+                join_condition = ConditionTransformation.on_transform(Condition(join_clause.condition))
+                join_condition = cls._supplement_table_name(join_condition, table_attr_forms)
+            else:
+                join_condition = None
+
+            join_operator = JoinOperator(join_condition=join_condition,
+                                         join_type=join_clause.join_type)
+
+            for scan_operator in scan_operators:
+                join_operator.children.append(scan_operator)
+        else:
+            join_operator = None
+
+        # todo: group by
+        # todo: having
+        # todo: distinct
+        # todo: sort
+        # todo: limit
+
+        query = LogicalQuery()
+        query.table_attr_forms = table_attr_forms
+
+        query.target_list = target_columns
+        query.condition = where_condition
+        query.join_operator = join_operator
+        query.distinct = ast.distinct
+        query.scan_operators = scan_operators
+
+        if QueryLogicalPlanTransformation.match(query):
+            query = QueryLogicalPlanTransformation.on_transform(query)
+
+        return query
 
 
 class InsertTransformation(BaseTransformation):
@@ -110,24 +351,40 @@ class InsertTransformation(BaseTransformation):
 
     @staticmethod
     def on_transform(ast: Insert):
-        if ast.columns:
-            columns = [TableColumn(table_name=ast.table.parts, column_name=id_.parts) for id_ in ast.columns]
-        else:
-            # todo: comes from catalog!
-            columns = []
-            pass
+        table_oid = CATALOG_ANDB_CLASS.get_relation_oid(relation_name=ast.table.parts,
+                                                        database_oid=session_vars.database_oid,
+                                                        kind=RelationKinds.HEAP_TABLE)
+        if table_oid == INVALID_OID:
+            raise InitializationStageError(f'cannot get oid for the table {ast.table.parts}.')
 
-        values = []
-        for cell in columns:
-            if isinstance(cell, Identifier):
-                values.append((cell.parts,))
-            elif isinstance(cell, list):
-                values.append([id_.parts for id_ in cell])
+        attr_forms = CATALOG_ANDB_ATTRIBUTE.search(lambda r: r.class_oid == table_oid)
+        if not attr_forms:
+            raise InitializationStageError(f'cannot get the table {ast.table.parts}.')
+
+        rows = []
+        for value in ast.values:
+            row = [None for _ in range(len(attr_forms))]
+            if isinstance(value, Constant):
+                row[0] = value.value
+            elif isinstance(value, list):
+                for i, v in enumerate(value):
+                    attr_num = attr_forms[i].num
+                    row[attr_num] = v.value
             else:
                 raise
+            rows.append(row)
+            for i in range(len(attr_forms)):
+                if row[i] is None and attr_forms[i].notnull:
+                    raise InitializationStageError(f'{attr_forms[i].name} should not be null.')
+
+        if ast.columns:
+            columns = [id_.parts for id_ in ast.columns]
+        else:
+            columns = [attr.name for attr in attr_forms]
 
         operator = InsertOperator(
-            table_name=ast.table.parts, columns=columns, values=values
+            table_name=ast.table.parts, table_oid=table_oid, columns=columns,
+            values=rows, select=None
         )
         if ast.from_select:
             select_logical_plan = SelectTransformation.on_transform(ast.from_select)
@@ -143,8 +400,13 @@ class DeleteTransformation(BaseTransformation):
 
     @staticmethod
     def on_transform(ast: Delete):
-        condition = ConditionTransformation.on_transform(ast.where)
-        return DeleteOperator(table_name=ast.table.parts, condition=condition)
+        # transform to a query
+        # todo: extract where predicates
+        select = Select(targets=[Star()])
+        select.from_table = ast.table
+        select.where = ast.where
+        query = SelectTransformation.on_transform(select)
+        return DeleteOperator(ast.table.parts, query)
 
 
 class UpdateTransformation(BaseTransformation):
@@ -162,9 +424,15 @@ class UpdateTransformation(BaseTransformation):
             if isinstance(value_expr, Constant):
                 values.append(value_expr.value)
             else:
-                raise NotImplementedError()
-        condition = ConditionTransformation.on_transform(ast.where)
-        operator = UpdateOperator(table_name=ast.table.parts, columns=columns,
+                raise NotImplementedError('not supported this syntax yet.')
+        condition = ConditionTransformation.on_transform(Condition(ast.where))
+
+        select = Select(targets=[Star()])
+        select.from_table = ast.table
+        select.where = ast.where
+        query = SelectTransformation.on_transform(select)
+
+        operator = UpdateOperator(table_name=ast.table.parts, query=query, columns=columns,
                                   values=values, condition=condition)
         return operator
 

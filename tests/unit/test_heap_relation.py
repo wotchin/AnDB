@@ -3,9 +3,29 @@ from andb.storage.engines.heap.relation import TupleData
 from andb.errno.errors import RollbackError, DDLException
 from andb.storage.engines.heap.relation import hot_simple_delete, hot_create_table, hot_drop_table, hot_simple_insert, \
     hot_simple_select, hot_simple_update, close_relation, open_relation, bt_create_index, bt_drop_index, \
-    bt_simple_insert, bt_delete, bt_search, bt_search_range, bt_update, search_relation, RelationKinds, TuplePointer
+    bt_simple_insert, bt_delete, bt_search, bt_search_range, bt_update, RelationKinds, TuplePointer
 from andb.catalog.oid import OID_DATABASE_ANDB
 from andb.runtime import global_vars
+from andb.catalog.syscache import CATALOG_ANDB_DATABASE
+
+
+def search_relation(relation_name, database_name, kind):
+    results = CATALOG_ANDB_DATABASE.search(lambda r: r.name == database_name)
+    if len(results) != 1:
+        raise RollbackError('not found the database.')
+
+    database_oid = results[0].oid
+    return search_relation_by_db_oid(relation_name, database_oid, kind)
+
+
+def search_relation_by_db_oid(relation_name, database_oid, kind):
+    results = CATALOG_ANDB_CLASS.search(
+        lambda r: r.database_oid == database_oid and r.name == relation_name and r.kind == kind
+    )
+    if len(results) != 1:
+        raise RollbackError('Not found the table.')
+
+    return results[0].oid
 
 
 def test_heap_tuple():
@@ -116,8 +136,8 @@ def test_btree():
         assert result == (i, '0' * i, str(i)[:2])
 
     assert bt_search(id_index_relation, key=(500,))
-    bt_delete(id_index_relation, key=(500, ))
-    assert not bt_search(id_index_relation, key=(500, ))
+    bt_delete(id_index_relation, key=(500,))
+    assert not bt_search(id_index_relation, key=(500,))
 
     old_tuple_pointer = bt_search(id_index_relation, key=(100,))[0]
     assert old_tuple_pointer
@@ -125,16 +145,16 @@ def test_btree():
     assert bt_search(id_index_relation, key=(100,))[0] != old_tuple_pointer
     assert bt_search(id_index_relation, key=(100,))[0] == TuplePointer(0, 0)
 
-    bt_simple_insert(id_index_relation, key=(100, ), tuple_pointer=TuplePointer(0, 1))
-    bt_simple_insert(id_index_relation, key=(100, ), tuple_pointer=TuplePointer(0, 2))
-    bt_simple_insert(id_index_relation, key=(100, ), tuple_pointer=TuplePointer(0, 3))
+    bt_simple_insert(id_index_relation, key=(100,), tuple_pointer=TuplePointer(0, 1))
+    bt_simple_insert(id_index_relation, key=(100,), tuple_pointer=TuplePointer(0, 2))
+    bt_simple_insert(id_index_relation, key=(100,), tuple_pointer=TuplePointer(0, 3))
     results = bt_search(id_index_relation, key=(100,))
     assert len(results) == 4
     for i in range(4):
         assert results[i].pageno == 0
         assert results[i].tid == i
 
-    results = bt_search_range(id_index_relation, start_key=(1, ), end_key=(100, ))
+    results = bt_search_range(id_index_relation, start_key=(1,), end_key=(100,))
     assert len(results) == 98
 
     for i, r in enumerate(results):

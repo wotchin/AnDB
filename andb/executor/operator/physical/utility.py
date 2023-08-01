@@ -1,15 +1,14 @@
 from andb.catalog.oid import INVALID_OID
-from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_TYPE
+from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_TYPE, CATALOG_ANDB_CLASS
 from andb.errno.errors import RollbackError, DDLException
-from andb.storage.engines.heap.relation import search_relation_by_db_oid, RelationKinds, bt_create_index_internal, \
+from andb.storage.engines.heap.relation import RelationKinds, bt_create_index_internal, \
     hot_create_table
 from .base import PhysicalOperator
 
 
 class CreateIndexOperator(PhysicalOperator):
     def __init__(self, index_name, table_name, fields, database_oid, index_type=None):
-        super().__init__()
-        self.name = 'CreateIndex'
+        super().__init__('CreateIndex')
         self.index_name = index_name
         self.table_name = table_name
         self.table_oid = INVALID_OID
@@ -22,8 +21,8 @@ class CreateIndexOperator(PhysicalOperator):
 
     def open(self):
         try:
-            self.table_oid = search_relation_by_db_oid(self.table_name, self.database_oid,
-                                                       kind=RelationKinds.HEAP_TABLE)
+            self.table_oid = CATALOG_ANDB_CLASS.get_relation_oid(self.table_name, self.database_oid,
+                                                                 kind=RelationKinds.HEAP_TABLE)
         except RollbackError as e:
             raise DDLException(e)
 
@@ -50,8 +49,7 @@ class CreateIndexOperator(PhysicalOperator):
 
 class CreateTableOperator(PhysicalOperator):
     def __init__(self, table_name, fields, database_oid):
-        super().__init__()
-        self.name = 'CreateTableOperator'
+        super().__init__('CreateTable')
         self.table_name = table_name
         self.fields = fields
         self.database_oid = database_oid
@@ -67,7 +65,7 @@ class CreateTableOperator(PhysicalOperator):
             if CATALOG_ANDB_TYPE.get_type_oid(type_name) == INVALID_OID:
                 raise DDLException(f'invalid type {type_name}.')
             if len(fields) == 2:
-                calibrated_fields.append((name, type_name, False))
+                calibrated_fields.append([name, type_name, False])
             else:
                 calibrated_fields.append(fields)
         self.fields = calibrated_fields

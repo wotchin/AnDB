@@ -291,6 +291,14 @@ class BPlusTree:
 
         return result
 
+    def all_keys(self):
+        # find leftmost node
+        node: LeafNode = self._find_leaf_node(b'')
+        while node is not None:
+            for key in node.keys:
+                yield key
+            node = node.next_leaf
+
     def load_page(self, pageno):
         raise NotImplementedError
 

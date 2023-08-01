@@ -37,7 +37,7 @@ class AndbIndexTable(CatalogTable):
     def init(self):
         pass
 
-    def get_index_fields(self, oid):
+    def get_index_forms(self, oid):
         return self.search(lambda r: r.oid == oid)
 
     def define_index_fields(self, name, index_oid, table_oid, table_attr_forms):
@@ -50,7 +50,7 @@ class AndbIndexTable(CatalogTable):
             ))
             num += 1
 
-    def get_index_attr_form_array(self, index_oid):
+    def get_attr_form_array(self, index_oid):
         # todo: implement a cache for index forms
         index_forms = self.search(lambda r: r.oid == index_oid)
         assert len(index_forms) > 0
@@ -58,15 +58,15 @@ class AndbIndexTable(CatalogTable):
         attr_forms = _ANDB_ATTRIBUTE.search(lambda r: r.class_oid == table_oid)
 
         # join with attr forms
-        index_attr_form_array = []
+        attr_form_array = []
 
         # todo: this is a basic nested loop join, we can use sort-merge join later
         for index_form in index_forms:
             for attr_form in attr_forms:
                 if index_form.attr_num == attr_form.num:
-                    index_attr_form_array.append(attr_form)
+                    attr_form_array.append(attr_form)
 
-        return index_attr_form_array
+        return attr_form_array
 
 
 _ANDB_INDEX = AndbIndexTable()

@@ -1,12 +1,13 @@
 from andb.sql.optimizer.transformations import *
 from andb.sql.optimizer.implementations import *
+from andb.sql.parser.ast.join import JoinType
 
 def test_logical_plan():
     # Example usage
     projection = ProjectionOperator(['name', 'age'])
     selection = SelectionOperator({'op': '>', 'left': 'age', 'right': 25})
     join_condition = {'op': '=', 'left': 'city', 'right': 'city'}
-    join = JoinOperator(join_condition)
+    join = JoinOperator(join_condition, JoinType.INNER_JOIN)
 
     projection.add_child(selection)
     selection.add_child(join)
@@ -14,7 +15,7 @@ def test_logical_plan():
     _logical_plan = projection.to_dict()
     # print(_logical_plan)
 
-    scan = ScanOperator('employees')
+    scan = ScanOperator('employees', 1)
     group_by_attributes = ['department']
     aggregate_functions = {'salary_sum': 'SUM(salary)', 'salary_avg': 'AVG(salary)'}
     group = GroupOperator(group_by_attributes, aggregate_functions)

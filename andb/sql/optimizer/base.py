@@ -15,33 +15,34 @@ class BaseTransformation:
 
 
 class BaseImplementation:
-    def __init__(self):
+    @classmethod
+    def get_pattern(cls):
         pass
 
-    def get_pattern(self):
+    @classmethod
+    def match(cls, operator) -> bool:
         pass
+        # chain = cls.get_pattern().chain
+        #
+        # def dfs(i, node):
+        #     if node is None:
+        #         return False
+        #
+        #     if i == len(chain):
+        #         return True
+        #
+        #     if not isinstance(node, chain[i]):
+        #         return False
+        #
+        #     result = False
+        #     for child in operator.children:
+        #         result = result or dfs(i + 1, child)
+        #     return result
+        #
+        # return dfs(0, operator)
 
-    def match(self, operator) -> bool:
-        chain = self.get_pattern().chain
-
-        def dfs(i, node):
-            if node is None:
-                return False
-
-            if i == len(chain):
-                return True
-
-            if not isinstance(node, chain[i]):
-                return False
-
-            result = False
-            for child in operator.children:
-                result = result or dfs(i + 1, child)
-            return result
-
-        return dfs(0, operator)
-
-    def on_implement(self, old_operator):
+    @classmethod
+    def on_implement(cls, old_operator):
         pass
 
 

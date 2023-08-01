@@ -13,6 +13,8 @@ def tell_session(errno, message):
 
 def execute_simple_query(query_string):
     queries = query_string.split(QUERY_TERMINATOR)
+    if '' in queries:
+        queries.remove('')
     assert len(queries) == 1
     query = queries[0]
     ast = andb_query_parse(query)

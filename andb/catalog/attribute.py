@@ -33,8 +33,14 @@ class AndbAttributeTable(CatalogTable):
         # todo: insert system catalog information?
         pass
 
-    def get_table_fields(self, class_oid):
+    def get_table_forms(self, class_oid):
         return self.search(lambda r: r.class_oid == class_oid)
+
+    def get_table_attr_num(self, table_oid, attr_name):
+        result = self.search(lambda r: r.class_oid == table_oid and r.name == attr_name)
+        if len(result) != 1:
+            return None
+        return result[0].num
 
     def define_table_fields(self, class_oid, fields):
         num = 0

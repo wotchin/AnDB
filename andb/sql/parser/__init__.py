@@ -32,7 +32,7 @@ def get_ast_type(ast_):
         return CmdType.CMD_DELETE
     elif (
             isinstance(ast_, create.CreateTable) or
-            isinstance(ast_, create.CreateTable) or
+            isinstance(ast_, create.CreateIndex) or
             isinstance(ast_, explain.Explain) or
             isinstance(ast_, alter.AlterTable)
     ):

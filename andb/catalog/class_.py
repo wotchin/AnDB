@@ -39,6 +39,21 @@ class AndbClassTable(CatalogTable):
             return OID_RELATION_START
         return self.rows[-1].oid + 1
 
+    def get_relation_oid(self, relation_name, database_oid=OID_DATABASE_ANDB, kind=RelationKinds.HEAP_TABLE):
+        results = self.search(lambda r: r.name == relation_name
+                                        and r.database_oid == database_oid
+                                        and r.kind == kind)
+        if len(results) != 1:
+            return INVALID_OID
+
+        return results[0].oid
+
+    def exist_table(self, table_name, database_oid=OID_DATABASE_ANDB):
+        return self.get_relation_oid(table_name, database_oid, RelationKinds.HEAP_TABLE) != INVALID_OID
+
+    def exist_index(self, index_name, database_oid=OID_DATABASE_ANDB):
+        return self.get_relation_oid(index_name, database_oid, RelationKinds.BTREE_INDEX) != INVALID_OID
+
     def create(self, name, kind, database_oid=OID_DATABASE_ANDB):
         next_oid = self.allocate_oid()
         if next_oid > OID_RELATION_END:

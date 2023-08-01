@@ -1,8 +1,8 @@
 
 
 class PhysicalOperator:
-    def __init__(self):
-        self.name = 'BaseOperator'
+    def __init__(self, name):
+        self.name = name
         self.startup_cost = 0
         self.total_cost = 0
         self.startup_elapsed = 0

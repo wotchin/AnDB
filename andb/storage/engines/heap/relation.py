@@ -158,23 +158,23 @@ class TupleData:
         return cls(tuple(values))
 
 
-def search_relation(relation_name, database_name, kind):
-    results = CATALOG_ANDB_DATABASE.search(lambda r: r.name == database_name)
-    if len(results) != 1:
-        raise RollbackError('not found the database.')
-
-    database_oid = results[0].oid
-    return search_relation_by_db_oid(relation_name, database_oid, kind)
-
-
-def search_relation_by_db_oid(relation_name, database_oid, kind):
-    results = CATALOG_ANDB_CLASS.search(
-        lambda r: r.database_oid == database_oid and r.name == relation_name and r.kind == kind
-    )
-    if len(results) != 1:
-        raise RollbackError('Not found the table.')
-
-    return results[0].oid
+# def search_relation(relation_name, database_name, kind):
+#     results = CATALOG_ANDB_DATABASE.search(lambda r: r.name == database_name)
+#     if len(results) != 1:
+#         raise RollbackError('not found the database.')
+#
+#     database_oid = results[0].oid
+#     return CATALOG_ANDB_CLASS.get_relation_oid(relation_name, database_oid, kind)
+#
+#
+# def search_relation_by_db_oid(relation_name, database_oid, kind):
+#     results = CATALOG_ANDB_CLASS.search(
+#         lambda r: r.database_oid == database_oid and r.name == relation_name and r.kind == kind
+#     )
+#     if len(results) != 1:
+#         raise RollbackError('Not found the table.')
+#
+#     return results[0].oid
 
 
 def open_relation(oid, lock_mode=rlock.ACCESS_SHARE_LOCK):
@@ -215,8 +215,7 @@ def close_relation(oid, lock_mode=rlock.ACCESS_SHARE_LOCK):
 
 def hot_create_table(table_name, fields, database_oid=OID_DATABASE_ANDB):
     # todo: not supported atomic DDL yet
-    results = CATALOG_ANDB_CLASS.search(lambda r: r.name == table_name and r.database_oid == database_oid)
-    if len(results) > 0:
+    if CATALOG_ANDB_CLASS.exist_table(table_name, database_oid):
         raise DDLException('the same name table already exists.')
 
     oid = CATALOG_ANDB_CLASS.create(name=table_name,
@@ -232,14 +231,11 @@ def hot_create_table(table_name, fields, database_oid=OID_DATABASE_ANDB):
 
 
 def hot_drop_table(table_name, database_oid=OID_DATABASE_ANDB):
-    results = CATALOG_ANDB_CLASS.search(
-        lambda r: r.name == table_name and r.database_oid == database_oid)
     # todo: refactor the return value
-    if len(results) != 1:
+    oid = CATALOG_ANDB_CLASS.get_relation_oid(table_name, database_oid, kind=RelationKinds.HEAP_TABLE)
+    if oid == INVALID_OID:
         raise DDLException('not found the table.')
 
-    # todo: atomic
-    oid = results[0].oid
     results = CATALOG_ANDB_INDEX.search(lambda r: r.table_oid == oid)
     if len(results) > 0:
         raise DDLException('there are indexes associated with the table.')
@@ -302,7 +298,7 @@ def hot_simple_select(relation: Relation, pageno, tid):
 
 
 def bt_create_index(index_name, table_name, fields, database_oid=OID_DATABASE_ANDB):
-    table_oid = search_relation_by_db_oid(table_name, database_oid, kind=RelationKinds.HEAP_TABLE)
+    table_oid = CATALOG_ANDB_CLASS.get_relation_oid(table_name, database_oid, kind=RelationKinds.HEAP_TABLE)
     # only get index columns
 
     attr_form_array = CATALOG_ANDB_ATTRIBUTE.search(lambda r: r.class_oid == table_oid)
@@ -387,7 +383,7 @@ def _bt_data_to_key_tuple(data, index_attr_form_array):
 def bt_simple_insert(relation: Relation, key, tuple_pointer):
     tree = BufferedBPTree(relation)
     lsn = global_vars.xact_manager.max_lsn()
-    attrs = CATALOG_ANDB_INDEX.get_index_attr_form_array(relation.oid)
+    attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
     key_data = _bt_key_tuple_to_data(key, attrs)
     tree.insert(lsn, key_data, tuple_pointer)
 
@@ -395,7 +391,7 @@ def bt_simple_insert(relation: Relation, key, tuple_pointer):
 def bt_update(relation: Relation, key, tuple_pointer):
     tree = BufferedBPTree(relation)
     lsn = global_vars.xact_manager.max_lsn()
-    attrs = CATALOG_ANDB_INDEX.get_index_attr_form_array(relation.oid)
+    attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
     key_data = _bt_key_tuple_to_data(key, attrs)
     tree.delete(lsn, key_data)
     tree.insert(lsn, key_data, tuple_pointer)
@@ -404,23 +400,37 @@ def bt_update(relation: Relation, key, tuple_pointer):
 def bt_delete(relation: Relation, key):
     tree = BufferedBPTree(relation)
     lsn = global_vars.xact_manager.max_lsn()
-    attrs = CATALOG_ANDB_INDEX.get_index_attr_form_array(relation.oid)
+    attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
     key_data = _bt_key_tuple_to_data(key, attrs)
     tree.delete(lsn, key_data)
 
 
 def bt_search(relation: Relation, key):
+    """Allow leftmost prefix rule"""
     tree = BufferedBPTree(relation)
-    attrs = CATALOG_ANDB_INDEX.get_index_attr_form_array(relation.oid)
-    key_data = _bt_key_tuple_to_data(key, attrs)
+    attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
+    assert len(key) <= len(attrs)
+    key_data = _bt_key_tuple_to_data(key, attrs[:len(key)])
     results = tree.search(key_data)
     return results
 
 
 def bt_search_range(relation: Relation, start_key, end_key):
+    """Allow leftmost prefix rule"""
     tree = BufferedBPTree(relation)
-    attrs = CATALOG_ANDB_INDEX.get_index_attr_form_array(relation.oid)
-    start_key_data = _bt_key_tuple_to_data(start_key, attrs)
-    end_key_data = _bt_key_tuple_to_data(end_key, attrs)
+    attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
+    assert len(start_key) <= len(attrs)
+    assert len(end_key) <= len(attrs)
+
+    start_key_data = _bt_key_tuple_to_data(start_key, attrs[:len(attrs)])
+    end_key_data = _bt_key_tuple_to_data(end_key, attrs[:len(attrs)])
     results = tree.search_range(start_key_data, end_key_data)
     return results
+
+
+def bt_scan_all_keys(relation: Relation):
+    tree = BufferedBPTree(relation)
+    attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
+    for key_data in tree.all_keys():
+        yield _bt_data_to_key_tuple(key_data, attrs)
+

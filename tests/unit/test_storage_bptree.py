@@ -79,6 +79,7 @@ Leaf Node<0>: Keys=[b'3', b'5']
     assert tree.search(b'5') == ['fifth']
     assert tree.search(b'4') == ['fourth']
     assert (tree.search_range(b'0', b'9')) == [['second'], ['banana'], ['fourth'], ['fifth'], ['sixth']]
+    assert (list(tree.all_keys())) == [b'2', b'3', b'4', b'5', b'6']
 
 
 def test_bplus_tree_page():

@@ -1,3 +1,5 @@
+import copy
+
 from andb.executor.operator.physical import select, insert, delete, update
 from andb.catalog.oid import INVALID_OID
 from andb.runtime import session_vars, global_vars
@@ -59,6 +61,11 @@ class ScanImplementation(BaseImplementation):
 
     @classmethod
     def _implement_scan_operator(cls, scan_operator):
+        # temp table scan
+        if scan_operator.table_name == scan_operator.TEMP_TABLE_NAME:
+            return select.TempTableScan(scan_operator.table_oid, scan_operator.table_columns,
+                                        filter_=Filter(scan_operator.condition))
+
         predicates = cls._extract_predicates(scan_operator.condition)
         if len(predicates) == 0:
             return TableScan(relation_oid=scan_operator.table_oid, columns=scan_operator.table_columns, filter_=None)
@@ -100,49 +107,77 @@ class ScanImplementation(BaseImplementation):
 
     @classmethod
     def match(cls, operator) -> bool:
-        return isinstance(operator, select.PhysicalQuery) and len(operator.scan_operators) == 0
+        return isinstance(operator, ScanOperator)
 
     @classmethod
-    def on_implement(cls, query: select.PhysicalQuery):
-        # todo: according to SP
-        # todo: index scan, table scan and index only scan
-        scan_operator: "ScanOperator"
-        for scan_operator in query.logical_query.scan_operators:
-            query.scan_operators.append(cls._implement_scan_operator(scan_operator))
-        # todo: other operators
-        if len(query.scan_operators) > 1:
-            raise NotImplementedError('not supported join')
-
-        query.add_child(query.scan_operators[0])
+    def on_implement(cls, scan_operator: ScanOperator):
+        # todo: different options
+        return cls._implement_scan_operator(scan_operator)
 
 
 class JoinImplementation(BaseImplementation):
     @classmethod
     def match(cls, operator) -> bool:
-        return isinstance(operator, select.PhysicalQuery) and operator.has_join_clause
+        return isinstance(operator, JoinOperator)
 
     @classmethod
-    def on_implement(cls, old_operator):
-        raise NotImplementedError()
+    def on_implement(cls, old_operator: JoinOperator):
+        return select.NestedLoopJoin(join_type=old_operator.join_type,
+                                     target_columns=old_operator.table_columns,
+                                     join_filter=Filter(old_operator.join_condition))
+
+
+class OperatorOption:
+    def __init__(self):
+        self.name = 'OperatorOption'
+        self.implementations = []
+        self.children = []
+
+    def add_child(self, node):
+        self.children.append(node)
 
 
 class QueryImplementation(BaseImplementation):
     @classmethod
     def match(cls, operator) -> bool:
         return isinstance(operator, LogicalQuery)
-        # todo: according to SP
-        # todo: index scan, table scan and index only scan
+
+    # @staticmethod
+    # def copy_tree(node):
+    #     if node is None:
+    #         return None
+    #     if len(node.children) == 0:
+    #         return node
+    #     new_node = copy.copy(node)
+    #     for child in node.children:
+    #         new_node.add_child(QueryImplementation.copy_tree(child))
+    #     return new_node
+
+    @staticmethod
+    def implement_tree(node):
+        if node is None:
+            return None
+
+        if ScanImplementation.match(node):
+            new_node = ScanImplementation.on_implement(node)
+        elif JoinImplementation.match(node):
+            new_node = JoinImplementation.on_implement(node)
+        else:
+            raise NotImplementedError(f'unknown operator {node.name}')
+
+        if len(node.children) == 0:
+            return new_node
+
+        for child in node.children:
+            new_node.add_child(QueryImplementation.implement_tree(child))
+        return new_node
 
     @classmethod
     def on_implement(cls, old_operator: LogicalQuery):
         physical_query = select.PhysicalQuery(old_operator)
         # todo: non-SJP, estimation
-
-        # SPJ
-        if ScanImplementation.match(physical_query):
-            ScanImplementation.on_implement(physical_query)
-        if JoinImplementation.match(physical_query):
-            JoinImplementation.on_implement(physical_query)
+        root_node = cls.implement_tree(physical_query.logical_query.children[0])
+        physical_query.add_child(root_node)
         return physical_query
 
 
@@ -177,7 +212,7 @@ class DeleteImplementation(BaseImplementation):
         physical_query = QueryImplementation.on_implement(old_operator.query)
 
         return delete.DeletePhysicalOperator(
-            table_oid, physical_query.scan_operators[0]
+            table_oid, physical_query.children[0]
         )
 
 
@@ -205,7 +240,7 @@ class UpdateImplementation(BaseImplementation):
         if len(attr_num_value_pair) != len(old_operator.columns):
             raise InitializationStageError(f'cannot update these columns: {attr_num_value_pair.keys()}')
 
-        return update.UpdatePhysicalOperator(table_oid=table_oid, scan_operator=physical_query.scan_operators[0],
+        return update.UpdatePhysicalOperator(table_oid=table_oid, scan_operator=physical_query.children[0],
                                              attr_num_value_pair=attr_num_value_pair)
 
 

@@ -27,12 +27,12 @@ def test_execute_simple_query():
     execute_simple_query("insert into t2 values (2, 'shanghai')")
     execute_simple_query("insert into t2 values (3, 'guangdong')")
     execute_simple_query("insert into t2 values (4, 'shenzhen')")
-    # execute_simple_query("select t1.a, t2.city from t1, t2")
+    execute_simple_query("select t1.a, t2.city from t1, t2")
 
     # execute_simple_query("explain select a, city from t1, t2 where t1.a = t2.a")
-    # execute_simple_query("select a, city from t1, t2 where t1.a = t2.a")
+    execute_simple_query("select t1.a, t2.city from t1, t2 where t1.a = t2.a")
 
     execute_simple_query('create index idx1 on t1 (a)')
     execute_simple_query('select a from t1')
-    # execute_simple_query("select a, city from t1, t2 where t1.a = t2.a;")
+    execute_simple_query("select t1.a, city from t1, t2 where t1.a = t2.a;")
     # execute_simple_query("explain select a, city from t1, t2 where t1.a = t2.a;")

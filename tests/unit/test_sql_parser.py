@@ -24,7 +24,7 @@ def test_dql():
     )
     assert_parsing(
         "select a, b from t1, t2",
-        '<Select targets=[<Identifier parts=a>, <Identifier parts=b>] distinct=False from_table=<Join left=<Identifier parts=t1> right=<Identifier parts=t2> join_type=INNER JOIN condition=None implicit=True> where=None group_by=None having=None order_by=None limit=None offset=None>'
+        "<Select targets=[<Identifier parts=a>, <Identifier parts=b>] distinct=False from_table=<Join left=<Identifier parts=t1> right=<Identifier parts=t2> join_type=CROSS JOIN condition=None implicit=True> where=None group_by=None having=None order_by=None limit=None offset=None>"
     )
     assert_parsing(
         "select a, b from t1 where t1.a > 100",
@@ -53,7 +53,7 @@ def test_dql():
     )
     assert_parsing(
         "select a, b from t1, t2 where t1.a = t2.b",
-        '<Select targets=[<Identifier parts=a>, <Identifier parts=b>] distinct=False from_table=<Join left=<Identifier parts=t1> right=<Identifier parts=t2> join_type=INNER JOIN condition=None implicit=True> where=<BinaryOperation op== args=[<Identifier parts=t1.a>, <Identifier parts=t2.b>]> group_by=None having=None order_by=None limit=None offset=None>'
+        '<Select targets=[<Identifier parts=a>, <Identifier parts=b>] distinct=False from_table=<Join left=<Identifier parts=t1> right=<Identifier parts=t2> join_type=CROSS JOIN condition=None implicit=True> where=<BinaryOperation op== args=[<Identifier parts=t1.a>, <Identifier parts=t2.b>]> group_by=None having=None order_by=None limit=None offset=None>'
 
     )
     assert_parsing(

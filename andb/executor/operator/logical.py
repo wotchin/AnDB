@@ -117,7 +117,8 @@ class LogicalQuery(LogicalOperator):
         super().__init__('Query', entry)
         self.table_attr_forms = None
 
-        self.join_operator = None
+        # todo: currently, we only support two table join.
+        self.join_operators = []
         self.group_clauses = []
         self.having_clause = None
         self.scan_operators = None
@@ -148,10 +149,11 @@ class SelectionOperator(LogicalOperator):
 
 
 class JoinOperator(LogicalOperator):
-    def __init__(self, join_condition: Condition, join_type, children=None):
+    def __init__(self, join_condition: Condition, join_type, table_columns=None, children=None):
         super().__init__('Join', children)
         self.join_condition = join_condition
         self.join_type = join_type
+        self.table_columns = table_columns
 
     def get_args(self):
         return {'join_condition': self.join_condition,
@@ -177,6 +179,8 @@ class AppendOperator(LogicalOperator):
 
 
 class ScanOperator(LogicalOperator):
+    TEMP_TABLE_NAME = 'temp_table'
+
     def __init__(self, table_name, table_oid, condition: Condition = None):
         super().__init__('Scan')
         self.table_name = table_name

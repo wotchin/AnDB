@@ -233,7 +233,7 @@ class SQLParser(sly.Parser):
     def join_tables_implicit(self, p):
         return Join(left=p[0],
                     right=p[2],
-                    join_type=JoinType.INNER_JOIN,
+                    join_type=JoinType.CROSS_JOIN,
                     implicit=True)
 
     @_('from_table AS identifier',

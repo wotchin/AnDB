@@ -167,6 +167,8 @@ class QueryLogicalPlanTransformation(BaseTransformation):
 
         if not query.condition:
             return scan
+
+        # simple predicate pushdown
         scan.condition = query.condition
         scan.table_columns = []
         for table_column in query.target_list:
@@ -180,11 +182,65 @@ class QueryLogicalPlanTransformation(BaseTransformation):
 
     @staticmethod
     def process_join_scan(query: LogicalQuery):
-        raise NotImplementedError()
+        condition_table_names = {}
+        if query.condition:
+            for condition in query.condition.get_iterator():
+                if isinstance(condition.left, TableColumn):
+                    condition_table_names[condition.left.table_name] = condition
+                if isinstance(condition.right, TableColumn):
+                    condition_table_names[condition.right.table_name] = condition
+
+        scan_operator: "ScanOperator"
+        for scan_operator in query.scan_operators:
+            # if the query has a condition and this condition only contains one table,
+            # push down the predicate (condition).
+            if query.condition and len(condition_table_names) == 1 \
+                    and scan_operator.table_name in condition_table_names:
+                scan_operator.condition = query.condition
+
+            scan_operator.table_columns = []
+            for table_column in query.target_list:
+                # todo: because there may be function
+                if table_column.table_name == scan_operator.table_name:
+                    scan_operator.table_columns.append(table_column)
+
+        # add table columns that come from join conditions
+        join_table_columns = []
+        join_operator: "JoinOperator"
+        for join_operator in query.join_operators:
+            # skip cross join
+            if not join_operator.join_condition:
+                continue
+
+            for condition in join_operator.join_condition.get_iterator():
+                if isinstance(condition.left, TableColumn):
+                    join_table_columns.append(condition.left)
+                if isinstance(condition.right, TableColumn):
+                    join_table_columns.append(condition.right)
+            # todo: can be further pruned
+            # join_operator.table_columns = None
+        for join_table_column in join_table_columns:
+            for scan_operator in query.scan_operators:
+                if scan_operator.table_name != join_table_column.table_name:
+                    continue
+                if join_table_column not in scan_operator.table_columns:
+                    scan_operator.table_columns.append(join_table_column)
+
+        if len(set(condition_table_names.values())) > 1 or len(query.join_operators) > 1:
+            # need a filter to filter results
+            # temp_scan = ScanOperator(table_name=ScanOperator.TEMP_TABLE_NAME,
+            #                          table_oid=INVALID_OID,
+            #                          condition=query.condition)
+            # for join_operator in query.join_operators:
+            #     temp_scan.add_child(join_operator)
+            # return temp_scan
+            raise NotImplementedError('not supported multiple tables join')
+
+        return query.join_operators[0]
 
     @staticmethod
     def on_transform(query: LogicalQuery):
-        if not query.join_operator:
+        if not query.join_operators:
             query.children.append(
                 QueryLogicalPlanTransformation.process_non_join_scan(query)
             )
@@ -317,9 +373,17 @@ class SelectTransformation(BaseTransformation):
 
             join_operator = JoinOperator(join_condition=join_condition,
                                          join_type=join_clause.join_type)
-
+            left_table_name, right_table_name = join_clause.left.parts, join_clause.right.parts
+            left_scan_operator = right_scan_operator = None
             for scan_operator in scan_operators:
-                join_operator.children.append(scan_operator)
+                if scan_operator.table_name == left_table_name:
+                    left_scan_operator = scan_operator
+                elif scan_operator.table_name == right_table_name:
+                    right_scan_operator = scan_operator
+
+            join_operator.add_child(left_scan_operator)
+            join_operator.add_child(right_scan_operator)
+
         else:
             join_operator = None
 
@@ -334,7 +398,8 @@ class SelectTransformation(BaseTransformation):
 
         query.target_list = target_columns
         query.condition = where_condition
-        query.join_operator = join_operator
+        if join_operator:
+            query.join_operators.append(join_operator)
         query.distinct = ast.distinct
         query.scan_operators = scan_operators
 

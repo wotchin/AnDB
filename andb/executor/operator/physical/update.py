@@ -37,6 +37,9 @@ class UpdatePhysicalOperator(PhysicalOperator):
                     return True
         return False
 
+    def get_args(self):
+        return ('table_name', self.relation.name), ('table_oid', self.table_oid) + super().get_args()
+
     def open(self):
         self.relation = open_relation(self.table_oid, rlock.ROW_EXCLUSIVE_LOCK)
         if not self.relation:

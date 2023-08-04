@@ -23,6 +23,12 @@ class Filter(PhysicalOperator):
 
         self._construct_mapper()
 
+    def get_args(self):
+        return (('condition', self.condition),) + super().get_args()
+
+    def __repr__(self):
+        return f'{self.name}: {self.condition}'
+
     def _construct_mapper(self):
         def dfs(node: Condition):
             if node is None:
@@ -223,6 +229,12 @@ class IndexScan(Scan):
         self.index_columns = None
         self.table_relation = None
 
+    def get_args(self):
+        if self._filter:
+            return (('index_name', self.relation.name), ('index_oid', self.relation_oid),
+                    ('condition', self._filter)) + super().get_args()
+        return (('index_name', self.relation.name), ('index_oid', self.relation_oid)) + super().get_args()
+
     def open(self):
         super().open()
         self.index_forms = CATALOG_ANDB_INDEX.get_index_forms(self.relation_oid)
@@ -320,6 +332,12 @@ class TableScan(Scan):
         super().__init__(relation_oid, columns, filter_, lock)
         self.name = 'TableScan'
 
+    def get_args(self):
+        if self._filter:
+            return (('table_name', self.relation.name), ('table_oid', self.relation_oid),
+                    ('condition', self._filter)) + super().get_args()
+        return (('table_name', self.relation.name), ('table_oid', self.relation_oid)) + super().get_args()
+
     def next_internal(self):
         for pageno in range(0, self.relation.last_pageno() + 1):
             buffer_page = global_vars.buffer_manager.get_page(self.relation, pageno)
@@ -369,6 +387,9 @@ class Join(PhysicalOperator):
         self.join_columns = None
         self.join_filter = join_filter
         self.join_type = join_type
+
+    def get_args(self):
+        return (('join_type', self.join_type), ('condition', self.join_filter)) + super().get_args()
 
     def open(self):
         # open can initialize all works

@@ -1,6 +1,8 @@
 from andb.sql.optimizer.transformations import *
 from andb.sql.optimizer.implementations import *
 from andb.sql.parser.ast.join import JoinType
+from andb.executor.operator.physical.utility import ExplainOperator
+
 
 def test_logical_plan():
     # Example usage
@@ -12,7 +14,7 @@ def test_logical_plan():
     projection.add_child(selection)
     selection.add_child(join)
 
-    _logical_plan = projection.to_dict()
+    # _logical_plan = projection.to_dict()
     # print(_logical_plan)
 
     scan = ScanOperator('employees', 1)
@@ -36,10 +38,10 @@ def test_transformation():
 
     stmt = "create table t1 (a int not null, b char)"
     ast = andb_parser.parse(andb_lexer.tokenize(stmt))
-    trans = CreateTableTransformation()
+    trans = UtilityTransformation()
     if trans.match(ast):
         operator = trans.on_transform(ast)
-        lines = explain_logical_plan(operator)
+        lines = ExplainOperator.explain(operator)
         # print('\n'.join(lines))
         impl = UtilityImplementation()
         if impl.match(operator):
@@ -51,9 +53,8 @@ def test_transformation():
 
     stmt = "create index idx on t1 (a, b)"
     ast = andb_parser.parse(andb_lexer.tokenize(stmt))
-    trans = CreateIndexTransformation()
+    trans = UtilityTransformation()
     if trans.match(ast):
         operator = trans.on_transform(ast)
-        lines = explain_logical_plan(operator)
+        lines = ExplainOperator.explain(operator)
         # print('\n'.join(lines))
-

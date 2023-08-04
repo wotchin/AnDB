@@ -1,5 +1,5 @@
 from andb.executor.operator.logical import *
-from andb.executor.operator.physical.utility import CreateIndexOperator, CreateTableOperator
+from andb.executor.operator.physical.utility import CreateIndexOperator, CreateTableOperator, ExplainOperator
 from andb.runtime import session_vars
 from andb.sql.parser.ast.create import CreateTable, CreateIndex
 from andb.sql.parser.ast.insert import Insert
@@ -8,6 +8,7 @@ from andb.sql.parser.ast.update import Update
 from andb.sql.parser.ast.select import Select
 from andb.sql.parser.ast.join import Join
 from andb.sql.parser.ast.misc import Star
+from andb.sql.parser.ast.explain import Explain
 from andb.errno.errors import AnDBNotImplementedError, InitializationStageError
 from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_CLASS
 from andb.catalog.oid import INVALID_OID
@@ -19,33 +20,29 @@ from andb.executor.operator.utils import ExprOperation
 from ...executor.operator.utils import expression_eval
 
 
-class CreateIndexTransformation(BaseTransformation):
+class UtilityTransformation(BaseTransformation):
     @staticmethod
     def match(ast) -> bool:
-        return isinstance(ast, CreateIndex)
+        return isinstance(ast, CreateIndex) or \
+               isinstance(ast, CreateTable) or \
+               isinstance(ast, Explain)
 
     @staticmethod
-    def on_transform(ast: CreateIndex):
-        fields = [id_.parts for id_ in ast.columns]
-        return UtilityOperator(
-            CreateIndexOperator(index_name=ast.name.parts, table_name=ast.table_name.parts,
-                                fields=fields, database_oid=session_vars.database_oid,
-                                index_type=ast.index_type)
-        )
-
-
-class CreateTableTransformation(BaseTransformation):
-    @staticmethod
-    def match(ast) -> bool:
-        return isinstance(ast, CreateTable)
-
-    @staticmethod
-    def on_transform(ast: CreateTable):
-        return UtilityOperator(
-            CreateTableOperator(
+    def on_transform(ast):
+        physical_operator = None
+        if isinstance(ast, CreateIndex):
+            fields = [id_.parts for id_ in ast.columns]
+            physical_operator = CreateIndexOperator(index_name=ast.name.parts, table_name=ast.table_name.parts,
+                                                    fields=fields, database_oid=session_vars.database_oid,
+                                                    index_type=ast.index_type)
+        elif isinstance(ast, CreateTable):
+            physical_operator = CreateTableOperator(
                 table_name=ast.name.parts, fields=ast.columns, database_oid=session_vars.database_oid
             )
-        )
+        elif isinstance(ast, Explain):
+            physical_operator = ExplainOperator(logical_plan=andb_ast_transform(ast.target))
+
+        return UtilityOperator(physical_operator)
 
 
 # def get_table_attr_forms(table_name, database_oid):

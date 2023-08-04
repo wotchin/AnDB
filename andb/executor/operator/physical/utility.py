@@ -3,6 +3,7 @@ from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_TYPE, CAT
 from andb.errno.errors import RollbackError, DDLException
 from andb.storage.engines.heap.relation import RelationKinds, bt_create_index_internal, \
     hot_create_table
+
 from .base import PhysicalOperator
 
 
@@ -75,3 +76,40 @@ class CreateTableOperator(PhysicalOperator):
         self.table_oid = hot_create_table(table_name=self.table_name, fields=self.fields,
                                           database_oid=self.database_oid)
         yield self.table_oid
+
+
+class ExplainOperator(PhysicalOperator):
+
+    @staticmethod
+    def explain(operator, indent=''):
+        output_lines = []
+        name = operator.name
+        output_lines.append(f"{indent}├─ {name}")
+
+        for name, value in operator.get_args():
+            output_lines.append(f"{indent}└  {name}: {value}")
+
+        children_count = len(operator.children)
+        for i, child in enumerate(operator.children):
+            is_last_child = (i == children_count - 1)
+            branch_char = ' ' if is_last_child else ' '
+            branch_indent = '    ' if is_last_child else '    '
+            child_indent = f"{indent}{branch_char} {branch_indent}"
+            output_lines.extend(ExplainOperator.explain(child, child_indent))
+
+        return output_lines
+
+    def __init__(self, logical_plan):
+        super().__init__('Explain')
+        self.logical_plan = logical_plan
+        self.physical_plan = None
+
+    def open(self):
+        self.physical_plan.open()
+
+    def next(self):
+        yield '\n'.join(ExplainOperator.explain(self.logical_plan))
+        yield '\n'.join(ExplainOperator.explain(self.physical_plan))
+
+    def close(self):
+        self.physical_plan.close()

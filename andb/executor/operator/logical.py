@@ -16,19 +16,7 @@ class LogicalOperator:
         self.children.append(child_operator)
 
     def get_args(self):
-        return {}
-
-    def to_dict(self):
-        logical_plan = {
-            self.OPERATOR_NAME: self.name,
-            self.OPERATOR_CHILDREN: []
-        }
-        logical_plan.update(self.get_args())
-
-        for child_operator in self.children:
-            child_logical_plan = child_operator.to_dict()
-            logical_plan['children'].append(child_logical_plan)
-        return logical_plan
+        return ()
 
     def __call__(self, *args, **kwargs):
         assert len(args) == 1
@@ -90,7 +78,7 @@ class Condition(LogicalOperator):
         super().add_child(child_operator)
 
     def get_args(self):
-        return {'expression': f'({self.left} {self.expr.value} {self.right})'}
+        return ('expression', f'({self.left} {self.expr.value} {self.right})'),
 
     def __repr__(self):
         return f'{str(self.left)} {self.expr.value} {str(self.right)}'
@@ -136,7 +124,7 @@ class ProjectionOperator(LogicalOperator):
         self.columns = columns
 
     def get_args(self):
-        return {'columns': self.columns}
+        return ('columns', self.columns),
 
 
 class SelectionOperator(LogicalOperator):
@@ -145,7 +133,7 @@ class SelectionOperator(LogicalOperator):
         self.condition = condition
 
     def get_args(self):
-        return {'condition': self.condition}
+        return ('condition', self.condition),
 
 
 class JoinOperator(LogicalOperator):
@@ -156,8 +144,8 @@ class JoinOperator(LogicalOperator):
         self.table_columns = table_columns
 
     def get_args(self):
-        return {'join_condition': self.join_condition,
-                'join_type': self.join_type}
+        return (('join_condition', self.join_condition),
+                ('join_type', self.join_type))
 
 
 class GroupOperator(LogicalOperator):
@@ -167,10 +155,10 @@ class GroupOperator(LogicalOperator):
         self.aggregate_functions = aggregate_functions
 
     def get_args(self):
-        return {
-            'group_by_columns': self.group_by_columns,
-            'aggregate_functions': self.aggregate_functions
-        }
+        return (
+            ('group_by_columns', self.group_by_columns),
+            ('aggregate_functions', self.aggregate_functions)
+        )
 
 
 class AppendOperator(LogicalOperator):
@@ -189,8 +177,8 @@ class ScanOperator(LogicalOperator):
         self.table_columns = None
 
     def get_args(self):
-        return {'table_name': self.table_name,
-                'condition': self.condition}
+        return (('table_name', self.table_name),
+                ('condition', self.condition))
 
 
 class SortOperator(LogicalOperator):
@@ -199,7 +187,7 @@ class SortOperator(LogicalOperator):
         self.sort_columns = sort_columns
 
     def get_args(self):
-        return {'sort_columns': self.sort_columns}
+        return ('sort_columns', self.sort_columns),
 
 
 class DuplicateRemovalOperator(LogicalOperator):
@@ -213,7 +201,7 @@ class LimitOperator(LogicalOperator):
         self.limit_count = limit_count
 
     def get_args(self):
-        return {'limit_count': self.limit_count}
+        return ('limit_count', self.limit_count),
 
 
 class UnionOperator(LogicalOperator):
@@ -237,7 +225,7 @@ class UtilityOperator(LogicalOperator):
         self.physical_operator = physical_operator
 
     def get_args(self):
-        return {'PhysicalOperator': self.physical_operator.__class__.__name__}
+        return ('PhysicalOperator', self.physical_operator.name),
 
 
 class InsertOperator(LogicalOperator):
@@ -250,10 +238,10 @@ class InsertOperator(LogicalOperator):
         self.select = select
 
     def get_args(self):
-        return {'table_name': self.table_name,
-                'table_oid': self.table_oid,
-                'columns': self.columns,
-                'from_select': bool(self.select)}
+        return (('table_name', self.table_name),
+                ('table_oid', self.table_oid),
+                ('columns', self.columns),
+                ('from_select', bool(self.select)))
 
 
 class DeleteOperator(LogicalOperator):
@@ -263,8 +251,8 @@ class DeleteOperator(LogicalOperator):
         self.query = query
 
     def get_args(self):
-        return {'table_name': self.table_name,
-                'condition': self.query.condition}
+        return (('table_name', self.table_name),
+                ('condition', self.query.condition))
 
 
 class UpdateOperator(LogicalOperator):
@@ -277,25 +265,6 @@ class UpdateOperator(LogicalOperator):
         self.query = query
 
     def get_args(self):
-        return {'table_name': self.table_name,
-                'columns': self.columns,
-                'condition': self.condition}
-
-
-def explain_logical_plan(operator: LogicalOperator, indent=''):
-    output_lines = []
-    name = operator.name
-    output_lines.append(f"{indent}├─ {name}")
-
-    for name, value in operator.get_args().items():
-        output_lines.append(f"{indent}└  {name}: {value}")
-
-    children_count = len(operator.children)
-    for i, child in enumerate(operator.children):
-        is_last_child = (i == children_count - 1)
-        branch_char = ' ' if is_last_child else '├'
-        branch_indent = '    ' if is_last_child else '│   '
-        child_indent = f"{indent}{branch_char} {branch_indent}"
-        output_lines.extend(explain_logical_plan(child, child_indent))
-
-    return output_lines
+        return (('table_name', self.table_name),
+                ('columns', self.columns),
+                ('condition', self.condition))

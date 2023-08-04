@@ -7,8 +7,10 @@ class PhysicalOperator:
         self.total_cost = 0
         self.startup_elapsed = 0
         self.total_elapsed = 0
-        self.args = {}
         self.children = []
+
+    def get_args(self):
+        return ('startup_cost', self.startup_cost), ('total_cost', self.total_cost)
 
     def open(self):
         pass

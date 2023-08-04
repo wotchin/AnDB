@@ -1,6 +1,6 @@
 import copy
 
-from andb.executor.operator.physical import select, insert, delete, update
+from andb.executor.operator.physical import select, insert, delete, update, utility
 from andb.catalog.oid import INVALID_OID
 from andb.runtime import session_vars, global_vars
 from andb.catalog.syscache import CATALOG_ANDB_CLASS, CATALOG_ANDB_INDEX, CATALOG_ANDB_ATTRIBUTE
@@ -19,6 +19,9 @@ class UtilityImplementation(BaseImplementation):
 
     @classmethod
     def on_implement(cls, old_operator):
+        if isinstance(old_operator.physical_operator, utility.ExplainOperator):
+            explain_operator = old_operator.physical_operator
+            explain_operator.physical_plan = andb_logical_plan_implement(explain_operator.logical_plan)
         return old_operator.physical_operator
 
 

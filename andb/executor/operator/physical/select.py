@@ -18,9 +18,7 @@ class Filter(PhysicalOperator):
         super().__init__('Filter')
         self.condition = condition
         self.column_condition = {}
-        self.columns = None
         self._index_of_tuple_lookup = {}
-
         self._construct_mapper()
 
     def get_args(self):
@@ -578,7 +576,18 @@ class SortMergeJoin(Join):
 
 
 class Materialize(PhysicalOperator):
-    pass
+    def __init__(self, name):
+        super().__init__(name)
+        self.in_memory_tuples = []
+        self.gathered = False
+
+    def gather(self):
+        if self.gathered:
+            return
+        for child in self.children:
+            for tuple_ in child.next():
+                self.in_memory_tuples.append(tuple_)
+        self.gathered = True
 
 
 class Limit(PhysicalOperator):
@@ -593,20 +602,101 @@ class HashAgg(PhysicalOperator):
     pass
 
 
-class Sort(PhysicalOperator):
-    pass
+class Sort(Materialize):
+    INTERNAL_SORT = 'internal_sort'
+    EXTERNAL_SORT = 'external_sort'
+    HEAP_SORT = 'heap_sort'
 
+    def __init__(self, sort_columns, ascending_orders=None):
+        super().__init__('Sort')
+        self.sort_columns = sort_columns
+        self.sort_key_num = []
+        self.sort_key_ascending_order = ascending_orders
 
-class QuickSort(Sort):
-    pass
+        assert len(self.sort_columns) == len(self.sort_key_ascending_order)
 
+        # default method is internal sort (quick sort)
+        self.sort_method = self.INTERNAL_SORT
 
-class HeapSort(Sort):
-    pass
+    def _sort_keys(self):
+        assert self.sort_key_num
+        assert self.sort_key_ascending_order
+        output = []
+        for k, asc in zip(self.sort_columns, self.sort_key_ascending_order):
+            output.append(f'{k}' if asc else f'{k} DESC')
+        return ','.join(output)
 
+    def get_args(self):
+        return (('sort_method', self.sort_method), ('keys', self._sort_keys())) + super().get_args()
 
-class OutSort(Sort):
-    pass
+    def open(self):
+        if len(self.children) != 1:
+            raise InitializationStageError('sort operator only can have one child.')
+        child = self.children[0]
+        child.open()
+        self.columns = child.columns
+
+        # construct an index array for lookup
+        for sort_column in self.sort_columns:
+            # find the ith for our sort columns
+            for i, table_column in enumerate(self.columns):
+                if table_column == sort_column:
+                    self.sort_key_num.append(i)
+                    break
+        assert len(self.sort_key_num) == len(self.sort_columns)
+
+    @staticmethod
+    def quick_sort(arr_, sort_keys_, asc_=None):
+        def custom_quick_sort(arr, low, high, sort_keys, asc):
+            if low < high:
+                pi = custom_partition(arr, low, high, sort_keys, asc)
+
+                custom_quick_sort(arr, low, pi - 1, sort_keys, asc)
+                custom_quick_sort(arr, pi + 1, high, sort_keys, asc)
+
+        def custom_partition(arr, low, high, sort_keys, asc):
+            pivot = arr[high]
+            i = low - 1
+
+            for j in range(low, high):
+                if compare_keys(arr[j], pivot, sort_keys, asc) < 0:
+                    i += 1
+                    arr[i], arr[j] = arr[j], arr[i]
+
+            arr[i + 1], arr[high] = arr[high], arr[i + 1]
+            return i + 1
+
+        def compare_keys(row1, row2, sort_keys, asc):
+            for key in sort_keys:
+                cmp_result = (row1[key] > row2[key]) - (row1[key] < row2[key])
+                if cmp_result != 0:
+                    return cmp_result if asc[sort_keys.index(key)] else -cmp_result
+            return 0
+
+        if asc_ is None:
+            asc_ = [False] * len(sort_keys_)
+        custom_quick_sort(arr_, 0, len(arr_) - 1, sort_keys_, asc_)
+        return arr_
+
+    def sort(self):
+        if self.sort_method == self.INTERNAL_SORT:
+            self.quick_sort(self.in_memory_tuples, self.sort_key_num, self.sort_key_ascending_order)
+            sorted_tuples = self.in_memory_tuples
+        else:
+            raise NotImplementedError(f'not supported this sort method {self.sort_method}.')
+
+        return sorted_tuples
+
+    def next(self):
+        self.gather()
+        for tuple_ in self.sort():
+            yield tuple_
+
+    def close(self):
+        self.in_memory_tuples.clear()
+
+        child = self.children[0]
+        child.close()
 
 
 class PhysicalQuery(PhysicalOperator):

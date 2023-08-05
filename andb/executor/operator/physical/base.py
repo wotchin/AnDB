@@ -9,6 +9,9 @@ class PhysicalOperator:
         self.total_elapsed = 0
         self.children = []
 
+        # output target columns
+        self.columns = None
+
     def get_args(self):
         return ('startup_cost', self.startup_cost), ('total_cost', self.total_cost)
 

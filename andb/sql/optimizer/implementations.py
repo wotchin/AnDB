@@ -65,7 +65,7 @@ class ScanImplementation(BaseImplementation):
     @classmethod
     def _implement_scan_operator(cls, scan_operator):
         # temp table scan
-        if scan_operator.table_name == scan_operator.TEMP_TABLE_NAME:
+        if scan_operator.table_name == TableColumn.TEMP_TABLE_NAME:
             return select.TempTableScan(scan_operator.table_oid, scan_operator.table_columns,
                                         filter_=Filter(scan_operator.condition))
 
@@ -130,6 +130,17 @@ class JoinImplementation(BaseImplementation):
                                      join_filter=Filter(old_operator.join_condition))
 
 
+class SortImplementation(BaseImplementation):
+    @classmethod
+    def match(cls, operator) -> bool:
+        return isinstance(operator, SortOperator)
+
+    @classmethod
+    def on_implement(cls, old_operator: SortOperator):
+        return select.Sort(sort_columns=old_operator.sort_columns,
+                           ascending_orders=old_operator.ascending_orders)
+
+
 class OperatorOption:
     def __init__(self):
         self.name = 'OperatorOption'
@@ -165,6 +176,8 @@ class QueryImplementation(BaseImplementation):
             new_node = ScanImplementation.on_implement(node)
         elif JoinImplementation.match(node):
             new_node = JoinImplementation.on_implement(node)
+        elif SortImplementation.match(node):
+            new_node = SortImplementation.on_implement(node)
         else:
             raise NotImplementedError(f'unknown operator {node.name}')
 

@@ -27,9 +27,12 @@ class LogicalOperator:
 
 
 class TableColumn:
+    TEMP_TABLE_NAME = 'temp_table'
+    FUNCTION_PLACEHOLDER = 'function'
+    UNKNOWN = 'unknown'
+
     def __init__(self, table_name, column_name):
         self.table_name = table_name
-        assert column_name
         self.column_name = column_name
 
     def __repr__(self):
@@ -167,8 +170,6 @@ class AppendOperator(LogicalOperator):
 
 
 class ScanOperator(LogicalOperator):
-    TEMP_TABLE_NAME = 'temp_table'
-
     def __init__(self, table_name, table_oid, condition: Condition = None):
         super().__init__('Scan')
         self.table_name = table_name
@@ -182,9 +183,12 @@ class ScanOperator(LogicalOperator):
 
 
 class SortOperator(LogicalOperator):
-    def __init__(self, sort_columns, children=None):
+    def __init__(self, sort_columns, ascending_orders=None, children=None):
         super().__init__('Sort', children)
         self.sort_columns = sort_columns
+        self.ascending_orders = ascending_orders
+        if ascending_orders is None:
+            self.ascending_orders = [True for _ in range(len(self.sort_columns))]
 
     def get_args(self):
         return ('sort_columns', self.sort_columns),

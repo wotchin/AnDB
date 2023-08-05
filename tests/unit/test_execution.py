@@ -7,6 +7,8 @@ def test_execute_simple_query():
     execute_simple_query("insert into t1 values (2, 'bbb')")
     execute_simple_query("insert into t1 values (3, null)")
     execute_simple_query("insert into t1 values (4, 'ccc')")
+    execute_simple_query("select * from t1 order by a, b")
+    execute_simple_query("select * from t1 order by a, b DESC")
     execute_simple_query("delete from t1 where a = 4")
     execute_simple_query("delete from t1")
     execute_simple_query("insert into t1 values (1, 'aaa')")

@@ -237,6 +237,7 @@ class QueryLogicalPlanTransformation(BaseTransformation):
 
     @staticmethod
     def on_transform(query: LogicalQuery):
+        # todo: extract all involved columns, then prune useless columns
         if not query.join_operators:
             query.children.append(
                 QueryLogicalPlanTransformation.process_non_join_scan(query)
@@ -247,6 +248,10 @@ class QueryLogicalPlanTransformation(BaseTransformation):
             )
 
         # todo: limit, group by, ...
+        if query.sort_clause:
+            query.sort_clause.children = query.children
+            query.children = [query.sort_clause]
+
         return query
 
 
@@ -384,10 +389,33 @@ class SelectTransformation(BaseTransformation):
         else:
             join_operator = None
 
+        if ast.order_by:
+            sort_columns = []
+            ascending_orders = []
+            for node in ast.order_by:
+                table_column = TableColumn(table_name=TableColumn.UNKNOWN, column_name=None)
+                for table_name in table_attr_forms:
+                    for attr_form in table_attr_forms[table_name]:
+                        if attr_form.name == node.attr.parts:
+                            if table_column.column_name is not None:
+                                raise InitializationStageError(
+                                    f'found duplicated column name {table_column.column_name} '
+                                    f'from {table_column.table_name} and {table_name}.'
+                                )
+                            else:
+                                table_column.table_name = table_name
+                                table_column.column_name = attr_form.name
+                                break
+                sort_columns.append(table_column)
+                ascending_orders.append(node.direction == 'ASC')
+
+            sort_clause = SortOperator(sort_columns, ascending_orders)
+        else:
+            sort_clause = None
+
         # todo: group by
         # todo: having
         # todo: distinct
-        # todo: sort
         # todo: limit
 
         query = LogicalQuery()
@@ -399,6 +427,7 @@ class SelectTransformation(BaseTransformation):
             query.join_operators.append(join_operator)
         query.distinct = ast.distinct
         query.scan_operators = scan_operators
+        query.sort_clause = sort_clause
 
         if QueryLogicalPlanTransformation.match(query):
             query = QueryLogicalPlanTransformation.on_transform(query)

@@ -1,3 +1,5 @@
+from enum import Enum
+
 from andb.executor.operator.utils import ExprOperation
 from andb.sql.parser.ast.operation import BinaryOperation
 from andb.sql.parser.ast.misc import Constant
@@ -10,7 +12,11 @@ class LogicalOperator:
 
     def __init__(self, name, children=None):
         self.name = name
-        self.children = children or []
+        # copy all elements from children
+        if children:
+            self.children = children.copy()
+        else:
+            self.children = []
 
     def add_child(self, child_operator):
         self.children.append(child_operator)
@@ -26,17 +32,31 @@ class LogicalOperator:
         return args[0]
 
 
-class TableColumn:
+class DummyTableName:
     TEMP_TABLE_NAME = 'temp_table'
     FUNCTION_PLACEHOLDER = 'function'
     UNKNOWN = 'unknown'
 
+
+class AggregationFunctions(Enum):
+    count = len
+    sum = sum
+    max = max
+    min = min
+    avg = (lambda x: sum(x) / len(x))
+
+
+class TableColumn:
     def __init__(self, table_name, column_name):
         self.table_name = table_name
         self.column_name = column_name
+        self.function_name = None
+        self.alias = None
 
     def __repr__(self):
-        return f'{self.table_name}.{self.column_name}'
+        if not self.function_name:
+            return f'{self.table_name}.{self.column_name}'
+        return f'{self.function_name}({self.table_name}.{self.column_name})'
 
     def __eq__(self, other):
         if not isinstance(other, TableColumn):
@@ -44,7 +64,29 @@ class TableColumn:
         return str(self) == str(other)
 
     def __hash__(self):
-        return hash((self.table_name, self.column_name))
+        return hash((self.table_name, self.column_name, self.function_name))
+
+    def core(self):
+        return TableColumn(self.table_name, self.column_name)
+
+
+class FunctionColumn:
+    def __init__(self, function_name, table_columns):
+        self.function_name = function_name
+        self.table_columns = table_columns
+        self.alias = function_name  # default
+
+    def __repr__(self):
+        table_columns = ', '.join(self.table_columns)
+        return f'{self.function_name}({table_columns})'
+
+    def __eq__(self, other):
+        if not isinstance(other, FunctionColumn):
+            return False
+        return str(self) == str(other)
+
+    def __hash__(self):
+        return hash((self.function_name, *self.table_columns))
 
 
 class Condition(LogicalOperator):
@@ -106,19 +148,36 @@ class Condition(LogicalOperator):
 class LogicalQuery(LogicalOperator):
     def __init__(self, entry=None):
         super().__init__('Query', entry)
-        self.table_attr_forms = None
+        self.table_attr_forms = {}
+        self.from_tables = {}
 
         # todo: currently, we only support two table join.
         self.join_operators = []
-        self.group_clauses = []
+        self.groupby_columns = []
         self.having_clause = None
-        self.scan_operators = None
+        self.scan_operators = []
         self.sort_clause = None
-        self.target_list = None
+        self.target_list = []
         self.condition = None
         self.alias = {}
         self.limit = None
         self.distinct = False
+
+        self._seen_table_columns = set()
+
+    def add_seen_table_column(self, table_column):
+        self._seen_table_columns.add((table_column.table_name, table_column.column_name))
+
+    def get_seen_table_columns(self, lookup_table_name=None):
+        # return table columns in order
+        table_columns = []
+        for table_name in self.from_tables:
+            if lookup_table_name is not None and lookup_table_name != table_name:
+                continue
+            for attr_from in self.table_attr_forms[table_name]:
+                if (table_name, attr_from.name) in self._seen_table_columns:
+                    table_columns.append(TableColumn(table_name, attr_from.name))
+        return table_columns
 
 
 class ProjectionOperator(LogicalOperator):
@@ -152,15 +211,16 @@ class JoinOperator(LogicalOperator):
 
 
 class GroupOperator(LogicalOperator):
-    def __init__(self, group_by_columns, aggregate_functions, children=None):
+    def __init__(self, group_by_columns, aggregate_function, having_clause=None, children=None):
         super().__init__('Group', children)
         self.group_by_columns = group_by_columns
-        self.aggregate_functions = aggregate_functions
+        self.aggregate_function = aggregate_function
+        self.having_clause = having_clause
 
     def get_args(self):
         return (
             ('group_by_columns', self.group_by_columns),
-            ('aggregate_functions', self.aggregate_functions)
+            ('aggregate_function', self.aggregate_function)
         )
 
 

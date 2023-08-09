@@ -7,7 +7,7 @@ from andb.runtime import global_vars, session_vars
 from andb.sql.parser.ast.misc import Star
 from andb.sql.parser.ast.join import JoinType
 
-from ..logical import Condition, TableColumn
+from ..logical import Condition, TableColumn, AggregationFunctions
 from ..utils import expression_eval, ExprOperation
 from .base import PhysicalOperator
 
@@ -594,12 +594,77 @@ class Limit(PhysicalOperator):
     pass
 
 
-class SortAgg(PhysicalOperator):
+class Aggregation(Materialize):
     pass
 
 
-class HashAgg(PhysicalOperator):
+class SortAggregation(Aggregation):
     pass
+
+
+class HashAggregation(Aggregation):
+    def __init__(self, function_name, aggregation_columns, grouping_columns, agg_condition: Filter = None):
+        super().__init__('HashAggregation')
+        self.function_name = function_name
+        self.aggregation_columns = aggregation_columns
+        self.grouping_columns = grouping_columns
+        self.aggregation_column_idx = None
+        self.grouping_column_idx = None
+        self.agg_condition = agg_condition
+        self._hash_table = {}
+
+    def get_args(self):
+        return (('function_name', self.function_name), ('groupby', self.grouping_columns),
+                ('aggregation', self.aggregation_columns)) + super().get_args()
+
+    def open(self):
+        assert len(self.children) == 1
+        child = self.children[0]
+        child.open()
+
+        self.columns = self.grouping_columns + self.aggregation_columns
+        output_table_columns = set(c.core() for c in self.columns)
+        input_table_columns = set(c.core() for c in child.columns)
+        if not output_table_columns.issubset(input_table_columns):
+            raise InitializationStageError(f'not found all group keys {self.grouping_columns}.')
+
+        if len(self.aggregation_columns) != 1 or len(self.grouping_columns) != 1:
+            raise NotImplementedError('only supported one column to aggregate or group.')
+        self.aggregation_column_idx = child.columns.index(self.aggregation_columns[0].core())
+        self.grouping_column_idx = child.columns.index(self.grouping_columns[0].core())
+
+        # check for having clause
+        if self.agg_condition:
+            self.agg_condition.set_tuple_columns(self.columns)
+
+    def next_internal(self):
+        self.gather()
+
+        # Step 1: Hashing and Grouping
+        for row in self.in_memory_tuples:
+            key = row[self.grouping_column_idx]
+            value = row[self.aggregation_column_idx]
+
+            if key not in self._hash_table:
+                self._hash_table[key] = [value]
+            else:
+                self._hash_table[key].append(value)
+
+        # Step 2: Aggregation
+        for key, values in self._hash_table.items():
+            aggregated_value = getattr(AggregationFunctions, self.function_name).value(values)
+            yield key, aggregated_value
+
+    def next(self):
+        if self.agg_condition:
+            for tuple_ in self.agg_condition.filter(self.next_internal()):
+                yield tuple_
+        else:
+            for tuple_ in self.next_internal():
+                yield tuple_
+
+    def close(self):
+        self.children[0].close()
 
 
 class Sort(Materialize):

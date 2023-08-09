@@ -1,13 +1,10 @@
-import copy
-
-from andb.executor.operator.physical import select, insert, delete, update, utility
 from andb.catalog.oid import INVALID_OID
-from andb.runtime import session_vars, global_vars
 from andb.catalog.syscache import CATALOG_ANDB_CLASS, CATALOG_ANDB_INDEX, CATALOG_ANDB_ATTRIBUTE
-from andb.storage.engines.heap.relation import RelationKinds
 from andb.errno.errors import InitializationStageError
+from andb.executor.operator.physical import select, insert, delete, update, utility
 from andb.executor.operator.physical.select import TableScan, IndexScan, CoveredIndexScan, Filter
-
+from andb.runtime import session_vars
+from andb.storage.engines.heap.relation import RelationKinds
 from .base import BaseImplementation
 from .patterns import *
 
@@ -65,7 +62,7 @@ class ScanImplementation(BaseImplementation):
     @classmethod
     def _implement_scan_operator(cls, scan_operator):
         # temp table scan
-        if scan_operator.table_name == TableColumn.TEMP_TABLE_NAME:
+        if scan_operator.table_name == DummyTableName.TEMP_TABLE_NAME:
             return select.TempTableScan(scan_operator.table_oid, scan_operator.table_columns,
                                         filter_=Filter(scan_operator.condition))
 
@@ -141,6 +138,24 @@ class SortImplementation(BaseImplementation):
                            ascending_orders=old_operator.ascending_orders)
 
 
+class AggregationImplementation(BaseImplementation):
+    @classmethod
+    def match(cls, operator) -> bool:
+        return isinstance(operator, GroupOperator)
+
+    @classmethod
+    def on_implement(cls, old_operator: GroupOperator):
+        # todo: sort agg
+        if old_operator.having_clause:
+            agg_condition = Filter(old_operator.having_clause)
+        else:
+            agg_condition = None
+        return select.HashAggregation(function_name=old_operator.aggregate_function.function_name,
+                                      aggregation_columns=old_operator.aggregate_function.table_columns,
+                                      grouping_columns=old_operator.group_by_columns,
+                                      agg_condition=agg_condition)
+
+
 class OperatorOption:
     def __init__(self):
         self.name = 'OperatorOption'
@@ -156,17 +171,6 @@ class QueryImplementation(BaseImplementation):
     def match(cls, operator) -> bool:
         return isinstance(operator, LogicalQuery)
 
-    # @staticmethod
-    # def copy_tree(node):
-    #     if node is None:
-    #         return None
-    #     if len(node.children) == 0:
-    #         return node
-    #     new_node = copy.copy(node)
-    #     for child in node.children:
-    #         new_node.add_child(QueryImplementation.copy_tree(child))
-    #     return new_node
-
     @staticmethod
     def implement_tree(node):
         if node is None:
@@ -178,6 +182,8 @@ class QueryImplementation(BaseImplementation):
             new_node = JoinImplementation.on_implement(node)
         elif SortImplementation.match(node):
             new_node = SortImplementation.on_implement(node)
+        elif AggregationImplementation.match(node):
+            new_node = AggregationImplementation.on_implement(node)
         else:
             raise NotImplementedError(f'unknown operator {node.name}')
 

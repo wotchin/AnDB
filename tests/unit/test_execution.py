@@ -22,7 +22,8 @@ def test_execute_simple_query():
     execute_simple_query("select * from t1 where a = 1;")
     execute_simple_query("select * from t1 where a > 2;")
     execute_simple_query("select b from t1 where a > 2;")
-    # execute_simple_query("select a, count(a) from t1 group by a where a > 2;")
+    execute_simple_query("select a, count(a) from t1 where a > 2 group by a;")
+    execute_simple_query("select a, count(a) from t1 where a > 2 group by a having a > 3;")
 
     execute_simple_query("create table t2 (a int, city text)")
     execute_simple_query("insert into t2 values (1, 'beijing')")

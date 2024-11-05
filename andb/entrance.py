@@ -8,6 +8,7 @@ from andb.errno.errors import RollbackError, FatalError
 
 
 def tell_session(errno, message):
+    # todo: not using print
     print(errno, message)
 
 
@@ -46,4 +47,8 @@ def execute_simple_query(query_string):
     else:
         global_vars.xact_manager.commit_transaction(xid)
 
-    print(portal.results())
+    # todo: add error information into result as well
+    # and use a protocol to parse and serialize the result
+    return portal.results()
+
+

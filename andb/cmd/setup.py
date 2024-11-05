@@ -6,7 +6,7 @@ from andb.catalog.syscache import get_all_catalogs
 from andb.catalog.oid import OID_DATABASE_ANDB
 
 
-def initialize_data_dir(path):
+def setup_data_dir(path):
     if os.path.exists(path):
         return False, 'data directory already exists.'
 
@@ -25,6 +25,8 @@ def initialize_data_dir(path):
     # generate metadata files
     for catalog_table in get_all_catalogs():
         catalog_table.init()
+        catalog_table.save()
+        os.sync()
 
     # create a default database -- andb
     os.mkdir(os.path.join(BASE_DIR, str(OID_DATABASE_ANDB)))

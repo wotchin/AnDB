@@ -3,7 +3,7 @@ import shutil
 
 import pytest
 
-from andb.cmd.setup import initialize_data_dir
+from andb.cmd.setup import setup_data_dir
 from andb.initializer import init_all_database_components
 
 TEST_DATA_DIRECTOR = os.path.realpath('test_data')
@@ -12,7 +12,7 @@ TEST_DATA_DIRECTOR = os.path.realpath('test_data')
 def setup():
     if os.path.exists(TEST_DATA_DIRECTOR):
         shutil.rmtree(TEST_DATA_DIRECTOR)
-    initialize_data_dir(TEST_DATA_DIRECTOR)
+    setup_data_dir(TEST_DATA_DIRECTOR)
 
     init_all_database_components()
 

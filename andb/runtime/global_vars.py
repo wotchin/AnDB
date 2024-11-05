@@ -3,11 +3,11 @@
 # The following values are just for test.
 import platform
 
-data_directory = 'data'
+database_directory = None
 buffer_pool_size = 512
 wal_buffer_size = 10
 
-unix_like_env = (platform.uname().system != 'Windows')
+unix_like_env = (platform.uname().system != 'Windows' and platform.uname().system != 'Darwin')
 
 buffer_manager: 'BufferManager' = None
 xact_manager = None

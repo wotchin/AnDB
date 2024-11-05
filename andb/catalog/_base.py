@@ -41,6 +41,7 @@ class CatalogTable:
 
     @abstractmethod
     def init(self):
+        # only called once when the catalog table is created
         pass
 
     def insert(self, row):

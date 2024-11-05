@@ -44,15 +44,15 @@ def test_configuration_mgr():
         assert list(config.items()) == list(config3.items())
         assert (config3.get_value('buffer_pool_size')) == 2048
         config3.set_value('datadir', '/path/to/data')
-        assert global_vars.data_directory == 'data'
+        assert global_vars.database_directory == 'data'
 
     with ConfigurationMgr().bind_file(filename) as config3:
         assert config3.get_value('datadir') == '/path/to/data'
-        assert global_vars.data_directory == '/path/to/data'
+        assert global_vars.database_directory == '/path/to/data'
         config3.set_value('datadir', 'tmp')
-        assert global_vars.data_directory == '/path/to/data'
+        assert global_vars.database_directory == '/path/to/data'
         config3.perform_side_effects()
-        assert global_vars.data_directory == 'tmp'
+        assert global_vars.database_directory == 'tmp'
 
     import os
     os.unlink(filename)

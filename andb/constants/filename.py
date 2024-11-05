@@ -1,4 +1,6 @@
+
 # File name for data directory
+DATABASE_DIR = 'andb_database'
 CONFIG_FILE = 'andb.conf'
 LOG_DIR = 'logs'
 PROCESS_PID_FILE = 'andb.pid'

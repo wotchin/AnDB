@@ -1,7 +1,9 @@
 import time
 
+from prettytable import PrettyTable
+
 from andb.catalog.attribute import AndbAttributeForm
-from andb.catalog.oid import OID_TEMP_TABLE
+from andb.catalog.oid import INVALID_OID, OID_TEMP_TABLE
 from andb.sql.parser import CmdType
 
 
@@ -52,6 +54,23 @@ class ExecuteResultSet(ExecutionResult):
 
     def rows(self):
         return len(self.tuples)
+    
+    def __repr__(self):
+        if len(self.tuples) == 0:
+            return super().__repr__()
+
+        table = PrettyTable()
+        attr_forms = self.attr_forms
+        if not attr_forms:
+            attr_forms = [
+                AndbAttributeForm(class_oid=OID_TEMP_TABLE, name='undefined', type_oid=INVALID_OID, length=0, num=0, notnull=True)
+                for _ in range(len(self.tuples[0]))
+            ]
+
+        table.field_names = [attr_form.name for attr_form in attr_forms]
+        for t in self.tuples:
+            table.add_row(t)
+        return table.get_string() + '\n' + super().__repr__()
 
 
 class ExecutionPortal:
@@ -93,6 +112,7 @@ class ExecutionPortal:
             rv = ExecuteResultSet(elapsed=total_elapsed)
             rv.attr_forms = self.attr_forms
             rv.tuples = self._results
+            rv.effect_rows = len(self._results)
             return rv
         elif self.cmd_type in (CmdType.CMD_INSERT,
                                CmdType.CMD_UPDATE,

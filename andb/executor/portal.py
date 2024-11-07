@@ -3,6 +3,7 @@ import time
 from prettytable import PrettyTable
 
 from andb.catalog.attribute import AndbAttributeForm
+from andb.catalog import CATALOG_ANDB_TYPE
 from andb.catalog.oid import INVALID_OID, OID_TEMP_TABLE
 from andb.sql.parser import CmdType
 
@@ -42,6 +43,8 @@ class ExecuteResultSet(ExecutionResult):
         assert not self.attr_forms
 
         for i, field in enumerate(fields):
+            assert isinstance(field, tuple) and len(field) == 3, \
+                "Field must be tuple and 3 elements (but got {})".format(field)
             name, type_oid, notnull = field
             self.attr_forms.append(
                 AndbAttributeForm(
@@ -54,7 +57,7 @@ class ExecuteResultSet(ExecutionResult):
 
     def rows(self):
         return len(self.tuples)
-    
+
     def __repr__(self):
         if len(self.tuples) == 0:
             return super().__repr__()
@@ -63,11 +66,13 @@ class ExecuteResultSet(ExecutionResult):
         attr_forms = self.attr_forms
         if not attr_forms:
             attr_forms = [
-                AndbAttributeForm(class_oid=OID_TEMP_TABLE, name='undefined', type_oid=INVALID_OID, length=0, num=0, notnull=True)
-                for _ in range(len(self.tuples[0]))
+                AndbAttributeForm(class_oid=OID_TEMP_TABLE, name=f'undefined{i}', type_oid=INVALID_OID, length=0, num=0,
+                                  notnull=True)
+                for i in range(len(self.tuples[0]))
             ]
 
         table.field_names = [attr_form.name for attr_form in attr_forms]
+        table.align = 'l'
         for t in self.tuples:
             table.add_row(t)
         return table.get_string() + '\n' + super().__repr__()
@@ -107,6 +112,17 @@ class ExecutionPortal:
         total_elapsed = self.init_elapsed + self.execute_elapsed + self.final_elapsed
         if self.cmd_type == CmdType.CMD_UTILITY:
             return ExecutionResult(elapsed=total_elapsed)
+        elif self.cmd_type == CmdType.CMD_EXPLAIN:
+            rv = ExecuteResultSet(elapsed=total_elapsed)
+            # Explain statement has two text filed that contain two tree-like text.
+            rv.define_fields(
+                # name, type oid, notnull
+                (("logical plan", CATALOG_ANDB_TYPE.get_type_oid("text"), True),
+                 ("physical plan", CATALOG_ANDB_TYPE.get_type_oid("text"), True))
+            )
+            # directly assigned? maybe a not good form but easier
+            rv.tuples = self._results
+            return rv
         elif self.cmd_type == CmdType.CMD_SELECT:
             # todo: result set
             rv = ExecuteResultSet(elapsed=total_elapsed)
@@ -120,4 +136,3 @@ class ExecutionPortal:
             return ExecutionResult(elapsed=total_elapsed, effect_rows=len(self._results))
         else:
             assert False
-

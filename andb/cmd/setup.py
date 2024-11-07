@@ -26,7 +26,6 @@ def setup_data_dir(path):
     for catalog_table in get_all_catalogs():
         catalog_table.init()
         catalog_table.save()
-        os.sync()
 
     # create a default database -- andb
     os.mkdir(os.path.join(BASE_DIR, str(OID_DATABASE_ANDB)))

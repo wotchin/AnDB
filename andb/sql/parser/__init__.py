@@ -14,7 +14,8 @@ class CmdType(Enum):
     CMD_SELECT = 2
     CMD_UPDATE = 3
     CMD_UTILITY = 4
-    CMD_UNDEFINED = 5
+    CMD_EXPLAIN = 5
+    CMD_UNDEFINED = 6
 
 
 def andb_query_parse(query):
@@ -33,9 +34,11 @@ def get_ast_type(ast_):
     elif (
             isinstance(ast_, create.CreateTable) or
             isinstance(ast_, create.CreateIndex) or
-            isinstance(ast_, explain.Explain) or
             isinstance(ast_, alter.AlterTable)
     ):
         return CmdType.CMD_UTILITY
+    elif isinstance(ast_, explain.Explain):
+        return CmdType.CMD_EXPLAIN
+
     else:
         return CmdType.CMD_UNDEFINED

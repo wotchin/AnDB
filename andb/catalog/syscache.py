@@ -16,3 +16,6 @@ _ALL_CATALOGS = (CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_CLASS,
 
 def get_all_catalogs():
     return _ALL_CATALOGS
+
+
+__all__ = _ALL_CATALOGS

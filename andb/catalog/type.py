@@ -3,7 +3,7 @@ from functools import partial
 from andb.common import hash_functions
 from andb.common import cstructure
 from ._base import CatalogForm, CatalogTable
-from .oid import INVALID_OID
+from .oid import INVALID_OID, OID_TYPE_START, OID_TYPE_END
 from andb.common.utils import memoize
 from andb.constants.strings import BIG_END
 
@@ -289,6 +289,7 @@ class AndbTypeTable(CatalogTable):
 
     @memoize
     def get_type_name(self, oid):
+        assert isinstance(oid, int) and OID_TYPE_START <= oid <= OID_TYPE_END, "invalid oid"
         for r in self.rows:
             if r.oid == oid:
                 return r.type_name

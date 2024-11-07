@@ -84,17 +84,16 @@ class ExplainOperator(PhysicalOperator):
     def explain(operator, indent=''):
         output_lines = []
         name = operator.name
-        output_lines.append(f"{indent}├─ {name}")
+        output_lines.append(f"{indent} -> {name}")
 
+        # add operator parameters
+        params = []
         for name, value in operator.get_args():
-            output_lines.append(f"{indent}└  {name}: {value}")
+            params.append(f"{name}: {value}")
+        output_lines.append(f"{indent}    {', '.join(params)}")
 
-        children_count = len(operator.children)
         for i, child in enumerate(operator.children):
-            is_last_child = (i == children_count - 1)
-            branch_char = ' ' if is_last_child else ' '
-            branch_indent = '    ' if is_last_child else '    '
-            child_indent = f"{indent}{branch_char} {branch_indent}"
+            child_indent = f'{indent}  '
             output_lines.extend(ExplainOperator.explain(child, child_indent))
 
         return output_lines
@@ -108,8 +107,9 @@ class ExplainOperator(PhysicalOperator):
         self.physical_plan.open()
 
     def next(self):
-        yield '\n'.join(ExplainOperator.explain(self.logical_plan))
-        yield '\n'.join(ExplainOperator.explain(self.physical_plan))
+        # onw row with two columns: logical plan and physical plan
+        yield ('\n'.join(ExplainOperator.explain(self.logical_plan)),
+               '\n'.join(ExplainOperator.explain(self.physical_plan)))
 
     def close(self):
         self.physical_plan.close()

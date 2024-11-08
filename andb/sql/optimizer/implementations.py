@@ -200,6 +200,7 @@ class QueryImplementation(BaseImplementation):
         # todo: non-SJP, estimation
         root_node = cls.implement_tree(physical_query.logical_query.children[0])
         physical_query.add_child(root_node)
+
         return physical_query
 
 

@@ -7,8 +7,8 @@ class PhysicalOperator:
         self.total_cost = 0
         self.startup_elapsed = 0
         self.total_elapsed = 0
-        self.children = []
 
+        self.children = []
         # output target columns
         self.columns = None
 

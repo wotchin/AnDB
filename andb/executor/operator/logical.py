@@ -46,8 +46,20 @@ class AggregationFunctions(Enum):
     avg = (lambda x: sum(x) / len(x))
 
 
-class TableColumn:
+class AbstractColumn:
+    def __init__(self):
+        self.alias = None
+
+    @property
+    def standard_name(self):
+        if self.alias:
+            return self.alias
+        return self.__repr__()
+
+
+class TableColumn(AbstractColumn):
     def __init__(self, table_name, column_name):
+        super().__init__()
         self.table_name = table_name
         self.column_name = column_name
         self.function_name = None
@@ -70,8 +82,9 @@ class TableColumn:
         return TableColumn(self.table_name, self.column_name)
 
 
-class FunctionColumn:
+class FunctionColumn(AbstractColumn):
     def __init__(self, function_name, table_columns):
+        super().__init__()
         self.function_name = function_name
         self.table_columns = table_columns
         self.alias = function_name  # default

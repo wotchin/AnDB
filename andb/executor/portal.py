@@ -5,8 +5,10 @@ from prettytable import PrettyTable
 from andb.catalog.attribute import AndbAttributeForm
 from andb.catalog import CATALOG_ANDB_TYPE
 from andb.catalog.oid import INVALID_OID, OID_TEMP_TABLE
+from andb.catalog.syscache import get_attribute_by_name
+from andb.executor.operator.logical import TableColumn, FunctionColumn
 from andb.sql.parser import CmdType
-
+from andb.runtime import session_vars
 
 class ExecutionResult:
     def __init__(self, success=True, notice=None, warning=None, effect_rows=0, elapsed=0):
@@ -35,6 +37,8 @@ class ExecuteResultTuple(ExecutionResult):
 
 class ExecuteResultSet(ExecutionResult):
     def __init__(self, **kwargs):
+        # todo: the ResultSet is a tabular that can be scanned again and has
+        # its own name, attributes ...
         super().__init__(**kwargs)
         self.attr_forms = []
         self.tuples = []
@@ -43,12 +47,13 @@ class ExecuteResultSet(ExecutionResult):
         assert not self.attr_forms
 
         for i, field in enumerate(fields):
-            assert isinstance(field, tuple) and len(field) == 3, \
-                "Field must be tuple and 3 elements (but got {})".format(field)
-            name, type_oid, notnull = field
+            TUPLE_LENGTH_ASSERTION = 4
+            assert isinstance(field, tuple) and len(field) == TUPLE_LENGTH_ASSERTION, \
+                f"Field must be tuple and {TUPLE_LENGTH_ASSERTION} elements (but got {field})"
+            name, type_oid, length, notnull = field
             self.attr_forms.append(
                 AndbAttributeForm(
-                    class_oid=OID_TEMP_TABLE, name=name, type_oid=type_oid, length=0, num=i, notnull=notnull
+                    class_oid=OID_TEMP_TABLE, name=name, type_oid=type_oid, length=length, num=i, notnull=notnull
                 )
             )
 
@@ -85,7 +90,7 @@ class ExecutionPortal:
         self.plan_tree = plan_tree
         self.xid = 0
         self._results = None
-        self.attr_forms = None  # target list
+        self.target_list_columns = None  # target list
         self.init_elapsed = 0
         self.execute_elapsed = 0
         self.final_elapsed = 0
@@ -93,12 +98,14 @@ class ExecutionPortal:
     def initialize(self):
         start_time = time.monotonic()
         self.plan_tree.open()
+        # todo: self.attr_forms
         self.init_elapsed = time.monotonic() - start_time
 
     def execute(self):
         start_time = time.monotonic()
         root = self.plan_tree
         self._results = list(root.next())
+        self.target_list_columns = root.columns
         self.execute_elapsed = time.monotonic() - start_time
         # todo: result type
 
@@ -116,9 +123,9 @@ class ExecutionPortal:
             rv = ExecuteResultSet(elapsed=total_elapsed)
             # Explain statement has two text filed that contain two tree-like text.
             rv.define_fields(
-                # name, type oid, notnull
-                (("logical plan", CATALOG_ANDB_TYPE.get_type_oid("text"), True),
-                 ("physical plan", CATALOG_ANDB_TYPE.get_type_oid("text"), True))
+                # name, type oid, length, notnull
+                (("logical plan", CATALOG_ANDB_TYPE.get_type_oid("text"), 0, True),
+                 ("physical plan", CATALOG_ANDB_TYPE.get_type_oid("text"), 0, True))
             )
             # directly assigned? maybe a not good form but easier
             rv.tuples = self._results
@@ -126,7 +133,24 @@ class ExecutionPortal:
         elif self.cmd_type == CmdType.CMD_SELECT:
             # todo: result set
             rv = ExecuteResultSet(elapsed=total_elapsed)
-            rv.attr_forms = self.attr_forms
+
+            # construct output fields
+            # todo: can be reused and scanned again
+            to_be_defined_fields = []
+            for column in self.target_list_columns:
+                if isinstance(column, TableColumn):
+                    attr = get_attribute_by_name(column.table_name, column.column_name,
+                                                 database_oid=session_vars.database_oid)
+                    to_be_defined_fields.append((column.standard_name, attr.type_oid, attr.length, attr.notnull))
+                elif isinstance(column, FunctionColumn):
+                    # todo: TBH, we have to determine what the type of function return value is
+                    # and construct the field according to the information but we haven't implemented
+                    # the catalog to record what the type is.
+                    # Hence, we have to mock data here but it still works.
+                    to_be_defined_fields.append((column.standard_name, INVALID_OID, 0, True))
+
+            rv.define_fields(to_be_defined_fields)
+            # directly assigned? maybe a not good form but easier
             rv.tuples = self._results
             rv.effect_rows = len(self._results)
             return rv

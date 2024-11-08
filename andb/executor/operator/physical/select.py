@@ -354,8 +354,14 @@ class Append(Scan):
         self.name = 'Append'
 
     def open(self):
+        columns = None
         for child in self.children:
             child.open()
+            if columns is None:
+                columns = child.columns
+            else:
+                if columns != child.columns:
+                    raise RuntimeError('Columns do not match')
 
     def next_internal(self):
         for child in self.children:
@@ -778,6 +784,7 @@ class PhysicalQuery(PhysicalOperator):
             raise InitializationStageError('not found children.')
 
         self.children[0].open()
+        self.columns = self.children[0].columns
 
     def next(self):
         for tuple_ in self.children[0].next():

@@ -1,6 +1,6 @@
 import time
 
-from prettytable import PrettyTable
+from andb.common.tabular_format import TabularFormat
 
 from andb.catalog.attribute import AndbAttributeForm
 from andb.catalog import CATALOG_ANDB_TYPE
@@ -67,7 +67,7 @@ class ExecuteResultSet(ExecutionResult):
         if len(self.tuples) == 0:
             return super().__repr__()
 
-        table = PrettyTable()
+        table = TabularFormat()
         attr_forms = self.attr_forms
         if not attr_forms:
             attr_forms = [
@@ -77,7 +77,6 @@ class ExecuteResultSet(ExecutionResult):
             ]
 
         table.field_names = [attr_form.name for attr_form in attr_forms]
-        table.align = 'l'
         for t in self.tuples:
             table.add_row(t)
         return table.get_string() + '\n' + super().__repr__()

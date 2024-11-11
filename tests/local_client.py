@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import shutil
@@ -47,6 +48,7 @@ def run_shell():
             continue
         except Exception as e:
             print(f"Error: {str(e)}")
+            logging.exception(e)
             continue
 
 if __name__ == '__main__':

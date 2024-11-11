@@ -149,6 +149,7 @@ class Scan(PhysicalOperator):
     def __init__(self, relation_oid, columns, filter_: Filter = None, lock=rlock.ACCESS_SHARE_LOCK):
         super().__init__('Scan')
         self.relation_oid = relation_oid
+        # if specify columns, that means the scan involves projection
         self.columns = columns
         self.projection_attr_idx = None
         self._filter = filter_
@@ -164,6 +165,8 @@ class Scan(PhysicalOperator):
         return self._pageno, self._tid
 
     def open(self):
+        super().open()
+
         self.relation = open_relation(self.relation_oid, self.lock)
         if not self.relation:
             raise InitializationStageError(f'cannot open relation {self.relation_oid}.')
@@ -216,6 +219,10 @@ class Scan(PhysicalOperator):
 
     def close(self):
         close_relation(self.relation_oid, self.lock)
+        super().close()
+
+    def get_args(self):
+        return (('columns', self.columns),) + super().get_args()
 
 
 class IndexScan(Scan):
@@ -246,8 +253,8 @@ class IndexScan(Scan):
             self.index_columns.append(TableColumn(self.table_relation.name, self.table_attr_forms[form.attr_num].name))
 
     def close(self):
-        super().close()
         close_relation(self.table_relation, lock_mode=rlock.ACCESS_SHARE_LOCK)
+        super().close()
 
     @staticmethod
     def combine(columns, const_values):
@@ -354,6 +361,8 @@ class Append(Scan):
         self.name = 'Append'
 
     def open(self):
+        super().open()
+        
         columns = None
         for child in self.children:
             child.open()
@@ -371,7 +380,8 @@ class Append(Scan):
     def close(self):
         for child in self.children:
             child.close()
-
+        
+        super().close()
 
 class TempTableScan(Append):
     def __init__(self, relation_oid, columns, filter_: Filter = None, lock=rlock.ACCESS_SHARE_LOCK):
@@ -396,6 +406,8 @@ class Join(PhysicalOperator):
         return (('join_type', self.join_type), ('condition', self.join_filter)) + super().get_args()
 
     def open(self):
+        super().open()
+
         # open can initialize all works
         # if one certain operator's columns is None, by using open method we can set value for that.
         self.left_tree.open()
@@ -412,6 +424,9 @@ class Join(PhysicalOperator):
             for j, join_column in enumerate(self.join_columns):
                 if target_column == join_column:
                     self.projection_attr_idx.append(j)
+                    # when we found an index, we don't need to go ahead
+                    # otherwise, such as self-join, we will add redundant element
+                    break
 
         if len(self.projection_attr_idx) != len(self.columns):
             raise InitializationStageError('target columns are not all in joined columns.')
@@ -422,6 +437,8 @@ class Join(PhysicalOperator):
     def close(self):
         self.left_tree.close()
         self.right_tree.close()
+        
+        super().close()
 
     def next(self):
         for tuple_ in self.project():
@@ -624,6 +641,8 @@ class HashAggregation(Aggregation):
                 ('aggregation', self.aggregation_columns)) + super().get_args()
 
     def open(self):
+        super().open()
+        
         assert len(self.children) == 1
         child = self.children[0]
         child.open()
@@ -671,7 +690,8 @@ class HashAggregation(Aggregation):
 
     def close(self):
         self.children[0].close()
-
+        
+        super().close()
 
 class Sort(Materialize):
     INTERNAL_SORT = 'internal_sort'
@@ -701,6 +721,7 @@ class Sort(Materialize):
         return (('sort_method', self.sort_method), ('keys', self._sort_keys())) + super().get_args()
 
     def open(self):
+        super().open()
         if len(self.children) != 1:
             raise InitializationStageError('sort operator only can have one child.')
         child = self.children[0]
@@ -773,22 +794,34 @@ class Sort(Materialize):
 class PhysicalQuery(PhysicalOperator):
 
     def __init__(self, logical_query):
-        super().__init__('Query')
+        super().__init__('Result')
         self.logical_query = logical_query
         self.logical_plan = logical_query.children[0]
         self.simple_plan = len(logical_query.scan_operators)
         self.has_join_clause = len(logical_query.join_operators) > 0
+        self.projection_column_idx = []
 
     def open(self):
         if len(self.children) == 0:
             raise InitializationStageError('not found children.')
 
+        super().open()
         self.children[0].open()
-        self.columns = self.children[0].columns
+        child_columns = self.children[0].columns
+        self.columns = self.logical_query.target_list
+        # only output target columns
+        for target_column in self.columns:
+            for i, child_column in enumerate(child_columns):
+                if target_column == child_column:
+                    self.projection_column_idx.append(i)
 
     def next(self):
-        for tuple_ in self.children[0].next():
-            yield tuple_
+        for child in self.children:
+            self.actual_rows += 1
+            for tup in child.next():
+                # projecting
+                yield tuple(tup[i] for i in self.projection_column_idx)
 
     def close(self):
         self.children[0].close()
+        super().close()

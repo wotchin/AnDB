@@ -25,6 +25,8 @@ class InsertPhysicalOperator(PhysicalOperator):
         return ('table_name', self.relation.name), ('table_oid', self.table_oid) + super().get_args()
 
     def open(self):
+        super().open()
+
         self.relation = open_relation(self.table_oid, rlock.ROW_EXCLUSIVE_LOCK)
         if not self.relation:
             raise InitializationStageError(f'cannot get the relation using oid {self.table_oid}.')
@@ -55,3 +57,5 @@ class InsertPhysicalOperator(PhysicalOperator):
         close_relation(self.table_oid, rlock.ROW_EXCLUSIVE_LOCK)
         for relation in self.index_relations:
             close_relation(relation.oid, rlock.ROW_EXCLUSIVE_LOCK)
+
+        super().close()

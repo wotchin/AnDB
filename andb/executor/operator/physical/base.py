@@ -1,3 +1,4 @@
+import time
 
 
 class PhysicalOperator:
@@ -12,17 +13,24 @@ class PhysicalOperator:
         # output target columns
         self.columns = None
 
+        # instrument
+        self.actual_rows = 0
+        self.open_time = 0
+        self.close_time = 0
+
     def get_args(self):
-        return ('startup_cost', self.startup_cost), ('total_cost', self.total_cost)
+        return (('cost', f'{self.startup_cost}...{self.total_cost}'),
+                ('actual_rows', self.actual_rows),
+                ('elapsed', f'{self.close_time - self.open_time:.2f}'))
 
     def open(self):
-        pass
+        self.open_time = time.monotonic()
 
     def next(self):
-        pass
+        self.actual_rows += 1
 
     def close(self):
-        pass
+        self.close_time = time.monotonic()
 
     def add_child(self, operator):
         assert isinstance(operator, PhysicalOperator)

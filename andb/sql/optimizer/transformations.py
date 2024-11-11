@@ -179,6 +179,8 @@ class QueryLogicalPlanTransformation(BaseTransformation):
     @staticmethod
     def on_transform(query: LogicalQuery):
         # todo: extract all involved columns, then prune useless columns
+        # todo: rewrite
+
         if not query.join_operators:
             QueryLogicalPlanTransformation.process_non_join_scan(query)
         else:
@@ -343,9 +345,10 @@ class SelectTransformation(BaseTransformation):
             left_table_name, right_table_name = join_clause.left.parts, join_clause.right.parts
             left_scan_operator = right_scan_operator = None
             for scan_operator in query.scan_operators:
+                # for self-joining, the left and right table reuse a same scan operator
                 if scan_operator.table_name == left_table_name:
                     left_scan_operator = scan_operator
-                elif scan_operator.table_name == right_table_name:
+                if scan_operator.table_name == right_table_name:
                     right_scan_operator = scan_operator
 
             join_operator.add_child(left_scan_operator)

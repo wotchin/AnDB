@@ -102,9 +102,17 @@ class ExplainOperator(PhysicalOperator):
         super().__init__('Explain')
         self.logical_plan = logical_plan
         self.physical_plan = None
+        # todo: add grammar and syntax support, explain analyze ...
+        self.analyze = False
 
     def open(self):
+        # let the database generate physical plan
+        # we can directly close the physical plan when don't use analyze
         self.physical_plan.open()
+        if self.analyze:
+            # we should perform the statement when analyzing
+            list(self.physical_plan.next())
+        self.physical_plan.close()
 
     def next(self):
         # onw row with two columns: logical plan and physical plan
@@ -112,4 +120,4 @@ class ExplainOperator(PhysicalOperator):
                '\n'.join(ExplainOperator.explain(self.physical_plan)))
 
     def close(self):
-        self.physical_plan.close()
+        pass

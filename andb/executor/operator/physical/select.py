@@ -7,7 +7,7 @@ from andb.runtime import global_vars, session_vars
 from andb.sql.parser.ast.misc import Star
 from andb.sql.parser.ast.join import JoinType
 
-from ..logical import Condition, TableColumn, AggregationFunctions
+from ..logical import Condition, TableColumn, AggregationFunctions, FunctionColumn
 from ..utils import expression_eval, ExprOperation
 from .base import PhysicalOperator
 
@@ -647,8 +647,11 @@ class HashAggregation(Aggregation):
         child = self.children[0]
         child.open()
 
-        self.columns = self.grouping_columns + self.aggregation_columns
-        output_table_columns = set(c.core() for c in self.columns)
+        # todo: fix the relationship between involved_columns and self.columns
+        # and their using places.
+        involved_columns = self.grouping_columns + self.aggregation_columns
+        self.columns = self.grouping_columns + [FunctionColumn(self.function_name, self.aggregation_columns)]
+        output_table_columns = set(c.core() for c in involved_columns)
         input_table_columns = set(c.core() for c in child.columns)
         if not output_table_columns.issubset(input_table_columns):
             raise InitializationStageError(f'not found all group keys {self.grouping_columns}.')
@@ -660,7 +663,7 @@ class HashAggregation(Aggregation):
 
         # check for having clause
         if self.agg_condition:
-            self.agg_condition.set_tuple_columns(self.columns)
+            self.agg_condition.set_tuple_columns(involved_columns)
 
     def next_internal(self):
         self.gather()
@@ -814,6 +817,7 @@ class PhysicalQuery(PhysicalOperator):
             for i, child_column in enumerate(child_columns):
                 if target_column == child_column:
                     self.projection_column_idx.append(i)
+                    break
 
     def next(self):
         for child in self.children:

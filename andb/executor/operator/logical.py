@@ -68,7 +68,7 @@ class TableColumn(AbstractColumn):
     def __repr__(self):
         if not self.function_name:
             return f'{self.table_name}.{self.column_name}'
-        return f'{self.function_name}({self.table_name}.{self.column_name})'
+        return f'({self.table_name}.{self.column_name})'
 
     def __eq__(self, other):
         if not isinstance(other, TableColumn):
@@ -86,11 +86,12 @@ class FunctionColumn(AbstractColumn):
     def __init__(self, function_name, table_columns):
         super().__init__()
         self.function_name = function_name
+        assert isinstance(table_columns, list) or isinstance(table_columns, tuple)
         self.table_columns = table_columns
         self.alias = function_name  # default
 
     def __repr__(self):
-        table_columns = ', '.join(self.table_columns)
+        table_columns = ', '.join(str(c) for c in self.table_columns)
         return f'{self.function_name}({table_columns})'
 
     def __eq__(self, other):

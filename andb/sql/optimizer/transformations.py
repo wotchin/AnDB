@@ -283,6 +283,8 @@ class SelectTransformation(BaseTransformation):
                 for table_name in query.from_tables:
                     for attr_form in query.table_attr_forms[table_name]:
                         table_column = TableColumn(table_name, attr_form.name)
+                        if target.alias:
+                            table_column.alias = target.alias.parts
                         query.target_list.append(table_column)
                         query.add_seen_table_column(table_column)
             elif isinstance(target, Identifier) and '.' in target.parts:
@@ -300,12 +302,18 @@ class SelectTransformation(BaseTransformation):
                 if not found:
                     raise InitializationStageError(f"not found '{target.parts}'.")
                 table_column = TableColumn(table_name, column_name)
+                if target.alias:
+                    table_column.alias = target.alias.parts
                 query.target_list.append(table_column)
                 query.add_seen_table_column(table_column)
             elif isinstance(target, Identifier):
                 target_column_name = target.parts
                 target_table_name = cls._find_table_name(query, target_column_name)
+                if target_table_name is None:
+                    raise InitializationStageError(f"not found '{target.parts}'.")
                 table_column = TableColumn(target_table_name, target_column_name)
+                if target.alias:
+                    table_column.alias = target.alias.parts
                 query.target_list.append(table_column)
                 query.add_seen_table_column(table_column)
             elif isinstance(target, Function):
@@ -318,7 +326,10 @@ class SelectTransformation(BaseTransformation):
                     table_column.function_name = target.op
                     table_columns.append(table_column)
                     query.add_seen_table_column(table_column)
-                query.target_list.append(FunctionColumn(target.op, table_columns))
+                function_column = FunctionColumn(target.op, table_columns)
+                if target.alias:
+                    function_column.alias = target.alias.parts
+                query.target_list.append(function_column)
             else:
                 # todo: function and agg
                 raise NotImplementedError('not supported this syntax.')

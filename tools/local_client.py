@@ -11,7 +11,8 @@ from andb.cmd.setup import setup_data_dir
 from andb.initializer import init_all_database_components
 from andb.entrance import execute_simple_query
 
-TEST_DATA_DIRECTOR = os.path.realpath('local_client_data')
+TEST_DATA_DIRECTOR = os.path.join(os.path.realpath(os.path.dirname(__file__)), 
+                                  'local_client_data')
 
 def init_database():
     if os.path.exists(TEST_DATA_DIRECTOR):

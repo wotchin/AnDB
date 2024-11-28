@@ -3,7 +3,7 @@ from functools import partial
 from andb.common import hash_functions
 from andb.common import cstructure
 from ._base import CatalogForm, CatalogTable
-from .oid import INVALID_OID, OID_TYPE_START, OID_TYPE_END
+from .oid import INVALID_OID, OID_SYSTEM_TABLE_TYPE, OID_TYPE_START, OID_TYPE_END
 from andb.common.utils import memoize
 from andb.constants.strings import BIG_END
 
@@ -264,6 +264,8 @@ _BUILTIN_TYPES_DICT = {i.type_name: i for i in _BUILTIN_TYPES}
 
 class AndbTypeTable(CatalogTable):
     __tablename__ = 'andb_type'
+    __oid__ = OID_SYSTEM_TABLE_TYPE
+    __form__ = AndbTypeForm
 
     def init(self):
 

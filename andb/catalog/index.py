@@ -1,3 +1,4 @@
+from andb.catalog.oid import OID_SYSTEM_TABLE_INDEX
 from ._base import CatalogTable, CatalogForm
 from .attribute import _ANDB_ATTRIBUTE
 
@@ -33,6 +34,8 @@ class AndbIndexForm(CatalogForm):
 
 class AndbIndexTable(CatalogTable):
     __tablename__ = 'andb_index'
+    __oid__ = OID_SYSTEM_TABLE_INDEX
+    __form__ = AndbIndexForm
 
     def init(self):
         pass

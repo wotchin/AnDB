@@ -264,7 +264,7 @@ class SelectTransformation(BaseTransformation):
 
         for table_name in unchecked_tables:
             table_oid = CATALOG_ANDB_CLASS.get_relation_oid(table_name, database_oid=session_vars.database_oid,
-                                                            kind=RelationKinds.HEAP_TABLE)
+                                                            kind=None)
             if table_oid != INVALID_OID:
                 query.from_tables[table_name] = table_oid
                 query.table_attr_forms[table_name] = CATALOG_ANDB_ATTRIBUTE.get_table_forms(table_oid)

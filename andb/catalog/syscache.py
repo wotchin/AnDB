@@ -16,6 +16,8 @@ _ALL_CATALOGS = (CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_CLASS,
 
 
 def get_all_catalogs():
+    # we must declare all catalogs here to ensure that they are
+    # initialized before using them.
     return _ALL_CATALOGS
 
 

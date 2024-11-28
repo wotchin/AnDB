@@ -1,3 +1,4 @@
+from andb.catalog.oid import OID_SYSTEM_TABLE_ATTRIBUTE
 from ._base import CatalogTable, CatalogForm
 from .type import _ANDB_TYPE, VarcharType
 
@@ -28,6 +29,8 @@ class AndbAttributeForm(CatalogForm):
 
 class AndbAttributeTable(CatalogTable):
     __tablename__ = 'andb_attribute'
+    __oid__ = OID_SYSTEM_TABLE_ATTRIBUTE
+    __form__ = AndbAttributeForm
 
     def init(self):
         # todo: insert system catalog information?
@@ -48,7 +51,7 @@ class AndbAttributeTable(CatalogTable):
             return None
         return attr.num
 
-    def define_table_fields(self, class_oid, fields):
+    def define_table_fields(self, class_oid, fields, persistent=True):
         num = 0
         while num < len(fields):
             name, type_name, notnull = fields[num]
@@ -59,14 +62,21 @@ class AndbAttributeTable(CatalogTable):
                 type_name = VarcharType.type_name
             else:
                 length = _ANDB_TYPE.get_type_form(type_name).type_bytes
-            self.insert(AndbAttributeForm(
+            
+            row = AndbAttributeForm(
                 class_oid=class_oid,
                 name=name,
                 type_oid=_ANDB_TYPE.get_type_oid(type_name),
                 length=length,
                 num=num,
                 notnull=notnull
-            ))
+            )
+            if persistent:
+                self.insert(row)
+            else:
+                # todo: binary search
+                self.rows.append(row)
+                self.rows.sort()
             num += 1
 
 

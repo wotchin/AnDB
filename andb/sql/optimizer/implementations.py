@@ -1,4 +1,4 @@
-from andb.catalog.oid import INVALID_OID
+from andb.catalog.oid import INVALID_OID, OID_TEMP_TABLE
 from andb.catalog.syscache import CATALOG_ANDB_CLASS, CATALOG_ANDB_INDEX, CATALOG_ANDB_ATTRIBUTE
 from andb.errno.errors import InitializationStageError
 from andb.executor.operator.physical import select, insert, delete, update, utility
@@ -62,9 +62,19 @@ class ScanImplementation(BaseImplementation):
     @classmethod
     def _implement_scan_operator(cls, scan_operator):
         # temp table scan
+        assert scan_operator.table_oid != INVALID_OID
+        table_kind = CATALOG_ANDB_CLASS.get_relation_kind(scan_operator.table_oid)
+
         if scan_operator.table_name == DummyTableName.TEMP_TABLE_NAME:
+            assert table_kind == RelationKinds.TEMPORARY_TABLE
             return select.TempTableScan(scan_operator.table_oid, scan_operator.table_columns,
                                         filter_=Filter(scan_operator.condition))
+        if table_kind == RelationKinds.SYSTEM_TABLE:
+            return select.SystemTableScan(scan_operator.table_oid, scan_operator.table_columns,
+                                          filter_=(None if scan_operator.condition is None
+                                                     else Filter(scan_operator.condition)))
+        if table_kind == RelationKinds.MEMORY_TABLE:
+            raise InitializationStageError(f'not supported memory table {scan_operator.table_name}.')
 
         predicates = cls._extract_predicates(scan_operator.condition)
         if len(predicates) == 0:

@@ -2,13 +2,14 @@ import os
 import pickle
 from abc import ABC, abstractmethod
 
+from andb.catalog.oid import INVALID_OID
 from andb.constants.filename import CATALOG_DIR
 
 
 class CatalogForm(ABC):
     __fields__ = {}
 
-    def _extract_field_values(self, o):
+    def to_tuple(self, o):
         values = []
         for name in self.__fields__:
             values.append(getattr(o, name))
@@ -17,11 +18,11 @@ class CatalogForm(ABC):
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
-        return (self._extract_field_values(self) ==
-                self._extract_field_values(other))
+        return (self.to_tuple(self) ==
+                self.to_tuple(other))
 
     def __hash__(self):
-        return hash(self._extract_field_values(self))
+        return hash(self.to_tuple(self))
 
     @abstractmethod
     def __lt__(self, other):
@@ -33,6 +34,8 @@ class CatalogForm(ABC):
 
 class CatalogTable:
     __tablename__ = 'undefined'
+    __oid__ = INVALID_OID
+    __form__ = CatalogForm
 
     def __init__(self):
         assert self.__tablename__ != CatalogTable.__tablename__, \
@@ -45,7 +48,7 @@ class CatalogTable:
         pass
 
     def insert(self, row):
-        assert isinstance(row, CatalogForm)
+        assert isinstance(row, self.__form__)
         # todo: binary search
         self.rows.append(row)
         self.rows.sort()

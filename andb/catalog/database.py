@@ -1,5 +1,5 @@
 from ._base import CatalogTable, CatalogForm
-from .oid import OID_RELATION_END, OID_DATABASE_ANDB
+from .oid import OID_RELATION_END, OID_DATABASE_ANDB, OID_SYSTEM_TABLE_DATABASE
 
 
 class AndbDatabaseForm(CatalogForm):
@@ -18,7 +18,8 @@ class AndbDatabaseForm(CatalogForm):
 
 class AndbDatabaseTable(CatalogTable):
     __tablename__ = 'andb_database'
-
+    __oid__ = OID_SYSTEM_TABLE_DATABASE
+    __form__ = AndbDatabaseForm
     def init(self):
         self.insert(AndbDatabaseForm(
             oid=OID_DATABASE_ANDB,

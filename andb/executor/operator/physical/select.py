@@ -2,7 +2,7 @@ from andb.storage.engines.heap.relation import close_relation, open_relation
 from andb.storage.lock import rlock
 from andb.errno.errors import InitializationStageError, ExecutionStageError, FinalizationStageError
 from andb.storage.engines.heap.relation import hot_simple_select, bt_search_range, bt_search, bt_scan_all_keys
-from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_INDEX, CATALOG_ANDB_CLASS
+from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_INDEX, CATALOG_ANDB_CLASS, get_all_catalogs
 from andb.runtime import global_vars, session_vars
 from andb.sql.parser.ast.misc import Star
 from andb.sql.parser.ast.join import JoinType
@@ -354,6 +354,19 @@ class TableScan(Scan):
                     yield tuple_
             global_vars.buffer_manager.unpin_page(buffer_page)
 
+
+class SystemTableScan(TableScan):
+    def __init__(self, relation_oid, columns, filter_: Filter = None, lock=rlock.ACCESS_SHARE_LOCK):
+        super().__init__(relation_oid, columns, filter_, lock)
+        self.name = 'SystemTableScan'
+
+    def next_internal(self):
+        for catalog_table in get_all_catalogs():
+            if catalog_table.__oid__ == self.relation_oid:
+                for catalog_form in catalog_table.rows:
+                    yield catalog_form.to_tuple(catalog_form)
+                break
+                
 
 class Append(Scan):
     def __init__(self, relation_oid, columns, filter_: Filter = None, lock=rlock.ACCESS_SHARE_LOCK):

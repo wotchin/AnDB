@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-import shutil
 
 # add project root to python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -136,7 +136,7 @@ class ConfigurationMgr(ConfigParser):
         defaults = [
             ConfigOption(name='datadir', value='data', opttype=str, min_val=0, max_val=65535, enumvals=None,
                          context='reboot').set_side_effect_function(
-                get_side_effect_function('global', 'data_directory')),
+                get_side_effect_function('global', 'database_directory')),
             ConfigOption(name='buffer_pool_size', value=1024, opttype=int, min_val=0, max_val=65535, enumvals=None,
                          context='reboot').set_side_effect_function(
                 get_side_effect_function('global', 'buffer_pool_size')),

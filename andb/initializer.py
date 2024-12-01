@@ -53,6 +53,8 @@ def init_all_database_components(database_dir=None):
     if database_dir is None:
         database_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                     DATABASE_DIR)
+    if not os.path.exists(database_dir):
+        raise FileNotFoundError(f"Database directory {database_dir} does not exist.")
     global_vars.database_directory = database_dir
     os.chdir(global_vars.database_directory)
     init_storage()

@@ -52,12 +52,27 @@ class ScanImplementation(BaseImplementation):
         matched_count = 0
         for i, index_form in enumerate(index_forms):
             for j, attr_num in enumerate(table_attr_nums):
+                # todo: now, we only support single column index
                 if attr_num == index_form.attr_num:
                     # if follows leftmost prefix rule, all attributions must be the same order
                     if follow_leftmost_prefix_rule and i != j:
                         break
                     matched_count += 1
         return matched_count == len(table_attr_nums)
+    
+    @staticmethod
+    def _is_covered_index_matched(index_forms, table_attr_nums):
+        index_attr_nums = [form.attr_num for form in index_forms]
+        if len(index_attr_nums) != len(table_attr_nums):
+            return False
+        for i, index_attr_num in enumerate(index_attr_nums):
+            for j, table_attr_num in enumerate(table_attr_nums):
+                # todo: now, we only support single column index
+                if table_attr_num == index_attr_num:
+                    # if follows leftmost prefix rule, all attributions must be the same order
+                    if i != j:
+                        return False
+        return True
 
     @classmethod
     def _implement_scan_operator(cls, scan_operator):
@@ -81,18 +96,18 @@ class ScanImplementation(BaseImplementation):
             return TableScan(relation_oid=scan_operator.table_oid, 
                              columns=scan_operator.table_columns, filter_=None)
         table_forms = CATALOG_ANDB_ATTRIBUTE.get_table_forms(scan_operator.table_oid)
-        table_attr_nums = []
+        predicate_attr_nums = []
         for condition in predicates:
             for table_form in table_forms:
                 if condition.left.column_name == table_form.name:
-                    table_attr_nums.append(table_form.num)
+                    predicate_attr_nums.append(table_form.num)
 
         # rule-based optimizer
         # todo: currently, only supports simple index
         candidate_indexes = []
         all_indexes = cls._find_corresponding_index(scan_operator.table_oid)
         for index_oid in all_indexes:
-            if cls._is_index_matched(all_indexes[index_oid], table_attr_nums, follow_leftmost_prefix_rule=True):
+            if cls._is_index_matched(all_indexes[index_oid], predicate_attr_nums, follow_leftmost_prefix_rule=True):
                 candidate_indexes.append(index_oid)
 
         # todo: use selectivity
@@ -100,10 +115,15 @@ class ScanImplementation(BaseImplementation):
             return TableScan(relation_oid=scan_operator.table_oid, columns=scan_operator.table_columns,
                              filter_=Filter(scan_operator.condition))
 
-        # rule: choose covered index scan first
+        # rule: try to choose covered index scan first
+        target_form_nums = []
+        for column in scan_operator.table_columns:
+            for table_form in table_forms:
+                if column.column_name == table_form.name:
+                    target_form_nums.append(table_form.num)
         for index_oid in candidate_indexes:
             # if they are both length, it means we got a covered index.
-            if len(table_attr_nums) == len(all_indexes[index_oid]):
+            if cls._is_covered_index_matched(all_indexes[index_oid], target_form_nums):
                 return CoveredIndexScan(relation_oid=index_oid, columns=scan_operator.table_columns,
                                         filter_=Filter(scan_operator.condition))
 

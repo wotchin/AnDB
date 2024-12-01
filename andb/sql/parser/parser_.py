@@ -16,6 +16,7 @@ from .ast.operation import Operation, Function, BinaryOperation
 from .ast.identifier import Identifier
 from .ast.misc import Constant, Star, Tuple
 from .exception import ParsingException
+from .ast.drop import DropTable, DropIndex
 
 
 def check_select_keywords(select, operation):
@@ -80,7 +81,8 @@ class SQLParser(sly.Parser):
         'select',
         'delete',
         'insert',
-        'update'
+        'update',
+        'drop'
     )
     def query(self, p):
         return p[0]
@@ -552,3 +554,13 @@ class SQLParser(sly.Parser):
             name=p.identifier0, table_name=p.identifier1,
             columns=p.result_columns, index_type=index_type
         )
+
+    # Drop Table
+    @_('DROP TABLE identifier')
+    def drop(self, p):
+        return DropTable(name=p.identifier)
+
+    # Drop Index
+    @_('DROP INDEX identifier')
+    def drop(self, p):
+        return DropIndex(name=p.identifier)

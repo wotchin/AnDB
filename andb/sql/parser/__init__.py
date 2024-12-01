@@ -1,5 +1,7 @@
 from enum import Enum
 
+from andb.sql.parser.ast import drop
+
 from .parser_ import SQLParser
 from .lexer import SQLLexer
 from .ast import select, delete, insert, update, create, explain, alter
@@ -34,7 +36,9 @@ def get_ast_type(ast_):
     elif (
             isinstance(ast_, create.CreateTable) or
             isinstance(ast_, create.CreateIndex) or
-            isinstance(ast_, alter.AlterTable)
+            isinstance(ast_, alter.AlterTable) or
+            isinstance(ast_, drop.DropTable) or
+            isinstance(ast_, drop.DropIndex)
     ):
         return CmdType.CMD_UTILITY
     elif isinstance(ast_, explain.Explain):

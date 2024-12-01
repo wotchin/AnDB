@@ -103,3 +103,7 @@ def test_ddl():
                    "<CreateIndex name=<Identifier parts=idx> table_name=<Identifier parts=t1> columns=[<Identifier parts=a>] index_type=<Identifier parts=btree>>")
     assert_parsing("CREATE index idx on t1 (a) using lsmtree",
                    "<CreateIndex name=<Identifier parts=idx> table_name=<Identifier parts=t1> columns=[<Identifier parts=a>] index_type=<Identifier parts=lsmtree>>")
+    assert_parsing("DROP TABLE t1",
+                   "<DropTable name=<Identifier parts=t1>>")
+    assert_parsing("DROP INDEX idx",
+                   "<DropIndex name=<Identifier parts=idx>>")

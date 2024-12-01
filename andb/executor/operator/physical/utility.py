@@ -2,7 +2,7 @@ from andb.catalog.oid import INVALID_OID
 from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_TYPE, CATALOG_ANDB_CLASS
 from andb.errno.errors import RollbackError, DDLException
 from andb.storage.engines.heap.relation import RelationKinds, bt_create_index_internal, \
-    hot_create_table
+    hot_create_table, hot_drop_table, bt_drop_index
 
 from .base import PhysicalOperator
 
@@ -121,3 +121,39 @@ class ExplainOperator(PhysicalOperator):
 
     def close(self):
         pass
+
+
+class DropTableOperator(PhysicalOperator):
+    def __init__(self, table_name, database_oid):
+        super().__init__('DropTable')
+        self.table_name = table_name
+        self.database_oid = database_oid
+
+    def open(self):
+        pass  # No initialization required
+
+    def next(self):
+        # Attempt to drop the table
+        success = hot_drop_table(self.table_name, database_oid=self.database_oid)
+        yield success
+
+    def close(self):
+        pass  # No cleanup required
+
+
+class DropIndexOperator(PhysicalOperator):
+    def __init__(self, index_name, database_oid):
+        super().__init__('DropIndex')
+        self.index_name = index_name
+        self.database_oid = database_oid
+
+    def open(self):
+        pass  # No initialization required
+
+    def next(self):
+        # Attempt to drop the index
+        success = bt_drop_index(self.index_name, database_oid=self.database_oid)
+        yield success
+
+    def close(self):
+        pass  # No cleanup required

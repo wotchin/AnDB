@@ -158,4 +158,4 @@ class ExecutionPortal:
                                CmdType.CMD_DELETE):
             return ExecutionResult(elapsed=total_elapsed, effect_rows=len(self._results))
         else:
-            assert False
+            raise NotImplementedError(f'not supported command type: {self.cmd_type}')

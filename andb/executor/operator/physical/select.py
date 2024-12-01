@@ -150,11 +150,13 @@ class Scan(PhysicalOperator):
     def __init__(self, relation_oid, columns, filter_: Filter = None, lock=rlock.ACCESS_SHARE_LOCK):
         super().__init__('Scan')
         self.relation_oid = relation_oid
+        self.base_table_oid = relation_oid  # for index scan
         # if specify columns, that means the scan involves projection
         self.columns = columns
         self.projection_attr_idx = None
         self._filter = filter_
         self.relation = None
+        self.base_table_relation = None
         self.lock = lock
         self._pageno = 0
         self._tid = 0
@@ -169,17 +171,18 @@ class Scan(PhysicalOperator):
         super().open()
 
         self.relation = open_relation(self.relation_oid, self.lock)
+        self.base_table_relation = open_relation(self.base_table_oid, self.lock)
         if not self.relation:
             raise InitializationStageError(f'cannot open relation {self.relation_oid}.')
 
-        attr_form_array = CATALOG_ANDB_ATTRIBUTE.get_table_forms(self.relation_oid)
+        attr_form_array = CATALOG_ANDB_ATTRIBUTE.get_table_forms(self.base_table_oid)
         self.projection_attr_idx = []
 
         # set each input column name for tuple filter
         if self._filter:
             columns = []
             for attr_form in attr_form_array:
-                table_column = TableColumn(self.relation.name, attr_form.name)
+                table_column = TableColumn(self.base_table_relation.name, attr_form.name)
                 columns.append(table_column)
             self._filter.set_tuple_columns(columns)
 
@@ -189,7 +192,7 @@ class Scan(PhysicalOperator):
             for i, attr_form in enumerate(attr_form_array):
                 assert i == attr_form.num
                 self.projection_attr_idx.append(attr_form.num)
-                self.columns.append(TableColumn(table_name=self.relation.name, column_name=attr_form.name))
+                self.columns.append(TableColumn(table_name=self.base_table_relation.name, column_name=attr_form.name))
         else:
             for column in self.columns:
                 for attr_form in attr_form_array:
@@ -220,6 +223,7 @@ class Scan(PhysicalOperator):
 
     def close(self):
         close_relation(self.relation_oid, self.lock)
+        close_relation(self.base_table_oid, self.lock)
         super().close()
 
     def get_args(self):
@@ -230,10 +234,12 @@ class IndexScan(Scan):
     def __init__(self, relation_oid, columns, filter_: Filter = None, lock=rlock.ACCESS_SHARE_LOCK):
         super().__init__(relation_oid, columns, filter_, lock)
         self.name = 'IndexScan'
+        # for index scan, the relation_oid is the index oid, but we need the base table oid
+        # to get the attribute forms.
+        self.base_table_oid = CATALOG_ANDB_INDEX.get_index_forms(relation_oid)[0].table_oid
         self.index_forms = None
         self.table_attr_forms = None
         self.index_columns = None
-        self.table_relation = None
 
     def get_args(self):
         if self._filter:
@@ -243,18 +249,16 @@ class IndexScan(Scan):
 
     def open(self):
         super().open()
-        self.index_forms = CATALOG_ANDB_INDEX.get_index_forms(self.relation_oid)
-        self.table_relation = open_relation(self.index_forms[0].table_oid, lock_mode=rlock.ACCESS_SHARE_LOCK)
 
+        self.index_forms = CATALOG_ANDB_INDEX.get_index_forms(self.relation_oid)
         self.table_attr_forms = CATALOG_ANDB_INDEX.get_attr_form_array(self.relation_oid)
         self.index_columns = []
         for i, form in enumerate(self.index_forms):
             assert form.index_num == i
             assert self.table_attr_forms[i].num == form.attr_num
-            self.index_columns.append(TableColumn(self.table_relation.name, self.table_attr_forms[form.attr_num].name))
+            self.index_columns.append(TableColumn(self.base_table_relation.name, self.table_attr_forms[form.attr_num].name))
 
     def close(self):
-        close_relation(self.table_relation.oid, lock_mode=rlock.ACCESS_SHARE_LOCK)
         super().close()
 
     @staticmethod
@@ -275,7 +279,7 @@ class IndexScan(Scan):
 
     def fetch_tuple(self, key):
         for pointer in bt_search(self.relation, key=key):
-            tuple_ = hot_simple_select(self.table_relation, pointer.pageno, pointer.tid)
+            tuple_ = hot_simple_select(self.base_table_relation, pointer.pageno, pointer.tid)
             self.set_cursor(pointer.pageno, pointer.tid)
             if tuple_:
                 yield tuple_

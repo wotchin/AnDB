@@ -2,10 +2,11 @@ from andb.catalog.oid import INVALID_OID
 from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_CLASS
 from andb.errno.errors import AnDBNotImplementedError, InitializationStageError
 from andb.executor.operator.logical import *
-from andb.executor.operator.physical.utility import CreateIndexOperator, CreateTableOperator, ExplainOperator
+from andb.executor.operator.physical.utility import CreateIndexOperator, CreateTableOperator, ExplainOperator, DropTableOperator, DropIndexOperator
 from andb.runtime import session_vars
 from andb.sql.parser.ast.create import CreateTable, CreateIndex
 from andb.sql.parser.ast.delete import Delete
+from andb.sql.parser.ast.drop import DropIndex, DropTable
 from andb.sql.parser.ast.explain import Explain
 from andb.sql.parser.ast.insert import Insert
 from andb.sql.parser.ast.join import Join
@@ -24,6 +25,8 @@ class UtilityTransformation(BaseTransformation):
     def match(ast) -> bool:
         return isinstance(ast, CreateIndex) or \
                isinstance(ast, CreateTable) or \
+               isinstance(ast, DropTable) or \
+               isinstance(ast, DropIndex) or \
                isinstance(ast, Explain)
 
     @staticmethod
@@ -37,6 +40,14 @@ class UtilityTransformation(BaseTransformation):
         elif isinstance(ast, CreateTable):
             physical_operator = CreateTableOperator(
                 table_name=ast.name.parts, fields=ast.columns, database_oid=session_vars.database_oid
+            )
+        elif isinstance(ast, DropTable):
+            physical_operator = DropTableOperator(
+                table_name=ast.name.parts, database_oid=session_vars.database_oid
+            )
+        elif isinstance(ast, DropIndex):
+            physical_operator = DropIndexOperator(
+                index_name=ast.name.parts, database_oid=session_vars.database_oid
             )
         elif isinstance(ast, Explain):
             physical_operator = ExplainOperator(logical_plan=andb_ast_transform(ast.target))

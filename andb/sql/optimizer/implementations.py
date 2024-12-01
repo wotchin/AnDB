@@ -78,7 +78,8 @@ class ScanImplementation(BaseImplementation):
 
         predicates = cls._extract_predicates(scan_operator.condition)
         if len(predicates) == 0:
-            return TableScan(relation_oid=scan_operator.table_oid, columns=scan_operator.table_columns, filter_=None)
+            return TableScan(relation_oid=scan_operator.table_oid, 
+                             columns=scan_operator.table_columns, filter_=None)
         table_forms = CATALOG_ANDB_ATTRIBUTE.get_table_forms(scan_operator.table_oid)
         table_attr_nums = []
         for condition in predicates:

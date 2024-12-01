@@ -10,6 +10,7 @@ from andb.sql.parser.ast.join import JoinType
 from ..logical import Condition, TableColumn, AggregationFunctions, FunctionColumn
 from ..utils import expression_eval, ExprOperation
 from .base import PhysicalOperator
+from andb.executor.operator import utils
 
 
 class Filter(PhysicalOperator):
@@ -253,7 +254,7 @@ class IndexScan(Scan):
             self.index_columns.append(TableColumn(self.table_relation.name, self.table_attr_forms[form.attr_num].name))
 
     def close(self):
-        close_relation(self.table_relation, lock_mode=rlock.ACCESS_SHARE_LOCK)
+        close_relation(self.table_relation.oid, lock_mode=rlock.ACCESS_SHARE_LOCK)
         super().close()
 
     @staticmethod
@@ -285,13 +286,12 @@ class IndexScan(Scan):
         const_values = {column: [] for column in self.index_columns}
         for column in self.index_columns:
             for node in self._filter.column_condition[column]:
-                # todo: check node.left must be const value
-                assert (isinstance(node.left, int)
-                        or isinstance(node.left, float)
-                        or isinstance(node.left, str)
-                        or isinstance(node.left, bool)
-                        or node.left is None)
-                const_values[column].append(node.left)
+                if utils.is_const_value(node.left) and isinstance(node.right, TableColumn):
+                    const_values[column].append(node.left)
+                elif utils.is_const_value(node.right) and isinstance(node.left, TableColumn):
+                    const_values[column].append(node.right)
+                else:
+                    raise NotImplementedError('constant value on both sides.')
 
         predicate_num = 0
         for column in self.index_columns:

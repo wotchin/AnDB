@@ -1,6 +1,6 @@
 from andb.catalog.oid import OID_RELATION_START
 from ._base import CatalogTable, CatalogForm
-from .oid import OID_RELATION_END, OID_DATABASE_ANDB, INVALID_OID, OID_SYSTEM_TABLE_CLASS, OID_SYSTEM_TABLE_END, OID_TEMP_TABLE, OID_MEMORY_TABLE_START, OID_MEMORY_TABLE_END
+from .oid import OID_RELATION_END, OID_DATABASE_ANDB, INVALID_OID, OID_SYSTEM_TABLE_CLASS, OID_SYSTEM_TABLE_END, OID_SYSTEM_TABLE_START, OID_TEMP_TABLE, OID_MEMORY_TABLE_START, OID_MEMORY_TABLE_END
 from .database import _ANDB_DATABASE
 from andb.errno.errors import DDLException
 
@@ -110,7 +110,7 @@ class AndbClassTable(CatalogTable):
     def get_relation_kind(self, relation_oid):
         if relation_oid == OID_TEMP_TABLE:
             return RelationKinds.TEMPORARY_TABLE
-        elif OID_SYSTEM_TABLE_CLASS <= relation_oid <= OID_SYSTEM_TABLE_END:
+        elif OID_SYSTEM_TABLE_START <= relation_oid <= OID_SYSTEM_TABLE_END:
             return RelationKinds.SYSTEM_TABLE
         elif OID_MEMORY_TABLE_START <= relation_oid <= OID_MEMORY_TABLE_END:
             return RelationKinds.MEMORY_TABLE

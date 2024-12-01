@@ -55,3 +55,8 @@ class ExprOperation(Enum):
     LIKE = 'like'
     IN = 'in'
 
+def is_const_value(value):
+    for type_ in (int, float, str, bool, type(None)):
+        if isinstance(value, type_):
+            return True
+    return False

@@ -8,3 +8,8 @@ CATALOG_DIR = 'catalog'
 BASE_DIR = 'base'
 XACT_DIR = 'xact'
 WAL_DIR = 'wal'
+UNDO_DIR = 'undo'
+
+# Checkpoint file name
+CHECKPOINT_FILE = 'checkpoint'
+

@@ -59,3 +59,5 @@ def init_all_database_components(database_dir=None):
     os.chdir(global_vars.database_directory)
     init_storage()
     init_catalog()
+    global_vars.xact_manager.recovery()
+

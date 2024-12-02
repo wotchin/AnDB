@@ -1,7 +1,7 @@
 import abc
 
 from andb.common.cstructure import CStructure, Integer4Field
-from andb.storage.common.page import Page, INVALID_ITEM_ID, INVALID_BYTES, PAGE_SIZE, PageHeader
+from andb.storage.engines.heap.page import SlotPage, INVALID_ITEM_ID, INVALID_BYTES, PAGE_SIZE, PageHeader
 from andb.constants.strings import BIG_END
 
 INDEX_PAGE_FLAG_LEAF = 0b01
@@ -20,6 +20,9 @@ class TuplePointer(CStructure):
 
     def __repr__(self):
         return '<pageno: {}, tid: {}>'.format(self.pageno, self.tid)
+    
+    def to_bytes(self) -> bytes:
+        return self.pack()
 
 
 class BPlusNode:
@@ -72,7 +75,7 @@ class InternalNode(BPlusNode):
         super().__init__()
 
     def pack(self):
-        page = Page.allocate(lsn=self.lsn)
+        page = SlotPage.allocate(lsn=self.lsn)
         page.header.flags = (self.get_pageno() << 1)
         page.header.flags |= INDEX_PAGE_FLAG_NOT_LEAF
         page.header.checksum = 0
@@ -94,7 +97,7 @@ class InternalNode(BPlusNode):
 
     @staticmethod
     def unpack(data) -> 'InternalNode':
-        page = Page.unpack(data)
+        page = SlotPage.unpack(data)
         assert (page.header.flags & INDEX_PAGE_FLAG_NOT_LEAF) == INDEX_PAGE_FLAG_NOT_LEAF
         pageno = page.header.flags >> 1
         node = InternalNode()
@@ -143,7 +146,7 @@ class LeafNode(BPlusNode):
         self.high_key = float('inf')  # Initialize high key as positive infinity
 
     def pack(self):
-        page = Page.allocate(lsn=self.lsn)
+        page = SlotPage.allocate(lsn=self.lsn)
         page.header.flags = (self.get_pageno() << 1)
         page.header.flags |= INDEX_PAGE_FLAG_LEAF
         page.header.checksum = 0
@@ -167,7 +170,7 @@ class LeafNode(BPlusNode):
 
     @staticmethod
     def unpack(data) -> 'LeafNode':
-        page = Page.unpack(data)
+        page = SlotPage.unpack(data)
         assert (page.header.flags & INDEX_PAGE_FLAG_LEAF) == INDEX_PAGE_FLAG_LEAF
         pageno = page.header.flags >> 1
         node = LeafNode()
@@ -258,6 +261,14 @@ class BPlusTree:
             index = node.keys.index(key)
             node.key_value_pairs.pop(index)
             node.keys.pop(index)
+            self.mark_dirty(node)
+
+    def delete_value(self, lsn, key, value):
+        node = self._find_leaf_node(key)
+        node.lsn = lsn
+        if key in node.keys:
+            index = node.keys.index(key)
+            node.key_value_pairs[index].remove(value)
             self.mark_dirty(node)
 
     def search(self, key):

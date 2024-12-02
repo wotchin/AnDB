@@ -2,7 +2,7 @@ from andb.catalog.oid import INVALID_OID
 from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_CLASS
 from andb.errno.errors import AnDBNotImplementedError, InitializationStageError
 from andb.executor.operator.logical import *
-from andb.executor.operator.physical.utility import CreateIndexOperator, CreateTableOperator, ExplainOperator, DropTableOperator, DropIndexOperator
+from andb.executor.operator.physical.utility import CreateIndexOperator, CreateTableOperator, ExplainOperator, DropTableOperator, DropIndexOperator, CommandOperator
 from andb.runtime import session_vars
 from andb.sql.parser.ast.create import CreateTable, CreateIndex
 from andb.sql.parser.ast.delete import Delete
@@ -15,6 +15,7 @@ from andb.sql.parser.ast.operation import Function
 from andb.sql.parser.ast.select import Select
 from andb.sql.parser.ast.update import Update
 from andb.storage.engines.heap.relation import RelationKinds
+from andb.sql.parser.ast.utility import Command
 from .base import BaseTransformation
 
 from ...executor.operator.utils import expression_eval
@@ -23,11 +24,7 @@ from ...executor.operator.utils import expression_eval
 class UtilityTransformation(BaseTransformation):
     @staticmethod
     def match(ast) -> bool:
-        return isinstance(ast, CreateIndex) or \
-               isinstance(ast, CreateTable) or \
-               isinstance(ast, DropTable) or \
-               isinstance(ast, DropIndex) or \
-               isinstance(ast, Explain)
+        return isinstance(ast, (CreateIndex, CreateTable, DropTable, DropIndex, Explain, Command))
 
     @staticmethod
     def on_transform(ast):
@@ -35,22 +32,24 @@ class UtilityTransformation(BaseTransformation):
         if isinstance(ast, CreateIndex):
             fields = [id_.parts for id_ in ast.columns]
             physical_operator = CreateIndexOperator(index_name=ast.name.parts, table_name=ast.table_name.parts,
-                                                    fields=fields, database_oid=session_vars.database_oid,
+                                                    fields=fields, database_oid=session_vars.SessionVars.database_oid,
                                                     index_type=ast.index_type)
         elif isinstance(ast, CreateTable):
             physical_operator = CreateTableOperator(
-                table_name=ast.name.parts, fields=ast.columns, database_oid=session_vars.database_oid
+                table_name=ast.name.parts, fields=ast.columns, database_oid=session_vars.SessionVars.database_oid
             )
         elif isinstance(ast, DropTable):
             physical_operator = DropTableOperator(
-                table_name=ast.name.parts, database_oid=session_vars.database_oid
+                table_name=ast.name.parts, database_oid=session_vars.SessionVars.database_oid
             )
         elif isinstance(ast, DropIndex):
             physical_operator = DropIndexOperator(
-                index_name=ast.name.parts, database_oid=session_vars.database_oid
+                index_name=ast.name.parts, database_oid=session_vars.SessionVars.database_oid
             )
         elif isinstance(ast, Explain):
             physical_operator = ExplainOperator(logical_plan=andb_ast_transform(ast.target))
+        elif isinstance(ast, Command):
+            physical_operator = CommandOperator(ast.command)
 
         return UtilityOperator(physical_operator)
 
@@ -274,7 +273,7 @@ class SelectTransformation(BaseTransformation):
             raise NotImplementedError()
 
         for table_name in unchecked_tables:
-            table_oid = CATALOG_ANDB_CLASS.get_relation_oid(table_name, database_oid=session_vars.database_oid,
+            table_oid = CATALOG_ANDB_CLASS.get_relation_oid(table_name, database_oid=session_vars.SessionVars.database_oid,
                                                             kind=None)
             if table_oid != INVALID_OID:
                 query.from_tables[table_name] = table_oid
@@ -449,7 +448,7 @@ class InsertTransformation(BaseTransformation):
     @staticmethod
     def on_transform(ast: Insert):
         table_oid = CATALOG_ANDB_CLASS.get_relation_oid(relation_name=ast.table.parts,
-                                                        database_oid=session_vars.database_oid,
+                                                        database_oid=session_vars.SessionVars.database_oid,
                                                         kind=RelationKinds.HEAP_TABLE)
         if table_oid == INVALID_OID:
             raise InitializationStageError(f'cannot get oid for the table {ast.table.parts}.')

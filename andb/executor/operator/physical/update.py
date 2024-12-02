@@ -45,7 +45,7 @@ class UpdatePhysicalOperator(PhysicalOperator):
 
         self.relation = open_relation(self.table_oid, rlock.ROW_EXCLUSIVE_LOCK)
         if not self.relation:
-            raise InitializationStageError(f'cannot get the relation using oid {self.table_oid}.')
+            raise InitializationStageError(f'cannot open relation {self.table_oid} for update.')
 
         self.index_relations = {}  # e.g., {relation: [form0, form1, ...]}
         self.modify_index_relations = set()

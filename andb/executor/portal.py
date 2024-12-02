@@ -139,7 +139,7 @@ class ExecutionPortal:
             for column in self.target_list_columns:
                 if isinstance(column, TableColumn):
                     attr = get_attribute_by_name(column.table_name, column.column_name,
-                                                 database_oid=session_vars.database_oid)
+                                                 database_oid=session_vars.SessionVars.database_oid)
                     to_be_defined_fields.append((column.standard_name, attr.type_oid, attr.length, attr.notnull))
                 elif isinstance(column, FunctionColumn):
                     # todo: TBH, we have to determine what the type of function return value is

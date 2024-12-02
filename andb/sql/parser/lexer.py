@@ -43,7 +43,10 @@ class SQLLexer(sly.Lexer):
         # DATA TYPES
         ID,
         FLOAT, INTEGER, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE,
-        CAST
+        CAST,
+
+        # COMMANDS
+        CHECKPOINT
     }
 
     CREATE = 'CREATE'
@@ -91,6 +94,7 @@ class SQLLexer(sly.Lexer):
     SET = 'SET'
     INTO = 'INTO'
     VALUES = 'VALUES'
+    CHECKPOINT = 'CHECKPOINT'
 
     DOT = r'\.'
     COMMA = r','

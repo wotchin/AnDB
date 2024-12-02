@@ -17,6 +17,7 @@ from .ast.identifier import Identifier
 from .ast.misc import Constant, Star, Tuple
 from .exception import ParsingException
 from .ast.drop import DropTable, DropIndex
+from .ast.utility import Command
 
 
 def check_select_keywords(select, operation):
@@ -82,7 +83,8 @@ class SQLParser(sly.Parser):
         'delete',
         'insert',
         'update',
-        'drop'
+        'drop',
+        'command',
     )
     def query(self, p):
         return p[0]
@@ -564,3 +566,8 @@ class SQLParser(sly.Parser):
     @_('DROP INDEX identifier')
     def drop(self, p):
         return DropIndex(name=p.identifier)
+
+    # Define parsing rule for 'Command'
+    @_('CHECKPOINT')
+    def command(self, p):
+        return Command(command=p[0])

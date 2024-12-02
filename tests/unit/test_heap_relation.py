@@ -1,5 +1,5 @@
 from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_CLASS, CATALOG_ANDB_INDEX
-from andb.storage.engines.heap.relation import TupleData
+from andb.storage.engines.heap.relation import TupleData, hot_batch_delete
 from andb.errno.errors import RollbackError, DDLException
 from andb.storage.engines.heap.relation import hot_simple_delete, hot_create_table, hot_drop_table, hot_simple_insert, \
     hot_simple_select, hot_simple_update, close_relation, open_relation, bt_create_index, bt_drop_index, \
@@ -63,6 +63,8 @@ def test_hot():
     table_oid = CATALOG_ANDB_CLASS.search(lambda r: r.name == 'test_hot')[0].oid
     assert created_table_oid == table_oid
 
+    xid = global_vars.xact_manager.allocate_xid()
+    global_vars.xact_manager.begin_transaction(xid)
     test_hot_relation = open_relation(table_oid)
     results = hot_simple_select(test_hot_relation, test_hot_relation.last_pageno(), 0)
     assert len(results) == 0
@@ -78,7 +80,7 @@ def test_hot():
     result = hot_simple_select(test_hot_relation, test_hot_relation.last_pageno(), 3)
     assert result == (4, 'xm4', 'b4')
 
-    assert hot_simple_delete(test_hot_relation, test_hot_relation.last_pageno(), 3)
+    assert hot_batch_delete(test_hot_relation, test_hot_relation.last_pageno(), [3])
     assert hot_simple_select(test_hot_relation, test_hot_relation.last_pageno(), 3) == ()
 
     pageno, tid = hot_simple_update(test_hot_relation, test_hot_relation.last_pageno(), 2, (1, None, None))
@@ -86,7 +88,7 @@ def test_hot():
     assert hot_simple_select(test_hot_relation, test_hot_relation.last_pageno(), tid) == (1, None, None)
 
     global_vars.buffer_manager.sync()
-
+    global_vars.xact_manager.commit_transaction(xid)
     assert hot_simple_select(test_hot_relation, pageno, tid) == (1, None, None)
 
     close_relation(table_oid)
@@ -106,6 +108,7 @@ def test_hot():
 
 
 def test_btree():
+    global_vars.xact_manager.begin_transaction(0)
     # create a data table first
     fields = (
         ('id', 'int', True),
@@ -230,5 +233,7 @@ def test_btree():
     # test negative value
     results = bt_search_range(id_index_relation, start_key=(-1, '0'), end_key=(2, '2'))
     assert len(results) == 4
+
+    global_vars.xact_manager.commit_transaction(0)
 
     # todo: we haven't tested float byte-encoding whether support order-preserving.

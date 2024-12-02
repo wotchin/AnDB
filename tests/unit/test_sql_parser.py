@@ -107,3 +107,8 @@ def test_ddl():
                    "<DropTable name=<Identifier parts=t1>>")
     assert_parsing("DROP INDEX idx",
                    "<DropIndex name=<Identifier parts=idx>>")
+
+
+def test_checkpoint():
+    assert_parsing("CHECKPOINT",
+                   "<Command command=CHECKPOINT>")

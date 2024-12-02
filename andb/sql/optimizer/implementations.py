@@ -258,7 +258,7 @@ class DeleteImplementation(BaseImplementation):
     @classmethod
     def on_implement(cls, old_operator: DeleteOperator):
         table_oid = CATALOG_ANDB_CLASS.get_relation_oid(old_operator.table_name,
-                                                        database_oid=session_vars.database_oid,
+                                                        database_oid=session_vars.SessionVars.database_oid,
                                                         kind=RelationKinds.HEAP_TABLE)
         if table_oid == INVALID_OID:
             raise InitializationStageError(f'not found table {old_operator.table_name}.')
@@ -278,7 +278,7 @@ class UpdateImplementation(BaseImplementation):
     @classmethod
     def on_implement(cls, old_operator: UpdateOperator):
         table_oid = CATALOG_ANDB_CLASS.get_relation_oid(relation_name=old_operator.table_name,
-                                                        database_oid=session_vars.database_oid,
+                                                        database_oid=session_vars.SessionVars.database_oid,
                                                         kind=RelationKinds.HEAP_TABLE)
         if table_oid == INVALID_OID:
             raise InitializationStageError(f'cannot get oid for the table {old_operator.table_name}.')

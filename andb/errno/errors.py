@@ -64,3 +64,10 @@ class AnDBNotImplementedError(RollbackError):
         super().__init__(msg)
 
         self.errno = 24
+
+
+class UndoError(RollbackError):
+    def __init__(self, msg):
+        super().__init__(msg)
+
+        self.errno = 25

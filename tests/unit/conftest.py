@@ -5,7 +5,7 @@ import pytest
 
 from andb.cmd.setup import setup_data_dir
 from andb.initializer import init_all_database_components
-
+    
 TEST_DATA_DIRECTOR = os.path.join(os.path.realpath(os.path.dirname(__file__)), 
                                   'test_data')
 
@@ -15,7 +15,6 @@ def setup():
     setup_data_dir(TEST_DATA_DIRECTOR)
 
     init_all_database_components(TEST_DATA_DIRECTOR)
-
 
 def teardown():
     shutil.rmtree(TEST_DATA_DIRECTOR, ignore_errors=True)

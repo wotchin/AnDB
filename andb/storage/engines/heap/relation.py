@@ -1,3 +1,4 @@
+import logging
 import os
 
 from andb.catalog.class_ import RelationKinds
@@ -13,10 +14,13 @@ from andb.constants.strings import BIG_END
 from andb.constants.values import MAX_TABLE_COLUMNS, PAGE_SIZE
 from andb.errno.errors import RollbackError, DDLException
 from andb.runtime import global_vars
-from andb.storage.common.page import INVALID_BYTES
-from andb.storage.common.page import INVALID_ITEM_ID
+from andb.storage.engines.heap.page import INVALID_BYTES
+from andb.storage.engines.heap.page import INVALID_ITEM_ID
 from andb.storage.engines.heap.bptree import BPlusTree, TuplePointer, create_node
+from andb.storage.engines.heap.redo import WALAction, WALRecord
+from andb.storage.engines.heap.undo import UndoOperation, UndoRecord
 from andb.storage.lock import rlock
+from andb.storage.utils import easy_tuple_serialize
 
 
 class BufferedBPTree(BPlusTree):
@@ -254,37 +258,108 @@ def hot_drop_table(table_name, database_oid=OID_DATABASE_ANDB):
     return True
 
 
-def hot_simple_insert(relation: Relation, python_tuple):
+def hot_simple_insert(relation: Relation, python_tuple, lsn=None):
     # no redo and undo log here, only update cached page
     # todo: find from fsm first
     pageno = relation.last_pageno()
     buffer_page = global_vars.buffer_manager.get_page(relation, pageno)
-    lsn = global_vars.xact_manager.max_lsn()
-    tid = buffer_page.page.insert(lsn, TupleData(python_tuple).to_bytes(relation.attrs))
+    xid = global_vars.xact_manager.get_xid()
+    wip_lsn = 0  # work in progress LSN
+    tuple_bytes = TupleData(python_tuple).to_bytes(relation.attrs)
+    tid = buffer_page.page.insert(wip_lsn, tuple_bytes)
     if tid == INVALID_ITEM_ID:
         # maybe the page is full, get next pageno
         buffer_page = global_vars.buffer_manager.get_page(relation, pageno + 1)
-        tid = buffer_page.page.insert(lsn, TupleData(python_tuple).to_bytes(relation.attrs))
+        tid = buffer_page.page.insert(wip_lsn, tuple_bytes)
         if tid == INVALID_ITEM_ID:
             # still be error? raise the error
             raise RollbackError('cannot insert the tuple')
     buffer_page.mark_dirty()
+    
+    # write logs
+    undo_record = UndoRecord(xid,
+                             UndoOperation.HEAP_INSERT,
+                             relation, (pageno, tid),
+                             b'')
+    redo_record = WALRecord(
+        xid, relation.oid, pageno, tid, WALAction.HEAP_INSERT, tuple_bytes
+    )
+    global_vars.xact_manager.undo_manager.write_record(undo_record)
+    global_vars.xact_manager.wal_manager.write_record(redo_record)
+
+    # update page header LSN
+    if lsn is None:
+        lsn = global_vars.xact_manager.max_lsn()
+    buffer_page.page.header.lsn = lsn
+
     return buffer_page.pageno, tid
 
 
 def hot_simple_update(relation: Relation, pageno, tid, python_tuple):
-    # todo: use a same LSN
-    if hot_simple_delete(relation, pageno, tid):
-        return hot_simple_insert(relation, python_tuple)
+    # use a same LSN
+    lsn = global_vars.xact_manager.max_lsn()
+    if hot_simple_delete(relation, pageno, tid, lsn=lsn):
+        return hot_simple_insert(relation, python_tuple, lsn=lsn)
 
 
-def hot_simple_delete(relation: Relation, pageno, tid):
+def hot_simple_delete(relation: Relation, pageno, tid, lsn=None):
     # todo: update fsm? or only reorganize?
     buffer_page = global_vars.buffer_manager.get_page(relation, pageno)
-    lsn = global_vars.xact_manager.max_lsn()
-    success = buffer_page.page.delete(lsn, tid)
+    xid = global_vars.xact_manager.get_xid()
+    old_tuple_bytes = buffer_page.page.select(tid)
+    if old_tuple_bytes == INVALID_BYTES:
+        return False
+
+    wip_lsn = 0  # work in progress LSN
+    success = buffer_page.page.delete_inplace(wip_lsn, tid)
     if success:
         buffer_page.mark_dirty()
+        # write logs
+        undo_record = UndoRecord(xid,
+                                UndoOperation.HEAP_DELETE,
+                                relation, (pageno, tid),
+                                old_tuple_bytes)
+        redo_record = WALRecord(
+            xid, relation.oid, pageno, tid, WALAction.HEAP_DELETE, b''
+        )
+        global_vars.xact_manager.undo_manager.write_record(undo_record)
+        global_vars.xact_manager.wal_manager.write_record(redo_record)
+
+        # update page header LSN
+        if lsn is None:
+            lsn = global_vars.xact_manager.max_lsn()
+        buffer_page.page.header.lsn = lsn
+    return success
+
+def hot_batch_delete(relation: Relation, pageno, tid_list):
+    # using mark-and-vacuum to delete
+    buffer_page = global_vars.buffer_manager.get_page(relation, pageno)
+    xid = global_vars.xact_manager.get_xid()
+    array_of_old_tuple_bytes = [buffer_page.page.select(tid) for tid in tid_list]
+    if any(old_tuple_bytes == INVALID_BYTES for old_tuple_bytes in array_of_old_tuple_bytes):
+        return False
+
+    wip_lsn = 0  # work in progress LSN
+    for tid in tid_list:
+        success = buffer_page.page.delete(wip_lsn, tid)
+        if not success:
+            return False
+    if success:
+        buffer_page.mark_dirty()
+        # write logs
+        undo_record = UndoRecord(xid,
+                                UndoOperation.HEAP_BATCH_DELETE,
+                                relation, (pageno, tid_list),
+                                easy_tuple_serialize(array_of_old_tuple_bytes))
+        redo_record = WALRecord(
+            xid, relation.oid, pageno, 0, WALAction.HEAP_BATCH_DELETE, easy_tuple_serialize(tid_list)
+        )
+        global_vars.xact_manager.undo_manager.write_record(undo_record)
+        global_vars.xact_manager.wal_manager.write_record(redo_record)
+
+        # update page header LSN
+        lsn = global_vars.xact_manager.max_lsn()
+        buffer_page.page.header.lsn = lsn
     return success
 
 
@@ -293,9 +368,15 @@ def hot_simple_select(relation: Relation, pageno, tid):
     data = buffer_page.page.select(tid)
     if data == INVALID_BYTES:
         return ()
-    buffer_page.mark_dirty()
     return TupleData.from_bytes(data, relation.attrs).python_tuple
 
+def hot_simple_select_all(relation: Relation):
+    for pageno in range(relation.last_pageno() + 1):
+        buffer_page = global_vars.buffer_manager.get_page(relation, pageno)
+        for tid in range(buffer_page.page.item_count):
+            tuple_ = hot_simple_select(relation, pageno, tid)
+            if tuple_ != ():
+                yield tuple_
 
 def bt_create_index(index_name, table_name, fields, database_oid=OID_DATABASE_ANDB):
     table_oid = CATALOG_ANDB_CLASS.get_relation_oid(table_name, database_oid, kind=RelationKinds.HEAP_TABLE)
@@ -382,26 +463,59 @@ def _bt_data_to_key_tuple(data, index_attr_form_array):
 
 def bt_simple_insert(relation: Relation, key, tuple_pointer):
     tree = BufferedBPTree(relation)
-    lsn = global_vars.xact_manager.max_lsn()
+    xid = global_vars.xact_manager.get_xid()
     attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
     key_data = _bt_key_tuple_to_data(key, attrs)
+
+    global_vars.xact_manager.wal_manager.write_record(
+        WALRecord(xid, relation.oid, 0, 0, WALAction.BTREE_INSERT, easy_tuple_serialize((key_data, tuple_pointer.to_bytes()))))
+    # for delete (the reverse of insert), we need to know the key and the specific value
+    global_vars.xact_manager.undo_manager.write_record(
+        UndoRecord(xid, UndoOperation.BTREE_INSERT, relation, (key_data, tuple_pointer),
+                    b''))
+
+    lsn = global_vars.xact_manager.max_lsn()
     tree.insert(lsn, key_data, tuple_pointer)
+
+
 
 
 def bt_update(relation: Relation, key, tuple_pointer):
     tree = BufferedBPTree(relation)
-    lsn = global_vars.xact_manager.max_lsn()
+    xid = global_vars.xact_manager.get_xid()
     attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
     key_data = _bt_key_tuple_to_data(key, attrs)
+    global_vars.xact_manager.wal_manager.write_record(
+        WALRecord(xid, relation.oid, 0, 0, WALAction.BTREE_UPDATE, 
+                  easy_tuple_serialize((key_data, tuple_pointer.to_bytes()))))
+    # for update, we need to know the key and value, and let
+    # the location be the tuple of key and value
+    # the old value is a list of tuple pointer
+    old_tuple_pointer = tree.search(key_data)
+    global_vars.xact_manager.undo_manager.write_record(
+        UndoRecord(xid, UndoOperation.BTREE_UPDATE, relation, (key_data, old_tuple_pointer),
+                    b''))
+
+    lsn = global_vars.xact_manager.max_lsn()
     tree.delete(lsn, key_data)
     tree.insert(lsn, key_data, tuple_pointer)
 
 
 def bt_delete(relation: Relation, key):
     tree = BufferedBPTree(relation)
-    lsn = global_vars.xact_manager.max_lsn()
+    xid = global_vars.xact_manager.get_xid()
     attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
     key_data = _bt_key_tuple_to_data(key, attrs)
+    global_vars.xact_manager.wal_manager.write_record(
+        WALRecord(xid, relation.oid, 0, 0, WALAction.BTREE_DELETE, key_data))
+    # for insert (the reverse of delete), we need to know the key and values
+    old_tuple_pointer = tree.search(key_data)
+    global_vars.xact_manager.undo_manager.write_record(
+        UndoRecord(xid, UndoOperation.BTREE_DELETE, relation, (key_data, old_tuple_pointer),
+                    b''))
+
+    lsn = global_vars.xact_manager.max_lsn()
+
     tree.delete(lsn, key_data)
 
 

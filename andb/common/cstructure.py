@@ -26,7 +26,7 @@ class Field:
         self.default = default
 
         assert ctype
-        assert self.num >= 1
+        assert self.num >= 0
 
     def __repr__(self):
         if self.num == 1:
@@ -119,7 +119,7 @@ class CStructure(metaclass=StructureMeta):
     __mappings__ = None
     __cformat__ = None
 
-    def pack(self):
+    def pack(self) -> bytes:
         values = list()
         for k, field in self.__mappings__.items():
             real_value = getattr(self, k)
@@ -144,7 +144,7 @@ class CStructure(metaclass=StructureMeta):
             raise struct.error("%s. format is '%s' and values are %s." % (
                 e, self.__cformat__, values))
 
-    def unpack(self, buffer):
+    def unpack(self, buffer: bytes):
         values = struct.unpack(self.__cformat__, buffer)
         if len(values) == 0:
             return
@@ -161,20 +161,23 @@ class CStructure(metaclass=StructureMeta):
                 i += 1
 
     @classmethod
-    def size(cls):
+    def size(cls) -> int:
         return struct.calcsize(cls.__cformat__)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if not isinstance(other, CStructure):
             return False
         return (self.__cformat__ == self.__cformat__ and
                 self.pack() == other.pack())
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.__cformat__, self.pack()))
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.size()
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({', '.join([f'{k}={v}' for k, v in self.__dict__.items() if not k.startswith('_')])})"
 
 
 def pack(fmt_flag, v):

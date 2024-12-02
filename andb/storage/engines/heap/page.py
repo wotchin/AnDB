@@ -1,4 +1,5 @@
 from functools import lru_cache
+import logging
 
 from andb.common.cstructure import CStructure
 from andb.common.cstructure import Integer8Field
@@ -71,6 +72,9 @@ class ItemIdData:
 
     def __hash__(self):
         return self.to_uint4()
+    
+    def __repr__(self):
+        return f'ItemIdData(offset={self.offset}, flag={self.flag}, length={self.length})'
 
 
 INVALID_ITEM_ID = -1
@@ -89,6 +93,8 @@ def _get_item_ids_parser(length):
         def pack(uint4_list):
             # CString doesn't receive an array contains one element, so we should
             # covert `uint4_list` to adapt this scenario.
+            if length == 0:
+                return bytes()
             if length == 1 and is_array_like(uint4_list):
                 obj.item_ids = uint4_list[0]
             else:
@@ -97,6 +103,8 @@ def _get_item_ids_parser(length):
 
         @staticmethod
         def unpack(data):
+            if len(data) == 0:
+                return []
             obj.unpack(data)
             # CString doesn't receive an array contains one element, so we should
             # wrap `item_ids` using a list.
@@ -107,7 +115,7 @@ def _get_item_ids_parser(length):
     return Inner()
 
 
-class Page:
+class SlotPage:
     def __init__(self):
         """The page structure likes below:
 
@@ -175,12 +183,54 @@ class Page:
         item_id: ItemIdData = self.item_ids[item_idx]
         # we only can delete valid (normal) item
         if item_id.flag != ItemIdFlags.NORMAL:
+            logging.error(f'cannot delete item {item_idx} in page, item flag is {item_id.flag}')
             return False
 
         self.header.lsn = lsn
         item_id.flag = ItemIdFlags.DEAD
         self.header.checksum = 0  # todo: unset
         return True
+    
+    def delete_inplace(self, lsn: int, item_idx: int) -> bool:
+        if not (0 <= item_idx < len(self.item_ids)):
+            return False
+
+        item_id: ItemIdData = self.item_ids[item_idx]
+        # we only can delete valid (normal) item
+        if item_id.flag != ItemIdFlags.NORMAL:
+            logging.error(f'cannot inplace delete item {item_idx} in page, item flag is {item_id.flag}')
+            return False
+
+        # we need to keep the order of item_ids and reorganize items
+        new_item_ids = list()
+        # first, pick up
+        for i, item_id in enumerate(self.item_ids):
+            if i != item_idx:
+                new_item_ids.append(item_id)
+
+        new_data = bytes()
+        new_upper = PAGE_SIZE
+        for item_id in new_item_ids:
+            offset = item_id.offset
+            length = item_id.length
+            offset_of_items = self.item_data_size() - (PAGE_SIZE - offset)
+            item_data = self.items[offset_of_items: (offset_of_items + length)]
+            new_data = item_data + new_data
+            # Okay, data have been recorded. Later, we should to update the ID information.
+            item_id.offset = new_upper - length
+            new_upper = item_id.offset
+        # finally, we should switch old `self.items` to new one.
+        # === the following will be a critical section if it is in concurrency scenario ===
+        # todo: spin lock
+        self.item_ids = new_item_ids
+        self.items = new_data
+        self.header.lsn = lsn
+        self.header.checksum = 0  # todo: unset
+        self.header.upper = new_upper
+        self.header.lower = self.header.size() + self.item_ids_size()
+        # === end critical section ===
+        return True
+
 
     def rollback_delete(self, old_lsn: int, item_idx: int) -> bool:
         if not (0 <= item_idx < len(self.item_ids)):
@@ -313,7 +363,7 @@ class Page:
     @staticmethod
     def unpack(data: bytes):
         """Deserialize bytes to a class."""
-        page = Page()
+        page = SlotPage()
         deserialized_position = 0
         # parse header
         page_header_size = page.header.size()
@@ -333,7 +383,7 @@ class Page:
 
     @staticmethod
     def allocate(lsn=0):
-        page = Page()
+        page = SlotPage()
         page.header.lsn = lsn
         page.header.flags = 0
         page.header.lower = page.header.size() + page.item_ids_size()
@@ -342,7 +392,7 @@ class Page:
         return page
 
     def __eq__(self, other):
-        if not isinstance(other, Page):
+        if not isinstance(other, SlotPage):
             return False
         return (other.item_ids == self.item_ids) and (
             other.header == self.header
@@ -350,4 +400,11 @@ class Page:
 
     def __hash__(self):
         return hash((tuple(self.item_ids), self.header.pack(), self.items))
+
+    @property
+    def item_count(self):
+        return len(self.item_ids)
+
+    def __repr__(self):
+        return f"SlotPage(header={self.header}, item_ids={self.item_ids}, items={self.items})"
 

@@ -6,14 +6,13 @@ class LWLockName(Enum):
     BUFFER_UPDATE = 1
     WAL_WRITE = 2
 
-
 _lwlock_instances = {}
 
 
 class LWLock:
-    def __init__(self):
+    def __init__(self, reentrant=False):
         self.holding_thread = None
-        self._lock = threading.Lock()
+        self._lock = threading.Lock() if not reentrant else threading.RLock()
 
     def acquire(self, blocking=True, timeout=-1):
         return self._lock.acquire(blocking, timeout)
@@ -27,9 +26,11 @@ def init_lwlock():
         _lwlock_instances[lock_name.value] = LWLock()
 
 
-def lwlock_acquire(lwlock, blocking=True, timeout=-1):
+def lwlock_acquire(lwlock, blocking=True, timeout=5):
     lock = _lwlock_instances[lwlock.value]
     rc = lock.acquire(blocking, timeout)
+    if not rc:
+        raise TimeoutError("Failed to acquire lock within the specified timeout.")
     lock.holding_thread = threading.get_ident()
     return rc
 

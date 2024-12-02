@@ -1,9 +1,10 @@
+from andb.constants.macros import INVALID_XID
 from andb.constants.values import QUERY_TERMINATOR
 from andb.sql.parser import andb_query_parse, get_ast_type, CmdType
 from andb.sql.optimizer import andb_query_plan
 from andb.executor.portal import ExecutionPortal
 from andb.runtime import global_vars
-from andb.storage.xact.mgr import INVALID_XID, DUMMY_XID
+from andb.constants.macros import DUMMY_XID
 from andb.errno.errors import RollbackError, FatalError
 
 
@@ -40,9 +41,11 @@ def execute_simple_query(query_string):
         global_vars.xact_manager.abort_transaction(xid)
         tell_session(e.errno, e.msg)
     except FatalError as e:
-        # todo: exit
+        # non-rollbackable error
         raise e
     except Exception as e:
+        # todo: all failure transactions should be aborted
+        global_vars.xact_manager.abort_transaction(xid)
         raise e
     else:
         global_vars.xact_manager.commit_transaction(xid)

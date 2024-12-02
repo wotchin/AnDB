@@ -3,6 +3,7 @@ from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_TYPE, CAT
 from andb.errno.errors import RollbackError, DDLException
 from andb.storage.engines.heap.relation import RelationKinds, bt_create_index_internal, \
     hot_create_table, hot_drop_table, bt_drop_index
+from andb.runtime import global_vars
 
 from .base import PhysicalOperator
 
@@ -154,6 +155,24 @@ class DropIndexOperator(PhysicalOperator):
         # Attempt to drop the index
         success = bt_drop_index(self.index_name, database_oid=self.database_oid)
         yield success
+
+    def close(self):
+        pass  # No cleanup required
+
+
+class CommandOperator(PhysicalOperator):
+    def __init__(self, command: str):
+        super().__init__(f'Command: {command}')
+        self.command = command
+
+    def open(self):
+        pass  # No initialization required
+
+    def next(self):
+        if self.command == 'checkpoint':
+            global_vars.xact_manager.checkpoint()
+        else:
+            raise RuntimeError(f"Unsupported command: {self.command}")
 
     def close(self):
         pass  # No cleanup required

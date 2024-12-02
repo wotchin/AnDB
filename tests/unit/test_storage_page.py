@@ -1,10 +1,10 @@
-from andb.storage.common.page import (
+from andb.storage.engines.heap.page import (
     ItemIdFlags,
     ItemIdData,
     MASKER_15BITS,
     INVALID_BYTES,
     INVALID_ITEM_ID,
-    Page
+    SlotPage
 )
 from andb.constants.values import PAGE_SIZE
 
@@ -144,7 +144,7 @@ def fixture_pack_and_unpack(page):
 
 def test_page():
     start_lsn = 0
-    page0 = Page.allocate(start_lsn)
+    page0 = SlotPage.allocate(start_lsn)
     fixture_page_insert(page0, times=10)
     fixture_page_delete(page0)
     fixture_page_update(page0)

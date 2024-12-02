@@ -10,6 +10,15 @@ class Node:
         self.next = None
         self.pinned = False
 
+    def __eq__(self, other):
+        if not isinstance(other, Node):
+            return False
+        return self.key == other.key
+
+    def __hash__(self):
+        return hash(self.key)
+
+
 
 class LRUCache(BaseCache):
     def __init__(self, capacity):
@@ -104,3 +113,4 @@ class LRUCache(BaseCache):
 
     def __iter__(self):
         return self.items()
+

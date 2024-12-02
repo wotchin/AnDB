@@ -1,9 +1,10 @@
+import logging
 from andb.common.file_operation import file_size, file_write, file_read, file_lseek
 from andb.common.replacement.lru import LRUCache
 from andb.common.utils import get_the_nearest_two_power_number, pageno_to_filesize
 from andb.constants.values import PAGE_SIZE
 from andb.runtime import global_vars
-from andb.storage.common.page import Page
+from andb.storage.engines.heap.page import SlotPage
 from andb.storage.engines.heap.bptree import BPlusTree, create_node
 from andb.storage.engines.heap.relation import RelationKinds
 from andb.storage.lock.lwlock import LWLockName, lwlock_acquire, lwlock_release
@@ -35,7 +36,7 @@ class BufferPage:
     @property
     def page(self):
         if not self._page:
-            self._page = Page.unpack(self._page_data)
+            self._page = SlotPage.unpack(self._page_data)
         return self._page
 
     @property
@@ -56,6 +57,9 @@ class BufferPage:
             return self.page.dirty
         return self._dirty
 
+    def __repr__(self):
+        return f"BufferPage(relation={self.relation}, pageno={self.pageno}, dirty={self.dirty}, page={self.page})"
+
 
 def heap_read_page(relation, pageno):
     filesize = file_size(relation.fd)
@@ -74,7 +78,7 @@ def heap_allocate_page(relation, pageno):
     # don't need to increase
     if pageno > 0:
         relation.increase_last_pageno()
-    page = Page.allocate(lsn=global_vars.xact_manager.max_lsn())
+    page = SlotPage.allocate(lsn=global_vars.xact_manager.max_lsn())
     buffer_page = BufferPage(relation, pageno)
     buffer_page.set_page(page)
     buffer_page.mark_dirty()
@@ -152,6 +156,10 @@ class BufferManager:
         assert isinstance(buffer_page, BufferPage)
         key = (buffer_page.relation, buffer_page.pageno)
         return self.cache.put(key, buffer_page)
+    
+    def mark_dirty(self, relation, pageno):
+        buffer_page = self.get_page(relation, pageno)
+        buffer_page.mark_dirty()
 
     @staticmethod
     def create_buffer_page(relation, pageno, page):
@@ -179,12 +187,16 @@ class BufferManager:
 
     def sync(self):
         lwlock_acquire(LWLockName.BUFFER_UPDATE)
-        for buffer_page in self.cache.items():
-            if buffer_page.dirty:
-                self._write_page_to_disk(buffer_page)
-                buffer_page.erase_dirty()
-        self.sync_evicted_pages()
-        lwlock_release(LWLockName.BUFFER_UPDATE)
+        try:
+            for buffer_page in self.cache.items():
+                if buffer_page.dirty:
+                    logging.info(f"writing dirty page: {buffer_page}")
+                    print(f"writing dirty page: {buffer_page}")
+                    self._write_page_to_disk(buffer_page)
+                    buffer_page.erase_dirty()
+            self.sync_evicted_pages()
+        finally:
+            lwlock_release(LWLockName.BUFFER_UPDATE)
 
     def reset(self):
         # todo: sync ahead?

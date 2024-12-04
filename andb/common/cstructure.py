@@ -180,9 +180,14 @@ class CStructure(metaclass=StructureMeta):
         return f"{self.__class__.__name__}({', '.join([f'{k}={v}' for k, v in self.__dict__.items() if not k.startswith('_')])})"
 
 
-def pack(fmt_flag, v):
-    return struct.pack(f'{CTYPE_BIG_ENDIAN}{fmt_flag}', v)
-
+def pack(fmt_flag, *v):
+    return struct.pack(f'{CTYPE_BIG_ENDIAN}{fmt_flag}', *v)
 
 def unpack(fmt_flag, b):
+    return struct.unpack(f'{CTYPE_BIG_ENDIAN}{fmt_flag}', b)
+
+def unpack_one(fmt_flag, b):
     return struct.unpack(f'{CTYPE_BIG_ENDIAN}{fmt_flag}', b)[0]
+
+def calcsize(fmt_flag):
+    return struct.calcsize(f'{CTYPE_BIG_ENDIAN}{fmt_flag}')

@@ -237,24 +237,23 @@ class TransactionManager:
                 page = global_vars.buffer_manager.get_page(undo_record.relation, pageno).page
                 success = page.delete_inplace(lsn, tid)
                 if not success:
-                    logging.error(f'cannot find item {tid} in page {pageno}, items are {page.item_ids}')
-                    raise UndoError(f'cannot find item {tid} in page {pageno}')
+                    logging.error(f'UNDO: failed to delete item {tid} in page {pageno}, items are {page.item_ids}')
                 global_vars.buffer_manager.mark_dirty(undo_record.relation, pageno)
             elif undo_record.operation == UndoOperation.HEAP_DELETE:
                 pageno, tid = undo_record.location
                 page = global_vars.buffer_manager.get_page(undo_record.relation, pageno).page
                 new_tid = page.insert(lsn, undo_record.data)
                 if new_tid == INVALID_ITEM_ID:
-                    logging.error(f'cannot insert item to page {pageno}')
-                    raise UndoError(f'cannot insert item to page {pageno}')
+                    logging.error(f'UNDO: failed to insert item to page {pageno}')
+                    raise UndoError(f'UNDO: failed to insert item to page {pageno}')
                 global_vars.buffer_manager.mark_dirty(undo_record.relation, pageno)
             elif undo_record.operation == UndoOperation.HEAP_UPDATE:
                 pageno, tid = undo_record.location
                 page = global_vars.buffer_manager.get_page(undo_record.relation, pageno).page
                 item_id = page.update(lsn, tid, undo_record.data)
                 if item_id == INVALID_ITEM_ID:
-                    logging.error(f'cannot find item {tid} in page {pageno}')
-                    raise UndoError(f'cannot find item {tid} in page {pageno}')
+                    logging.error(f'UNDO: failed to find item {tid} in page {pageno}')
+                    raise UndoError(f'UNDO: failed to find item {tid} in page {pageno}')
                 global_vars.buffer_manager.mark_dirty(undo_record.relation, pageno)
             elif undo_record.operation == UndoOperation.BTREE_INSERT:
                 key_data, tuple_pointer = undo_record.location

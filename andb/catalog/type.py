@@ -6,6 +6,7 @@ from ._base import CatalogForm, CatalogTable
 from .oid import INVALID_OID, OID_SYSTEM_TABLE_TYPE, OID_TYPE_START, OID_TYPE_END
 from andb.common.utils import memoize
 from andb.constants.strings import BIG_END
+from math import sqrt
 
 VARIABLE_LENGTH = 0
 NULL_LENGTH = -1
@@ -32,7 +33,7 @@ class AndbBaseType:
 
     @classmethod
     def to_datum(cls, b):
-        return cstructure.unpack(cls.type_char, b)
+        return cstructure.unpack_one(cls.type_char, b)
 
     @staticmethod
     def cast_to_string(v):
@@ -163,7 +164,7 @@ class CharType(AndbBaseType):
 
     @classmethod
     def to_datum(cls, b):
-        return cstructure.unpack(f'{len(b)}{cls.type_char}', b).decode(encoding='utf8')
+        return cstructure.unpack_one(f'{len(b)}{cls.type_char}', b).decode(encoding='utf8')
 
     @staticmethod
     def cast_from_string(v):
@@ -186,7 +187,7 @@ class VarcharType(AndbBaseType):
 
     @classmethod
     def to_datum(cls, b):
-        return cstructure.unpack(f'{len(b)}{cls.type_char}', b).decode(encoding='utf8')
+        return cstructure.unpack_one(f'{len(b)}{cls.type_char}', b).decode(encoding='utf8')
 
     @staticmethod
     def cast_from_string(v):
@@ -216,9 +217,9 @@ class TextType(AndbBaseType):
     @classmethod
     def to_datum(cls, b):
         assert len(b) >= VARIABLE_TYPE_HEADER_LENGTH
-        b_length = cstructure.unpack(_VARIABLE_TYPE_CTYPE, b[:VARIABLE_TYPE_HEADER_LENGTH])
+        b_length = cstructure.unpack_one(_VARIABLE_TYPE_CTYPE, b[:VARIABLE_TYPE_HEADER_LENGTH])
         b_content = b[VARIABLE_TYPE_HEADER_LENGTH: VARIABLE_TYPE_HEADER_LENGTH + b_length]
-        return cstructure.unpack(f'{len(b_content)}{cls.type_char}', b_content).decode(encoding='utf8')
+        return cstructure.unpack_one(f'{len(b_content)}{cls.type_char}', b_content).decode(encoding='utf8')
 
     @staticmethod
     def cast_from_string(v):
@@ -229,8 +230,54 @@ class TextType(AndbBaseType):
         if b is None:
             return NULL_LENGTH
         assert len(b) >= VARIABLE_TYPE_HEADER_LENGTH
-        b_length = cstructure.unpack(_VARIABLE_TYPE_CTYPE, b[:VARIABLE_TYPE_HEADER_LENGTH])
+        b_length = cstructure.unpack_one(_VARIABLE_TYPE_CTYPE, b[:VARIABLE_TYPE_HEADER_LENGTH])
         return b_length
+
+
+class VectorType(AndbBaseType):
+    oid = 1008
+    type_name = 'vector'
+    type_bytes = VARIABLE_LENGTH
+    type_char = cstructure.CTYPE_TYPE_FLOAT8
+    type_default = []
+    hash_func = hash_functions.hash_array
+
+    @classmethod
+    def to_bytes(cls, v):
+        if isinstance(v, str):
+            v = cls.cast_from_string(v)
+        assert isinstance(v, list) and all(isinstance(i, float) for i in v), \
+            "v must be a list of floats"
+        # v is a list of floats
+        length = len(v)
+        # Pack the length as an int4
+        packed_length = cstructure.pack(_VARIABLE_TYPE_CTYPE, length)
+        # Pack the float values
+        format_string = f'{length}{cls.type_char}'
+        packed_floats = cstructure.pack(format_string, *v)
+        return packed_length + packed_floats
+
+    @classmethod
+    def to_datum(cls, b):
+        # Unpack the length
+        length = cstructure.unpack_one(_VARIABLE_TYPE_CTYPE, b[:VARIABLE_TYPE_HEADER_LENGTH])
+        # Unpack the floats
+        format_string = f'{length}{cls.type_char}'
+        floats = cstructure.unpack(format_string, b[VARIABLE_TYPE_HEADER_LENGTH:])
+        return list(floats)
+
+    @staticmethod
+    def cast_from_string(v):
+        # Assume the string representation is like '[1.0, 2.0, 3.0]'
+        v = v.strip('[]').split(',')
+        return [float(x.strip()) for x in v]
+
+    @classmethod
+    def bytes_length(cls, b):
+        if b is None:
+            return NULL_LENGTH
+        length = cstructure.unpack_one(_VARIABLE_TYPE_CTYPE, b[:VARIABLE_TYPE_HEADER_LENGTH])
+        return VARIABLE_TYPE_HEADER_LENGTH + length * cstructure.calcsize(cls.type_char)
 
 
 class AndbTypeForm(CatalogForm):
@@ -256,7 +303,8 @@ class AndbTypeForm(CatalogForm):
 
 _BUILTIN_TYPES = (
     IntegerType, BigintType, RealType, DoubleType,
-    BooleanType, CharType, VarcharType, TextType
+    BooleanType, CharType, VarcharType, TextType,
+    VectorType
 )
 
 _BUILTIN_TYPES_DICT = {i.type_name: i for i in _BUILTIN_TYPES}

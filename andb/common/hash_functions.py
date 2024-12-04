@@ -112,7 +112,7 @@ def hash_bytes(k, keylen):
 
 
 def hash_any(v):
-    pass
+    return v
 
 
 def hash_int(v: int, length):
@@ -146,14 +146,16 @@ test_hash_bytes()
 test_hash_int()
 
 
-def hash_float():
-    return None
+def hash_float(v):
+    return v
 
 
-def hash_bool():
-    return None
+def hash_bool(v):
+    return 1 if v else 0
 
 
-def hash_string():
-    return None
+def hash_string(v):
+    return hash_bytes(v.encode('utf-8'), len(v))
 
+def hash_array(v):
+    return hash(tuple(v))

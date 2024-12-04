@@ -1,16 +1,42 @@
+from andb.sql.parser.ast.operation import Function
 from andb.storage.engines.heap.relation import close_relation, open_relation
 from andb.storage.lock import rlock
 from andb.errno.errors import InitializationStageError, ExecutionStageError, FinalizationStageError
 from andb.storage.engines.heap.relation import hot_simple_select, bt_search_range, bt_search, bt_scan_all_keys
-from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_INDEX, CATALOG_ANDB_CLASS, get_all_catalogs
+from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_INDEX, CATALOG_ANDB_FUNCTIONS, get_all_catalogs
 from andb.runtime import global_vars, session_vars
-from andb.sql.parser.ast.misc import Star
+from andb.sql.parser.ast.misc import Constant, Star
 from andb.sql.parser.ast.join import JoinType
 
 from ..logical import Condition, TableColumn, AggregationFunctions, FunctionColumn
 from ..utils import expression_eval, ExprOperation
 from .base import PhysicalOperator
 from andb.executor.operator import utils
+
+
+def evaluate_expression(expr, context):
+    if isinstance(expr, Function):
+        # evaluate function call
+        function_name = expr.name
+        args = [evaluate_expression(arg, context) for arg in expr.args]
+        # get callback from catalog
+        callback = CATALOG_ANDB_FUNCTIONS.get_callback_by_name(
+            name=function_name,
+            database_oid=session_vars.current_database_oid
+        )
+        return callback(*args)
+    elif isinstance(expr, ExprOperation):
+        # evaluate operator, such as <, >, =, etc.
+        left = evaluate_expression(expr.left, context)
+        right = evaluate_expression(expr.right, context)
+        return expression_eval(expr.op, left, right)
+    elif isinstance(expr, TableColumn):
+        # get column value from context
+        return context.get_column_value(expr.table_name, expr.column_name)
+    elif isinstance(expr, Constant):
+        return expr.value
+    else:
+        raise NotImplementedError(f"Expression type '{type(expr)}' is not supported.")
 
 
 class Filter(PhysicalOperator):
@@ -106,16 +132,17 @@ class Filter(PhysicalOperator):
             if isinstance(node.right, Condition):
                 right_value = dfs(node.right)
 
-            if isinstance(left_value, TableColumn):
-                left_value = column_value_pairs[left_value]
-            if isinstance(right_value, TableColumn):
-                right_value = column_value_pairs[right_value]
+            context = Context(column_value_pairs)
 
-            if not isinstance(left_value, list):
-                left_value = [left_value]
-            if not isinstance(right_value, list):
-                right_value = [right_value]
-            return self.compare_values(node.expr.value, left_value, right_value)
+            # 评估左侧和右侧
+            left_evaluated = evaluate_expression(left_value, context) if isinstance(left_value, (Function, ExprOperation)) else (
+                column_value_pairs[left_value] if isinstance(left_value, TableColumn) else left_value
+            )
+            right_evaluated = evaluate_expression(right_value, context) if isinstance(right_value, (Function, ExprOperation)) else (
+                column_value_pairs[right_value] if isinstance(right_value, TableColumn) else right_value
+            )
+
+            return expression_eval(node.expr.value, left_evaluated, right_evaluated)
 
         return dfs(self.condition)
 
@@ -846,3 +873,10 @@ class PhysicalQuery(PhysicalOperator):
     def close(self):
         self.children[0].close()
         super().close()
+
+class Context:
+    def __init__(self, column_value_pairs):
+        self.column_value_pairs = column_value_pairs
+
+    def get_column_value(self, table_name, column_name):
+        return self.column_value_pairs.get(TableColumn(table_name, column_name), None)

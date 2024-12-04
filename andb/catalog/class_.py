@@ -1,8 +1,9 @@
 from andb.catalog.oid import OID_RELATION_START
 from ._base import CatalogTable, CatalogForm
-from .oid import OID_RELATION_END, OID_DATABASE_ANDB, INVALID_OID, OID_SYSTEM_TABLE_CLASS, OID_SYSTEM_TABLE_END, OID_SYSTEM_TABLE_START, OID_TEMP_TABLE, OID_MEMORY_TABLE_START, OID_MEMORY_TABLE_END
+from .oid import OID_RELATION_END, OID_DATABASE_ANDB, INVALID_OID, OID_SYSTEM_TABLE_CLASS, OID_SYSTEM_TABLE_END, OID_SYSTEM_TABLE_START, OID_TEMP_TABLE, OID_MEMORY_TABLE_START, OID_MEMORY_TABLE_END, OID_SYSTEM_TABLE_FUNCTIONS
 from .database import _ANDB_DATABASE
 from andb.errno.errors import DDLException
+from .function import _ANDB_FUNCTIONS
 
 
 class RelationKinds:
@@ -43,7 +44,11 @@ class AndbClassTable(CatalogTable):
         self.system_tables = []
         self.memory_tables = []
 
+
     def init(self):
+        # 初始化其他系统表
+        _ANDB_FUNCTIONS.init()
+        # 其他初始化逻辑
         pass
 
     def allocate_oid(self, kind=RelationKinds.HEAP_TABLE):

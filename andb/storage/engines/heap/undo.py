@@ -74,7 +74,7 @@ class UndoManager:
             os.makedirs(self.file_directory)
         filename = os.path.join(self.file_directory, str(xid))
         with open(filename, 'ab') as f:
-            # todo: batch write
+            #TODO: batch write
             for record in self.active_transactions[xid]:
                 f.write(record.to_bytes())
             f.flush()  # Flush internal buffers

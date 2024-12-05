@@ -13,18 +13,20 @@ from ..utils import expression_eval, ExprOperation
 from .base import PhysicalOperator
 from andb.executor.operator import utils
 
+class ExpressionContext:
+    def __init__(self, column_value_pairs):
+        self.column_value_pairs = column_value_pairs
+
+    def get_column_value(self, table_name, column_name):
+        return self.column_value_pairs.get(TableColumn(table_name, column_name), None)
 
 def evaluate_expression(expr, context):
-    if isinstance(expr, Function):
+    if isinstance(expr, FunctionColumn):
         # evaluate function call
-        function_name = expr.name
-        args = [evaluate_expression(arg, context) for arg in expr.args]
-        # get callback from catalog
-        callback = CATALOG_ANDB_FUNCTIONS.get_callback_by_name(
-            name=function_name,
-            database_oid=session_vars.current_database_oid
-        )
-        return callback(*args)
+        function_name = expr.function_name
+        columns = [evaluate_expression(column, context) for column in expr.columns]
+        # get function result
+        return CATALOG_ANDB_FUNCTIONS.perform_function(function_name, session_vars.SessionVars.database_oid, columns)
     elif isinstance(expr, ExprOperation):
         # evaluate operator, such as <, >, =, etc.
         left = evaluate_expression(expr.left, context)
@@ -35,6 +37,9 @@ def evaluate_expression(expr, context):
         return context.get_column_value(expr.table_name, expr.column_name)
     elif isinstance(expr, Constant):
         return expr.value
+    elif isinstance(expr, (int, str, float, bool, type(None))):
+        # sometimes, the value is not wrapped in Constant
+        return expr
     else:
         raise NotImplementedError(f"Expression type '{type(expr)}' is not supported.")
 
@@ -58,14 +63,25 @@ class Filter(PhysicalOperator):
         def dfs(node: Condition):
             if node is None:
                 return False
-            if not isinstance(node.left, TableColumn):
+            if not isinstance(node.left, (TableColumn, FunctionColumn)):
                 # node.right can be int, float, TableColumn, Condition ...
                 return False
 
             # construct mapper
-            if node.left not in self.column_condition:
-                self.column_condition[node.left] = []
-            self.column_condition[node.left].append(node)
+            node_left_columns = []
+            if isinstance(node.left, FunctionColumn):
+                for column in node.left.columns:
+                    if isinstance(column, TableColumn):
+                        node_left_columns.append(column)
+            elif isinstance(node.left, TableColumn):
+                node_left_columns.append(node.left)
+            else:
+                raise NotImplementedError('not supported this type of column.')
+
+            for column in node_left_columns:
+                if column not in self.column_condition:
+                    self.column_condition[column] = []
+                self.column_condition[column].append(node)
 
             # check validity for all condition expression
             left_validity = True
@@ -121,30 +137,32 @@ class Filter(PhysicalOperator):
         return rv
 
     def judge(self, column_value_pairs):
-        def dfs(node: Condition):
+        def inner_dfs(node: Condition):
             if node is None:
                 raise ValueError(f'node should not be None.')
 
             left_value = node.left
             right_value = node.right
             if isinstance(node.left, Condition):
-                left_value = dfs(node.left)
+                left_value = inner_dfs(node.left)
             if isinstance(node.right, Condition):
-                right_value = dfs(node.right)
+                right_value = inner_dfs(node.right)
 
-            context = Context(column_value_pairs)
+            context = ExpressionContext(column_value_pairs)
 
-            # 评估左侧和右侧
-            left_evaluated = evaluate_expression(left_value, context) if isinstance(left_value, (Function, ExprOperation)) else (
-                column_value_pairs[left_value] if isinstance(left_value, TableColumn) else left_value
-            )
-            right_evaluated = evaluate_expression(right_value, context) if isinstance(right_value, (Function, ExprOperation)) else (
-                column_value_pairs[right_value] if isinstance(right_value, TableColumn) else right_value
-            )
+            # evaluate left and right
+            # left_evaluated = evaluate_expression(left_value, context) if isinstance(left_value, FunctionColumn) else (
+            #     column_value_pairs[left_value] if isinstance(left_value, TableColumn) else left_value
+            # )
+            # right_evaluated = evaluate_expression(right_value, context) if isinstance(right_value, FunctionColumn) else (
+            #     column_value_pairs[right_value] if isinstance(right_value, TableColumn) else right_value
+            # )
+            left_evaluated = evaluate_expression(left_value, context)
+            right_evaluated = evaluate_expression(right_value, context)
 
             return expression_eval(node.expr.value, left_evaluated, right_evaluated)
 
-        return dfs(self.condition)
+        return inner_dfs(self.condition)
 
     def filter(self, iterator):
         columns = list(self.column_condition.keys())
@@ -155,10 +173,10 @@ class Filter(PhysicalOperator):
             if not tuple_:
                 break
 
-            pairs = {column: [] for column in columns}
+            pairs = {column: None for column in columns}
             for column in columns:
                 attr_num = self.get_index_of_tuple_by_column(column)
-                pairs[column].append(tuple_[attr_num])
+                pairs[column] = tuple_[attr_num]
 
             if self.judge(pairs):
                 yield tuple_
@@ -312,7 +330,7 @@ class IndexScan(Scan):
                 yield tuple_
 
     def next_internal(self):
-        # todo: range
+        #TODO: range
         assert isinstance(self._filter.condition.expr, ExprOperation)
         const_values = {column: [] for column in self.index_columns}
         for column in self.index_columns:
@@ -460,7 +478,7 @@ class Join(PhysicalOperator):
         if not self.columns:
             self.columns = self.join_columns
 
-        # todo: semi-join and anti semi-join should prune self.columns
+        #TODO: semi-join and anti semi-join should prune self.columns
 
         # check all target columns are all in joined columns
         # time complexity can reduce to O(N) from O(N2)
@@ -691,7 +709,7 @@ class HashAggregation(Aggregation):
         child = self.children[0]
         child.open()
 
-        # todo: fix the relationship between involved_columns and self.columns
+        #TODO: fix the relationship between involved_columns and self.columns
         # and their using places.
         involved_columns = self.grouping_columns + self.aggregation_columns
         self.columns = self.grouping_columns + [FunctionColumn(self.function_name, self.aggregation_columns)]
@@ -873,10 +891,3 @@ class PhysicalQuery(PhysicalOperator):
     def close(self):
         self.children[0].close()
         super().close()
-
-class Context:
-    def __init__(self, column_value_pairs):
-        self.column_value_pairs = column_value_pairs
-
-    def get_column_value(self, table_name, column_name):
-        return self.column_value_pairs.get(TableColumn(table_name, column_name), None)

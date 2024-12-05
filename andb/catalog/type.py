@@ -352,5 +352,14 @@ class AndbTypeTable(CatalogTable):
         meta = self.get_type_form(type_name)
         return meta.to_datum(bytes_)
 
+def cast_value(value, destination_type_name):
+    meta: AndbBaseType = _ANDB_TYPE.get_type_form(destination_type_name)
+    if isinstance(value, str):
+        return meta.cast_from_string(value)
+    elif isinstance(value, type(meta.type_default)):
+        # value seems already in the destination type
+        return value
+    else:
+        raise NotImplementedError(f"Unsupported value type: {type(value)}")
 
 _ANDB_TYPE = AndbTypeTable()

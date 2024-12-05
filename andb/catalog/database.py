@@ -31,7 +31,7 @@ class AndbDatabaseTable(CatalogTable):
         if len(results) > 0:
             return False
 
-        # todo: reuse deleted oid
+        #TODO: reuse deleted oid
         next_oid = self.rows[-1].oid + 1
         if next_oid > OID_RELATION_END:
             return False

@@ -411,7 +411,7 @@ class BPlusTree:
                 queue.extend(node.children)
 
             nodes.append(node)
-        # todo: can be streaming using yield
+        #TODO: can be streaming using yield
         nodes.sort(key=lambda n: n.get_pageno())
 
         # assert as below

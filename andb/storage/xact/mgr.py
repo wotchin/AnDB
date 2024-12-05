@@ -107,7 +107,7 @@ class TransactionManager:
         slock.spinlock_aquire(self._xid_lock)
         self._current_xid += 1
         xid = self._current_xid
-        # todo: we don't need to wraparound xid now
+        #TODO: we don't need to wraparound xid now
         assert xid <= MAX_XID
         slock.spinlock_release(self._xid_lock)
         return xid
@@ -258,18 +258,18 @@ class TransactionManager:
             elif undo_record.operation == UndoOperation.BTREE_INSERT:
                 key_data, tuple_pointer = undo_record.location
                 tree = BufferedBPTree(undo_record.relation)
-                lsn = self.max_lsn() # todo: is this fine?
+                lsn = self.max_lsn() #TODO: is this fine?
                 # btree can mark dirty itself
                 tree.delete_value(lsn, key_data, tuple_pointer)
             elif undo_record.operation == UndoOperation.BTREE_UPDATE:
                 key_data, old_tuple_pointer = undo_record.location
                 tree = BufferedBPTree(undo_record.relation)
-                lsn = self.max_lsn() # todo: is this fine?
+                lsn = self.max_lsn() #TODO: is this fine?
                 tree.update(lsn, key_data, old_tuple_pointer)
             elif undo_record.operation == UndoOperation.BTREE_DELETE:
                 key_data, old_tuple_pointer = undo_record.location
                 tree = BufferedBPTree(undo_record.relation)
-                lsn = self.max_lsn() # todo: is this fine?
+                lsn = self.max_lsn() #TODO: is this fine?
                 tree.insert(lsn, key_data, old_tuple_pointer)
             elif undo_record.operation == UndoOperation.BEGIN or \
                     undo_record.operation == UndoOperation.COMMIT or \

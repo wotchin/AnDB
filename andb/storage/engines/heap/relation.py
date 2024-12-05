@@ -48,7 +48,7 @@ class BufferedBPTree(BPlusTree):
         return node
 
     def _need_to_split(self, node):
-        # todo: user-defined load factor
+        #TODO: user-defined load factor
         return super()._need_to_split(node)
 
 
@@ -218,14 +218,14 @@ def close_relation(oid, lock_mode=rlock.ACCESS_SHARE_LOCK):
 
 
 def hot_create_table(table_name, fields, database_oid=OID_DATABASE_ANDB):
-    # todo: not supported atomic DDL yet
+    #TODO: not supported atomic DDL yet
     if CATALOG_ANDB_CLASS.exist_table(table_name, database_oid):
         raise DDLException('the same name table already exists.')
 
     oid = CATALOG_ANDB_CLASS.create(name=table_name,
                                     kind=RelationKinds.HEAP_TABLE,
                                     database_oid=database_oid)
-    # todo: fields, schema, data file
+    #TODO: fields, schema, data file
     # fields format: (name, type_name, notnull)
     CATALOG_ANDB_ATTRIBUTE.define_table_fields(class_oid=oid, fields=fields)
     file_touch(
@@ -235,7 +235,7 @@ def hot_create_table(table_name, fields, database_oid=OID_DATABASE_ANDB):
 
 
 def hot_drop_table(table_name, database_oid=OID_DATABASE_ANDB):
-    # todo: refactor the return value
+    #TODO: refactor the return value
     oid = CATALOG_ANDB_CLASS.get_relation_oid(table_name, database_oid, kind=RelationKinds.HEAP_TABLE)
     if oid == INVALID_OID:
         raise DDLException('not found the table.')
@@ -260,7 +260,7 @@ def hot_drop_table(table_name, database_oid=OID_DATABASE_ANDB):
 
 def hot_simple_insert(relation: Relation, python_tuple, lsn=None):
     # no redo and undo log here, only update cached page
-    # todo: find from fsm first
+    #TODO: find from fsm first
     pageno = relation.last_pageno()
     buffer_page = global_vars.buffer_manager.get_page(relation, pageno)
     xid = global_vars.xact_manager.get_xid()
@@ -303,7 +303,7 @@ def hot_simple_update(relation: Relation, pageno, tid, python_tuple):
 
 
 def hot_simple_delete(relation: Relation, pageno, tid, lsn=None):
-    # todo: update fsm? or only reorganize?
+    #TODO: update fsm? or only reorganize?
     buffer_page = global_vars.buffer_manager.get_page(relation, pageno)
     xid = global_vars.xact_manager.get_xid()
     old_tuple_bytes = buffer_page.page.select(tid)
@@ -406,7 +406,7 @@ def bt_create_index_internal(index_name, table_oid, attr_form_array, index_attr_
                                            table_oid=table_oid, table_attr_forms=index_attr_form_array)
 
     tree = BPlusTree()
-    # todo: fix this lsn
+    #TODO: fix this lsn
     lsn = global_vars.xact_manager.max_lsn()
     last_pageno = table_relation.last_pageno()
     # iteration includes the last pageno

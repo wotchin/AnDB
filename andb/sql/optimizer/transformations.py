@@ -63,7 +63,7 @@ class ConditionTransformation(BaseTransformation):
     def on_transform(ast: Condition):
         def swap(node: Condition):
             # let column is at left hand side
-            if isinstance(node.right, TableColumn):
+            if isinstance(node.right, AbstractColumn):
                 node.left, node.right = node.right, node.left
             return node
 
@@ -76,8 +76,8 @@ class ConditionTransformation(BaseTransformation):
             right_node = dfs(node.right)
 
             # only convert constant
-            if (not isinstance(left_node, TableColumn) and
-                    not isinstance(right_node, TableColumn)):
+            if (not isinstance(left_node, AbstractColumn) and
+                    not isinstance(right_node, AbstractColumn)):
                 return expression_eval(node.expr.value, node.left, node.right)
             else:
                 node.left = left_node
@@ -95,7 +95,7 @@ class QueryLogicalPlanTransformation(BaseTransformation):
 
     @staticmethod
     def process_non_join_scan(query: LogicalQuery):
-        assert len(query.scan_operators) == 1  # todo: support 0 in future
+        assert len(query.scan_operators) == 1  #TODO: support 0 in future
         scan = query.scan_operators[0]
 
         if not query.condition:
@@ -106,7 +106,7 @@ class QueryLogicalPlanTransformation(BaseTransformation):
         scan.condition = query.condition
         scan.table_columns = []
         for table_column in query.get_seen_table_columns(scan.table_name):
-            # todo: because there may be function
+            #TODO: because there may be function
             scan.table_columns.append(table_column)
         # column prune:
         # because this is non-join query, it is very simple. if this query has join clause, we have to
@@ -133,7 +133,7 @@ class QueryLogicalPlanTransformation(BaseTransformation):
 
             scan_operator.table_columns = []
             for table_column in query.get_seen_table_columns(scan_operator.table_name):
-                # todo: because there may be function
+                #TODO: because there may be function
                 scan_operator.table_columns.append(table_column)
 
         # add table columns that come from join conditions
@@ -149,7 +149,7 @@ class QueryLogicalPlanTransformation(BaseTransformation):
                     join_table_columns.append(condition.left)
                 if isinstance(condition.right, TableColumn):
                     join_table_columns.append(condition.right)
-            # todo: can be further pruned
+            #TODO: can be further pruned
             # join_operator.table_columns = None
         for join_table_column in join_table_columns:
             for scan_operator in query.scan_operators:
@@ -188,15 +188,15 @@ class QueryLogicalPlanTransformation(BaseTransformation):
 
     @staticmethod
     def on_transform(query: LogicalQuery):
-        # todo: extract all involved columns, then prune useless columns
-        # todo: rewrite
+        #TODO: extract all involved columns, then prune useless columns
+        #TODO: rewrite
 
         if not query.join_operators:
             QueryLogicalPlanTransformation.process_non_join_scan(query)
         else:
             QueryLogicalPlanTransformation.process_join_scan(query)
 
-        # todo: limit, ...
+        #TODO: limit, ...
         if query.sort_clause:
             query.sort_clause.children = query.children
             query.children = [query.sort_clause]
@@ -220,33 +220,39 @@ class SelectTransformation(BaseTransformation):
         return isinstance(ast, Select)
 
     @staticmethod
+    def _supplement_table_name_for_column(column: TableColumn, table_attr_forms):
+        if column.table_name is not None:
+            found = False
+            for attr_form in table_attr_forms[column.table_name]:
+                if attr_form.name == column.column_name:
+                    found = True
+                    break
+            if not found:
+                raise InitializationStageError(f"not found '{str(column)}'.")
+        else:
+            column_table_name = None
+            for table_name in table_attr_forms:
+                for attr_form in table_attr_forms[table_name]:
+                    if attr_form.name == column.column_name:
+                        if column_table_name is not None:
+                            raise InitializationStageError(
+                                f'both table {column_table_name} and {table_name} have'
+                                f' the same column {column.column_name}.')
+                        column_table_name = table_name
+            if column_table_name is None:
+                raise InitializationStageError(f"not found '{column.column_name}'.")
+            column.table_name = column_table_name
+                        
+    @staticmethod
     def _supplement_table_name(condition: Condition, table_attr_forms):
         for node in condition.get_iterator():
             for arg in (node.left, node.right):
-                if not isinstance(arg, TableColumn):
-                    continue
-
-                if arg.table_name is not None:
-                    found = False
-                    for attr_form in table_attr_forms[arg.table_name]:
-                        if attr_form.name == arg.column_name:
-                            found = True
-                            break
-                    if not found:
-                        raise InitializationStageError(f"not found '{str(arg)}'.")
-                else:
-                    arg_table_name = None
-                    for table_name in table_attr_forms:
-                        for attr_form in table_attr_forms[table_name]:
-                            if attr_form.name == arg.column_name:
-                                if arg_table_name is not None:
-                                    raise InitializationStageError(
-                                        f'both table {arg_table_name} and {table_name} have'
-                                        f' the same column {arg.column_name}.')
-                                arg_table_name = table_name
-                    if arg_table_name is None:
-                        raise InitializationStageError(f"not found '{arg.column_name}'.")
-                    arg.table_name = arg_table_name
+                if isinstance(arg, TableColumn):
+                    SelectTransformation._supplement_table_name_for_column(arg, table_attr_forms)
+                elif isinstance(arg, FunctionColumn):
+                    for column in arg.columns:
+                        if isinstance(column, TableColumn):
+                            SelectTransformation._supplement_table_name_for_column(column, table_attr_forms)
         return condition
 
     @classmethod
@@ -327,7 +333,7 @@ class SelectTransformation(BaseTransformation):
                 query.target_list.append(table_column)
                 query.add_seen_table_column(table_column)
             elif isinstance(target, Function):
-                # todo: multiple parameters
+                #TODO: multiple parameters
                 table_columns = []
                 for id_ in target.args:
                     target_column_name = id_.parts
@@ -341,15 +347,23 @@ class SelectTransformation(BaseTransformation):
                     function_column.alias = target.alias.parts
                 query.target_list.append(function_column)
             else:
-                # todo: function and agg
+                #TODO: function and agg
                 raise NotImplementedError('not supported this syntax.')
 
     @classmethod
     def transform_where_clause(cls, ast, query):
         if ast.where is not None:
             where_condition = ConditionTransformation.on_transform(Condition(ast.where))
-            # supplement missing table name and check existing table name
-            query.condition = cls._supplement_table_name(where_condition, query.table_attr_forms)
+            if isinstance(where_condition, bool):
+                if where_condition:
+                    query.condition = None  # we don't need condition
+                else:
+                    raise NotImplementedError('should return empty set directly.')
+            elif isinstance(where_condition, Condition):
+                # supplement missing table name and check existing table name
+                query.condition = cls._supplement_table_name(where_condition, query.table_attr_forms)
+            else:
+                raise NotImplementedError('not supported this syntax.')
 
     @classmethod
     def transform_join_clause(cls, ast, query):
@@ -429,8 +443,8 @@ class SelectTransformation(BaseTransformation):
         cls.transform_order_clause(ast, query)
         cls.transform_group_clause(ast, query)
 
-        # todo: distinct
-        # todo: limit
+        #TODO: distinct
+        #TODO: limit
 
         query.distinct = ast.distinct
 
@@ -497,7 +511,7 @@ class DeleteTransformation(BaseTransformation):
     @staticmethod
     def on_transform(ast: Delete):
         # transform to a query
-        # todo: extract where predicates
+        #TODO: extract where predicates
         select = Select(targets=[Star()])
         select.from_table = ast.table
         select.where = ast.where

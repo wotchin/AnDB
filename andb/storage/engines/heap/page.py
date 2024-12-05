@@ -166,7 +166,7 @@ class SlotPage:
         self.items = bytearray(data) + self.items  # put into the first place
         # finally, update some fields
         self.header.lsn = lsn
-        self.header.checksum = 0  # todo: unset
+        self.header.checksum = 0  #TODO: unset
         self.header.lower = self.header.size() + self.item_ids_size()
         self.header.upper = PAGE_SIZE - self.item_data_size()
         # return just put index of the whole item_ids list
@@ -188,7 +188,7 @@ class SlotPage:
 
         self.header.lsn = lsn
         item_id.flag = ItemIdFlags.DEAD
-        self.header.checksum = 0  # todo: unset
+        self.header.checksum = 0  #TODO: unset
         return True
     
     def delete_inplace(self, lsn: int, item_idx: int) -> bool:
@@ -221,11 +221,11 @@ class SlotPage:
             new_upper = item_id.offset
         # finally, we should switch old `self.items` to new one.
         # === the following will be a critical section if it is in concurrency scenario ===
-        # todo: spin lock
+        #TODO: spin lock
         self.item_ids = new_item_ids
         self.items = new_data
         self.header.lsn = lsn
-        self.header.checksum = 0  # todo: unset
+        self.header.checksum = 0  #TODO: unset
         self.header.upper = new_upper
         self.header.lower = self.header.size() + self.item_ids_size()
         # === end critical section ===
@@ -242,7 +242,7 @@ class SlotPage:
 
         self.header.lsn = old_lsn
         item_id.flag = ItemIdFlags.NORMAL
-        self.header.checksum = 0  # todo: unset
+        self.header.checksum = 0  #TODO: unset
         return True
 
     def select(self, item_idx: int) -> bytes:
@@ -288,7 +288,7 @@ class SlotPage:
             # The following is bytearray's benefit.
             self.items[offset_of_items: (offset_of_items + length)] = data
             self.header.lsn = lsn
-            self.header.checksum = 0  # todo: unset
+            self.header.checksum = 0  #TODO: unset
             return item_idx
         else:
             # use append-only
@@ -329,11 +329,11 @@ class SlotPage:
             new_upper = item_id.offset
         # finally, we should switch old `self.items` to new one.
         # === the following will be a critical section if it is in concurrency scenario ===
-        # todo: spin lock
+        #TODO: spin lock
         self.item_ids = new_item_ids
         self.items = new_data
         self.header.lsn = lsn
-        self.header.checksum = 0  # todo: unset
+        self.header.checksum = 0  #TODO: unset
         self.header.upper = new_upper
         self.header.lower = self.header.size() + self.item_ids_size()
         # === end critical section ===
@@ -346,7 +346,7 @@ class SlotPage:
         self.header.lsn = lsn
         self.header.lower = self.header.size() + self.item_ids_size()
         self.header.upper = PAGE_SIZE
-        self.header.checksum = 0  # todo: unset
+        self.header.checksum = 0  #TODO: unset
 
     def pack(self) -> bytes:
         """Serialize the class to bytes."""
@@ -388,7 +388,7 @@ class SlotPage:
         page.header.flags = 0
         page.header.lower = page.header.size() + page.item_ids_size()
         page.header.upper = PAGE_SIZE
-        page.header.checksum = 0  # todo: unset
+        page.header.checksum = 0  #TODO: unset
         return page
 
     def __eq__(self, other):

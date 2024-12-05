@@ -33,7 +33,7 @@ class AndbAttributeTable(CatalogTable):
     __form__ = AndbAttributeForm
 
     def init(self):
-        # todo: insert system catalog information?
+        #TODO: insert system catalog information?
         pass
 
     def get_table_forms(self, class_oid):
@@ -55,7 +55,7 @@ class AndbAttributeTable(CatalogTable):
         num = 0
         while num < len(fields):
             name, type_name, notnull = fields[num]
-            # todo: atomic
+            #TODO: atomic
             if type_name.startswith(VarcharType.type_name):
                 # varchar is fixed length
                 length = int(type_name.replace(VarcharType.type_name, ''))
@@ -74,7 +74,7 @@ class AndbAttributeTable(CatalogTable):
             if persistent:
                 self.insert(row)
             else:
-                # todo: binary search
+                #TODO: binary search
                 self.rows.append(row)
                 self.rows.sort()
             num += 1

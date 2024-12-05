@@ -46,9 +46,6 @@ class AndbClassTable(CatalogTable):
 
 
     def init(self):
-        # 初始化其他系统表
-        _ANDB_FUNCTIONS.init()
-        # 其他初始化逻辑
         pass
 
     def allocate_oid(self, kind=RelationKinds.HEAP_TABLE):
@@ -162,7 +159,7 @@ class AndbClassTable(CatalogTable):
         if table_oid == INVALID_OID:
             raise DDLException('The oid for non-persistent relation cannot be allocated.') 
         
-        # todo: binary search for optimization
+        #TODO: binary search for optimization
         if kind == RelationKinds.MEMORY_TABLE:
             self.memory_tables.append(AndbClassForm(oid=table_oid, name=name,
                                                     kind=kind, database_oid=database_oid))

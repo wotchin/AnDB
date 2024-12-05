@@ -236,4 +236,4 @@ def test_btree():
 
     global_vars.xact_manager.commit_transaction(0)
 
-    # todo: we haven't tested float byte-encoding whether support order-preserving.
+    #TODO: we haven't tested float byte-encoding whether support order-preserving.

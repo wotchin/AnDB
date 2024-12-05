@@ -79,7 +79,7 @@ class ConfigOption:
 
 def get_side_effect_function(context, variable_name):
     def effect_in_global(v):
-        # todo: multiprocess should do more?
+        #TODO: multiprocess should do more?
         assert hasattr(global_vars, variable_name)
         setattr(global_vars, variable_name, v)
         return getattr(global_vars, variable_name)

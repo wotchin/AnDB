@@ -9,7 +9,7 @@ from andb.errno.errors import RollbackError, FatalError
 
 
 def tell_session(errno, message):
-    # todo: not using print
+    #TODO: not using print
     print(errno, message)
 
 
@@ -44,13 +44,13 @@ def execute_simple_query(query_string):
         # non-rollbackable error
         raise e
     except Exception as e:
-        # todo: all failure transactions should be aborted
+        #TODO: all failure transactions should be aborted
         global_vars.xact_manager.abort_transaction(xid)
         raise e
     else:
         global_vars.xact_manager.commit_transaction(xid)
 
-    # todo: add error information into result as well
+    #TODO: add error information into result as well
     # and use a protocol to parse and serialize the result
     return portal.results()
 

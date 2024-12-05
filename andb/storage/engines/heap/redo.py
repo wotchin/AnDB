@@ -233,7 +233,7 @@ class WALManager:
         if not wal_page.append_record(record):
             remaining = wal_page.calc_remaining_size(record)
             if remaining >= (WAL_PAGE_SIZE - WALPage.Header.size() - WALRecord.Header.size()):
-                # todo: release locks if ...
+                #TODO: release locks if ...
                 lwlock_release(LWLockName.WAL_WRITE)
                 # xxx: this is a critical section!! Rollback above allocation?
                 raise WALError('Not supported huge WAL record.')

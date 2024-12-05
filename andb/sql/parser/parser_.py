@@ -571,3 +571,30 @@ class SQLParser(sly.Parser):
     @_('CHECKPOINT')
     def command(self, p):
         return Command(command=p[0])
+
+    # Add new rules for function calls
+    @_('identifier LPAREN expr_list RPAREN')
+    def expr(self, p):
+        # Support function calls in expressions
+        return Function(op=p.identifier.parts, args=p.expr_list)
+
+    @_('identifier LPAREN RPAREN')
+    def expr(self, p):
+        # Support function calls with no arguments
+        return Function(op=p.identifier.parts, args=[])
+
+    # Modify expr_list to better handle function arguments
+    @_('expr_list COMMA expr')
+    def expr_list(self, p):
+        if isinstance(p.expr_list, list):
+            return p.expr_list + [p.expr]
+        return [p.expr_list, p.expr]
+
+    # # Add support for negative numbers in expressions
+    # @_('MINUS expr')
+    # def expr(self, p):
+    #     if isinstance(p.expr, Constant):
+    #         # Handle negative numbers
+    #         return Constant(value=-p.expr.value)
+    #     # Handle negative expressions
+    #     return BinaryOperation(op='*', args=(Constant(value=-1), p.expr))

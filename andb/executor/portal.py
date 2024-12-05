@@ -37,7 +37,7 @@ class ExecuteResultTuple(ExecutionResult):
 
 class ExecuteResultSet(ExecutionResult):
     def __init__(self, **kwargs):
-        # todo: the ResultSet is a tabular that can be scanned again and has
+        #TODO: the ResultSet is a tabular that can be scanned again and has
         # its own name, attributes ...
         super().__init__(**kwargs)
         self.attr_forms = []
@@ -97,7 +97,7 @@ class ExecutionPortal:
     def initialize(self):
         start_time = time.monotonic()
         self.plan_tree.open()
-        # todo: self.attr_forms
+        #TODO: self.attr_forms
         self.init_elapsed = time.monotonic() - start_time
 
     def execute(self):
@@ -106,7 +106,7 @@ class ExecutionPortal:
         self._results = list(root.next())
         self.target_list_columns = root.columns
         self.execute_elapsed = time.monotonic() - start_time
-        # todo: result type
+        #TODO: result type
 
     def finalize(self):
         start_time = time.monotonic()
@@ -114,7 +114,7 @@ class ExecutionPortal:
         self.final_elapsed = time.monotonic() - start_time
 
     def results(self):
-        # todo: result type
+        #TODO: result type
         total_elapsed = self.init_elapsed + self.execute_elapsed + self.final_elapsed
         if self.cmd_type == CmdType.CMD_UTILITY:
             return ExecutionResult(elapsed=total_elapsed)
@@ -130,11 +130,11 @@ class ExecutionPortal:
             rv.tuples = self._results
             return rv
         elif self.cmd_type == CmdType.CMD_SELECT:
-            # todo: result set
+            #TODO: result set
             rv = ExecuteResultSet(elapsed=total_elapsed)
 
             # construct output fields
-            # todo: can be reused and scanned again
+            #TODO: can be reused and scanned again
             to_be_defined_fields = []
             for column in self.target_list_columns:
                 if isinstance(column, TableColumn):
@@ -142,7 +142,7 @@ class ExecutionPortal:
                                                  database_oid=session_vars.SessionVars.database_oid)
                     to_be_defined_fields.append((column.standard_name, attr.type_oid, attr.length, attr.notnull))
                 elif isinstance(column, FunctionColumn):
-                    # todo: TBH, we have to determine what the type of function return value is
+                    #TODO: TBH, we have to determine what the type of function return value is
                     # and construct the field according to the information but we haven't implemented
                     # the catalog to record what the type is.
                     # Hence, we have to mock data here but it still works.

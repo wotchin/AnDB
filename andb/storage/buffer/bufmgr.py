@@ -87,7 +87,7 @@ def heap_allocate_page(relation, pageno):
 
 def heap_write_page(buffer_page):
     pageno = buffer_page.pageno
-    # todo: allocate page space ahead in disk using the following code, but
+    #TODO: allocate page space ahead in disk using the following code, but
     # currently we cannot because insert action depends on the last pageno, we
     # doesn't implement a fsm mechanism yet.
 
@@ -199,7 +199,7 @@ class BufferManager:
             lwlock_release(LWLockName.BUFFER_UPDATE)
 
     def reset(self):
-        # todo: sync ahead?
+        #TODO: sync ahead?
         self.cache.clear()
 
     def sync_evicted_pages(self):

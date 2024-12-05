@@ -36,15 +36,18 @@ class ScanImplementation(BaseImplementation):
 
     @staticmethod
     def _extract_predicates(condition: Condition):
-        # todo: process OR
+        #TODO: process OR
         predicates = []
         if not condition:
             return predicates
         for node in condition.get_iterator():
-            if node.is_constant_condition():
+            if node.is_constant_comparison():
+                predicates.append(node)
+            elif node.is_function_comparison():
                 predicates.append(node)
             if node.expr.value == 'or':
                 raise NotImplementedError('not supported OR expression')
+            
         return predicates
 
     @staticmethod
@@ -52,7 +55,7 @@ class ScanImplementation(BaseImplementation):
         matched_count = 0
         for i, index_form in enumerate(index_forms):
             for j, attr_num in enumerate(table_attr_nums):
-                # todo: now, we only support single column index
+                #TODO: now, we only support single column index
                 if attr_num == index_form.attr_num:
                     # if follows leftmost prefix rule, all attributions must be the same order
                     if follow_leftmost_prefix_rule and i != j:
@@ -67,7 +70,7 @@ class ScanImplementation(BaseImplementation):
             return False
         for i, index_attr_num in enumerate(index_attr_nums):
             for j, table_attr_num in enumerate(table_attr_nums):
-                # todo: now, we only support single column index
+                #TODO: now, we only support single column index
                 if table_attr_num == index_attr_num:
                     # if follows leftmost prefix rule, all attributions must be the same order
                     if i != j:
@@ -99,18 +102,20 @@ class ScanImplementation(BaseImplementation):
         predicate_attr_nums = []
         for condition in predicates:
             for table_form in table_forms:
-                if condition.left.column_name == table_form.name:
+                if isinstance(condition.left, TableColumn) and condition.left.column_name == table_form.name:
                     predicate_attr_nums.append(table_form.num)
 
+        #TODO: we will support vector index in the future here.
+
         # rule-based optimizer
-        # todo: currently, only supports simple index
+        #TODO: currently, only supports simple index
         candidate_indexes = []
         all_indexes = cls._find_corresponding_index(scan_operator.table_oid)
         for index_oid in all_indexes:
             if cls._is_index_matched(all_indexes[index_oid], predicate_attr_nums, follow_leftmost_prefix_rule=True):
                 candidate_indexes.append(index_oid)
 
-        # todo: use selectivity
+        #TODO: use selectivity
         if len(candidate_indexes) == 0:
             return TableScan(relation_oid=scan_operator.table_oid, columns=scan_operator.table_columns,
                              filter_=Filter(scan_operator.condition))
@@ -142,7 +147,7 @@ class ScanImplementation(BaseImplementation):
 
     @classmethod
     def on_implement(cls, scan_operator: ScanOperator):
-        # todo: different options
+        #TODO: different options
         return cls._implement_scan_operator(scan_operator)
 
 
@@ -176,7 +181,7 @@ class AggregationImplementation(BaseImplementation):
 
     @classmethod
     def on_implement(cls, old_operator: GroupOperator):
-        # todo: sort agg
+        #TODO: sort agg
         if old_operator.having_clause:
             agg_condition = Filter(old_operator.having_clause)
         else:
@@ -228,7 +233,7 @@ class QueryImplementation(BaseImplementation):
     @classmethod
     def on_implement(cls, old_operator: LogicalQuery):
         physical_query = select.PhysicalQuery(old_operator)
-        # todo: non-SJP, estimation
+        #TODO: non-SJP, estimation
         root_node = cls.implement_tree(physical_query.logical_query.children[0])
         physical_query.add_child(root_node)
 

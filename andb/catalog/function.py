@@ -1,4 +1,5 @@
 from andb.catalog.buitin_functions import cosine_distance
+from andb.catalog.type import cast_value
 from ._base import CatalogTable, CatalogForm
 from .oid import (
     OID_SYSTEM_TABLE_FUNCTIONS,
@@ -36,6 +37,15 @@ class AndbFunctionForm(CatalogForm):
     
     def __lt__(self, other):
         return self.oid < other.oid
+    
+BUILTIN_FUNCTIONS = [
+    {
+        'name': 'cosine_distance',
+        'return_type': 'float',
+        'arg_types': ['vector', 'vector'],
+        'callback': cosine_distance
+    },
+]
 
 class AndbFunctionTable(CatalogTable):
     __tablename__ = 'andb_function'
@@ -45,14 +55,18 @@ class AndbFunctionTable(CatalogTable):
     def __init__(self):
         super().__init__()
         self.builtin_functions = {}
+        # construct builtin function mapping
+        for func in BUILTIN_FUNCTIONS:
+            self.builtin_functions[func['name']] = func['callback']
 
     def init(self):
         # initialize builtin functions
-        self.register_builtin_function(
-            name='cosine_distance',
-            return_type='float',
-            arg_types=['vector', 'vector'],
-            callback=cosine_distance  # import custom callback function
+        for func in BUILTIN_FUNCTIONS:
+            self.register_builtin_function(
+                name=func['name'],
+                return_type=func['return_type'],
+                arg_types=func['arg_types'],
+                callback=func['callback']
         )
 
     def register_builtin_function(self, name, return_type, arg_types, callback):
@@ -74,8 +88,6 @@ class AndbFunctionTable(CatalogTable):
             arg_count=len(arg_types)
         ))
 
-        # map callback to memory
-        self.builtin_functions[name] = callback
 
     def allocate_oid(self):
         if len(self.rows) == 0:
@@ -103,7 +115,24 @@ class AndbFunctionTable(CatalogTable):
         # only handle builtin functions
         if name in self.builtin_functions:
             return self.builtin_functions[name]
+        # maybe functions are not loaded yet
+        
         # TODO: handle user-defined functions
         raise NotImplementedError(f"Function '{name}' not implemented.")
+    
+    def get_function_types(self, function_name, database_oid):
+        results = self.search(lambda r: r.name == function_name and
+                                     r.database_oid == database_oid)
+        if len(results) != 1:
+            raise DDLException(f'Function {function_name} not found.')
+        return results[0].arg_types.split(','), results[0].return_type
+        
+    def perform_function(self, function_name, database_oid, args):
+        callback = self.get_callback_by_name(function_name, database_oid)
+
+        arg_types, return_type = self.get_function_types(function_name, database_oid)
+        casted_args = [cast_value(arg, arg_type) for arg, arg_type in zip(args, arg_types)]
+        return_value = callback(*casted_args)
+        return cast_value(return_value, return_type)
 
 _ANDB_FUNCTIONS = AndbFunctionTable()

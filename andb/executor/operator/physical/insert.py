@@ -42,7 +42,7 @@ class InsertPhysicalOperator(PhysicalOperator):
 
     def next(self):
         if not self.python_tuples:
-            # todo: fetch tuples from select clause
+            #TODO: fetch tuples from select clause
             pass
 
         for python_tuple in self.python_tuples:

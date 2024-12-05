@@ -49,7 +49,7 @@ class CatalogTable:
 
     def insert(self, row):
         assert isinstance(row, self.__form__)
-        # todo: binary search
+        #TODO: binary search
         self.rows.append(row)
         self.rows.sort()
         self.save()

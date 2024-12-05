@@ -1,7 +1,7 @@
 from enum import Enum
 
 from andb.executor.operator.utils import ExprOperation
-from andb.sql.parser.ast.operation import BinaryOperation
+from andb.sql.parser.ast.operation import BinaryOperation, Function
 from andb.sql.parser.ast.misc import Constant
 from andb.sql.parser.ast.identifier import Identifier
 
@@ -83,15 +83,15 @@ class TableColumn(AbstractColumn):
 
 
 class FunctionColumn(AbstractColumn):
-    def __init__(self, function_name, table_columns):
+    def __init__(self, function_name, columns):
         super().__init__()
         self.function_name = function_name
-        assert isinstance(table_columns, list) or isinstance(table_columns, tuple)
-        self.table_columns = table_columns
+        assert isinstance(columns, list) or isinstance(columns, tuple)
+        self.columns = columns
         self.alias = function_name  # default
 
     def __repr__(self):
-        table_columns = ', '.join(str(c) for c in self.table_columns)
+        table_columns = ', '.join(str(c) for c in self.columns)
         return f'{self.function_name}({table_columns})'
 
     def __eq__(self, other):
@@ -100,7 +100,7 @@ class FunctionColumn(AbstractColumn):
         return str(self) == str(other)
 
     def __hash__(self):
-        return hash((self.function_name, *self.table_columns))
+        return hash((self.function_name, *self.columns))
 
 
 class Condition(LogicalOperator):
@@ -129,6 +129,11 @@ class Condition(LogicalOperator):
                 return TableColumn(table_name=None, column_name=node.parts)
             else:
                 raise
+        elif isinstance(node, Function):
+            columns = []
+            for arg in node.args:
+                columns.append(Condition._convert(arg))
+            return FunctionColumn(function_name=node.op, columns=columns)
         else:
             raise
 
@@ -152,9 +157,17 @@ class Condition(LogicalOperator):
                     node_queue.append(child)
             yield node
 
-    def is_constant_condition(self):
+    def is_constant_comparison(self):
         return isinstance(self.left, TableColumn) and (
                 not isinstance(self.right, TableColumn) and
+                not isinstance(self.right, FunctionColumn) and
+                not isinstance(self.right, Condition)
+        )
+    
+    def is_function_comparison(self):
+        return isinstance(self.left, FunctionColumn) and (
+                not isinstance(self.right, TableColumn) and
+                not isinstance(self.right, FunctionColumn) and
                 not isinstance(self.right, Condition)
         )
 
@@ -165,7 +178,7 @@ class LogicalQuery(LogicalOperator):
         self.table_attr_forms = {}
         self.from_tables = {}
 
-        # todo: currently, we only support two table join.
+        #TODO: currently, we only support two table join.
         self.join_operators = []
         self.groupby_columns = []
         self.having_clause = None

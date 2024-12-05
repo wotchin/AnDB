@@ -39,7 +39,7 @@ class CreateIndexOperator(PhysicalOperator):
                 raise DDLException(f'not found the field {field} in the table {self.table_name}.')
             self.index_attr_form_array.append(index_attr)
 
-        self.total_cost = 1000  # todo: estimate cost of creating index
+        self.total_cost = 1000  #TODO: estimate cost of creating index
 
     def next(self):
         self.index_oid = bt_create_index_internal(index_name=self.index_name, table_oid=self.table_oid,
@@ -63,7 +63,7 @@ class CreateTableOperator(PhysicalOperator):
             if len(fields) < 2:
                 raise DDLException('invalid table columns.')
             name, type_name = fields[0], fields[1]
-            # todo: check name character
+            #TODO: check name character
             if CATALOG_ANDB_TYPE.get_type_oid(type_name) == INVALID_OID:
                 raise DDLException(f'invalid type {type_name}.')
             if len(fields) == 2:
@@ -103,7 +103,7 @@ class ExplainOperator(PhysicalOperator):
         super().__init__('Explain')
         self.logical_plan = logical_plan
         self.physical_plan = None
-        # todo: add grammar and syntax support, explain analyze ...
+        #TODO: add grammar and syntax support, explain analyze ...
         self.analyze = False
 
     def open(self):

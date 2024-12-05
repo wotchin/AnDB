@@ -54,7 +54,7 @@ class AndbIndexTable(CatalogTable):
             num += 1
 
     def get_attr_form_array(self, index_oid):
-        # todo: implement a cache for index forms
+        #TODO: implement a cache for index forms
         index_forms = self.search(lambda r: r.oid == index_oid)
         assert len(index_forms) > 0
         table_oid = index_forms[0].table_oid
@@ -63,7 +63,7 @@ class AndbIndexTable(CatalogTable):
         # join with attr forms
         attr_form_array = []
 
-        # todo: this is a basic nested loop join, we can use sort-merge join later
+        #TODO: this is a basic nested loop join, we can use sort-merge join later
         for index_form in index_forms:
             for attr_form in attr_forms:
                 if index_form.attr_num == attr_form.num:

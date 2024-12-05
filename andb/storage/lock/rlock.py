@@ -33,7 +33,7 @@ def lock_acquire(tag, lock_mode, dont_wait, wait_seconds):
     entry = _lock_table[tag]
 
     # if threading.get_ident() in entry.holders:
-    #     # todo: not support lock upgrade directly
+    #     #TODO: not support lock upgrade directly
     #     return LOCK_ALREADY_HELD
 
     if entry.mode + lock_mode <= MAX_LOCK_MODE:

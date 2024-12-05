@@ -103,7 +103,7 @@ def file_size(fd: FileDescriptor):
 def file_extend(fd: FileDescriptor, size=1024):
     old_position = file_tell(fd)
     file_lseek(fd, 0, os.SEEK_END)
-    # todo: use stream?
+    #TODO: use stream?
     rv = file_write(fd, bytes(size), sync=True)
     file_lseek(fd, old_position, os.SEEK_SET)
     return rv

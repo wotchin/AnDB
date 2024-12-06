@@ -6,7 +6,7 @@ from andb.catalog.attribute import AndbAttributeForm
 from andb.catalog import CATALOG_ANDB_TYPE
 from andb.catalog.oid import INVALID_OID, OID_TEMP_TABLE
 from andb.catalog.syscache import get_attribute_by_name
-from andb.executor.operator.logical import TableColumn, FunctionColumn
+from andb.executor.operator.logical import PromptColumn, TableColumn, FunctionColumn
 from andb.sql.parser import CmdType
 from andb.runtime import session_vars
 
@@ -147,6 +147,8 @@ class ExecutionPortal:
                     # the catalog to record what the type is.
                     # Hence, we have to mock data here but it still works.
                     to_be_defined_fields.append((column.standard_name, INVALID_OID, 0, True))
+                elif isinstance(column, PromptColumn):
+                    to_be_defined_fields.append((column.standard_name, CATALOG_ANDB_TYPE.get_type_oid("text"), 0, True))
 
             rv.define_fields(to_be_defined_fields)
             # directly assigned? maybe a not good form but easier

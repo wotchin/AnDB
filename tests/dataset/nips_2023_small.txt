@@ -1,0 +1,59 @@
+NeurIPS Proceedings
+Search
+
+Advances in Neural Information Processing Systems 36 (NeurIPS 2023)
+Edited by: A. Oh and T. Naumann and A. Globerson and K. Saenko and M. Hardt and S. Levine
+Purchase Printed ProceedingISBN: 9781713899921
+ Main Conference Track   Datasets and Benchmarks Track
+ Modelling Cellular Perturbations with the Sparse Additive Mechanism Shift Variational Autoencoder Michael Bereket, Theofanis Karaletsos
+ Cross-Episodic Curriculum for Transformer Agents Lucy Xiaoyang Shi, Yunfan Jiang, Jake Grigsby, Linxi Fan, Yuke Zhu
+ PaintSeg: Painting Pixels for Training-free Segmentation Xiang Li, Chung-Ching Lin, Yinpeng Chen, Zicheng Liu, Jinglu Wang, Rita Singh, Bhiksha Raj
+ Bootstrapping Vision-Language Learning with Decoupled Language Pre-training Yiren Jian, Chongyang Gao, Soroush Vosoughi
+ Path following algorithms for 
+ℓ
+2
+-regularized 
+M
+-estimation with approximation guarantee Yunzhang Zhu, Renxiong Liu
+ PDF: Point Diffusion Implicit Function for Large-scale Scene Neural Representation Yuhan Ding, Fukun Yin, Jiayuan Fan, Hui Li, Xin Chen, Wen Liu, Chongshan Lu, Gang Yu, Tao Chen
+ Natural Actor-Critic for Robust Reinforcement Learning with Function Approximation Ruida Zhou, Tao Liu, Min Cheng, Dileep Kalathil, P. R. Kumar, Chao Tian
+ Adaptive Selective Sampling for Online Prediction with Experts Rui Castro, Fredrik Hellström, Tim van Erven
+ Gigastep - One Billion Steps per Second Multi-agent Reinforcement Learning Mathias Lechner, lianhao yin, Tim Seyde, Tsun-Hsuan Johnson Wang, Wei Xiao, Ramin Hasani, Joshua Rountree, Daniela Rus
+ Attentive Transfer Entropy to Exploit Transient Emergence of Coupling Effect Xiaolei Ru, XINYA ZHANG, Zijia Liu, Jack Murdoch Moore, Gang Yan
+ PopSign ASL v1.0: An Isolated American Sign Language Dataset Collected via Smartphones Thad Starner, Sean Forbes, Matthew So, David Martin, Rohit Sridhar, Gururaj Deshpande, Sam Sepah, Sahir Shahryar, Khushi Bhardwaj, Tyler Kwok, Daksh Sehgal, Saad Hassan, Bill Neubauer, Sofia Vempala, Alec Tan, Jocelyn Heath, Unnathi Kumar, Priyanka Mosur, Tavenner Hall, Rajandeep Singh, Christopher Cui, Glenn Cameron, Sohier Dane, Garrett Tanzer
+ Provable Adversarial Robustness for Group Equivariant Tasks: Graphs, Point Clouds, Molecules, and More Jan Schuchardt, Yan Scholten, Stephan Günnemann
+ Self-Supervised Motion Magnification by Backpropagating Through Optical Flow Zhaoying Pan, Daniel Geng, Andrew Owens
+ TexQ: Zero-shot Network Quantization with Texture Feature Distribution Calibration Xinrui Chen, Yizhi Wang, Renao YAN, Yiqing Liu, Tian Guan, Yonghong He
+ Ambient Diffusion: Learning Clean Distributions from Corrupted Data Giannis Daras, Kulin Shah, Yuval Dagan, Aravind Gollakota, Alex Dimakis, Adam Klivans
+ Scalable Membership Inference Attacks via Quantile Regression Martin Bertran, Shuai Tang, Aaron Roth, Michael Kearns, Jamie H. Morgenstern, Steven Z. Wu
+ ESSEN: Improving Evolution State Estimation for Temporal Networks using Von Neumann Entropy Qiyao Huang, Yingyue Zhang, Zhihong Zhang, Edwin Hancock
+ Label Correction of Crowdsourced Noisy Annotations with an Instance-Dependent Noise Transition Model Hui GUO, Boyu Wang, Grace Yi
+ Diffused Task-Agnostic Milestone Planner Mineui Hong, Minjae Kang, Songhwai Oh
+ Task-aware Distributed Source Coding under Dynamic Bandwidth Po-han Li, Sravan Kumar Ankireddy, Ruihan (Philip) Zhao, Hossein Nourkhiz Mahjoub, Ehsan Moradi Pari, Ufuk Topcu, Sandeep Chinchali, Hyeji Kim
+ BubbleML: A Multiphase Multiphysics Dataset and Benchmarks for Machine Learning Sheikh Md Shakeel Hassan, Arthur Feeney, Akash Dhruv, Jihoon Kim, Youngjoon Suh, Jaiyoung Ryu, Yoonjin Won, Aparna Chandramowlishwaran
+ ANTN: Bridging Autoregressive Neural Networks and Tensor Networks for Quantum Many-Body Simulation Zhuo Chen, Laker Newhouse, Eddie Chen, Di Luo, Marin Soljacic
+ Causal Effect Identification in Uncertain Causal Networks Sina Akbari, Fateme Jamshidi, Ehsan Mokhtarian, Matthew Vowels, Jalal Etesami, Negar Kiyavash
+ FAST: a Fused and Accurate Shrinkage Tree for Heterogeneous Treatment Effects Estimation Jia Gu, Caizhi Tang, Han Yan, Qing Cui, Longfei Li, Jun Zhou
+ Characterizing Graph Datasets for Node Classification: Homophily-Heterophily Dichotomy and Beyond Oleg Platonov, Denis Kuznedelev, Artem Babenko, Liudmila Prokhorenkova
+ Equivariant Flow Matching with Hybrid Probability Transport for 3D Molecule Generation Yuxuan Song, Jingjing Gong, Minkai Xu, Ziyao Cao, Yanyan Lan, Stefano Ermon, Hao Zhou, Wei-Ying Ma
+ Hyperbolic VAE via Latent Gaussian Distributions Seunghyuk Cho, Juyong Lee, Dongwoo Kim
+ A Simple Solution for Offline Imitation from Observations and Examples with Possibly Incomplete Trajectories Kai Yan, Alex Schwing, Yu-Xiong Wang
+ Defending against Data-Free Model Extraction by Distributionally Robust Defensive Training Zhenyi Wang, Li Shen, Tongliang Liu, Tiehang Duan, Yanjun Zhu, Donglin Zhan, DAVID DOERMANN, Mingchen Gao
+ Large language models transition from integrating across position-yoked, exponential windows to structure-yoked, power-law windows David Skrill, Samuel Norman-Haignere
+ Where are we in the search for an Artificial Visual Cortex for Embodied Intelligence? Arjun Majumdar, Karmesh Yadav, Sergio Arnaud, Jason Ma, Claire Chen, Sneha Silwal, Aryan Jain, Vincent-Pierre Berges, Tingfan Wu, Jay Vakil, Pieter Abbeel, Jitendra Malik, Dhruv Batra, Yixin Lin, Oleksandr Maksymets, Aravind Rajeswaran, Franziska Meier
+ Belief Projection-Based Reinforcement Learning for Environments with Delayed Feedback Jangwon Kim, Hangyeol Kim, Jiwook Kang, Jongchan Baek, Soohee Han
+ Batchnorm Allows Unsupervised Radial Attacks Amur Ghose, Apurv Gupta, Yaoliang Yu, Pascal Poupart
+ Detecting Any Human-Object Interaction Relationship: Universal HOI Detector with Spatial Prompt Learning on Foundation Models Yichao Cao, Qingfei Tang, Xiu Su, Song Chen, Shan You, Xiaobo Lu, Chang Xu
+ Smoothing the Landscape Boosts the Signal for SGD: Optimal Sample Complexity for Learning Single Index Models Alex Damian, Eshaan Nichani, Rong Ge, Jason D. Lee
+ A Scale-Invariant Sorting Criterion to Find a Causal Order in Additive Noise Models Alexander Reisach, Myriam Tami, Christof Seiler, Antoine Chambaz, Sebastian Weichwald
+ PROTES: Probabilistic Optimization with Tensor Sampling Anastasiia Batsheva, Andrei Chertkov, Gleb Ryzhakov, Ivan Oseledets
+ Perturbation Towards Easy Samples Improves Targeted Adversarial Transferability Junqi Gao, Biqing Qi, Yao Li, Zhichang Guo, Dong Li, Yuming Xing, Dazhi Zhang
+ AllSim: Simulating and Benchmarking Resource Allocation Policies in Multi-User Systems Jeroen Berrevoets, Daniel Jarrett, Alex Chan, Mihaela van der Schaar
+ AVIS: Autonomous Visual Information Seeking with Large Language Model Agent Ziniu Hu, Ahmet Iscen, Chen Sun, Kai-Wei Chang, Yizhou Sun, David Ross, Cordelia Schmid, Alireza Fathi
+ Conformal Prediction Sets for Ordinal Classification Prasenjit Dey, Srujana Merugu, Sivaramakrishnan R Kaveri
+ Minimax-Optimal Location Estimation Shivam Gupta, Jasper Lee, Eric Price, Paul Valiant
+ Tight Bounds for Volumetric Spanners and Applications Aditya Bhaskara, Sepideh Mahabadi, Ali Vakilian
+ Wyze Rule: Federated Rule Dataset for Rule Recommendation Benchmarking Mohammad Mahdi Kamani, Yuhang Yao, Hanjia Lyu, Zhongwei Cheng, Lin Chen, Liangju Li, Carlee Joe-Wong, Jiebo Luo
+ Learning better with Dale’s Law: A Spectral Perspective Pingsheng Li, Jonathan Cornford, Arna Ghosh, Blake Richards
+ Dense-Exponential Random Features: Sharp Positive Estimators of the Gaussian Kernel Valerii Likhosherstov, Krzysztof M Choromanski, Kumar Avinava Dubey, Frederick Liu, Tamas Sarlos, Adrian Weller
+ 

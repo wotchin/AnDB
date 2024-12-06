@@ -1,0 +1,30 @@
+NeurIPS Proceedings
+Search
+
+Advances in Neural Information Processing Systems 35 (NeurIPS 2022)
+Edited by: S. Koyejo and S. Mohamed and A. Agarwal and D. Belgrave and K. Cho and A. Oh
+Purchase Printed ProceedingISBN: 9781713871088
+ Main Conference Track   Datasets and Benchmarks Track
+ Federated Submodel Optimization for Hot and Cold Data Features Yucheng Ding, Chaoyue Niu, Fan Wu, Shaojie Tang, Chengfei Lyu, yanghe feng, Guihai Chen
+ On Kernelized Multi-Armed Bandits with Constraints Xingyu Zhou, Bo Ji
+ Geometric Order Learning for Rank Estimation Seon-Ho Lee, Nyeong Ho Shin, Chang-Su Kim
+ Structured Recognition for Generative Models with Explaining Away Changmin Yu, Hugo Soulat, Neil Burgess, Maneesh Sahani
+ NAS-Bench-Graph: Benchmarking Graph Neural Architecture Search Yijian Qin, Ziwei Zhang, Xin Wang, Zeyang Zhang, Wenwu Zhu
+ Fast Bayesian Coresets via Subsampling and Quasi-Newton Refinement Cian Naik, Judith Rousseau, Trevor Campbell
+ What You See is What You Classify: Black Box Attributions Steven Stalder, Nathanael Perraudin, Radhakrishna Achanta, Fernando Perez-Cruz, Michele Volpi
+ Adaptive Interest for Emphatic Reinforcement Learning Martin Klissarov, Rasool Fakoor, Jonas W. Mueller, Kavosh Asadi, Taesup Kim, Alexander J. Smola
+ Scaling & Shifting Your Features: A New Baseline for Efficient Model Tuning Dongze Lian, Daquan Zhou, Jiashi Feng, Xinchao Wang
+ Zero-Shot Video Question Answering via Frozen Bidirectional Language Models Antoine Yang, Antoine Miech, Josef Sivic, Ivan Laptev, Cordelia Schmid
+ Active Learning with Neural Networks: Insights from Nonparametric Statistics Yinglun Zhu, Robert Nowak
+ IM-Loss: Information Maximization Loss for Spiking Neural Networks Yufei Guo, Yuanpei Chen, Liwen Zhang, Xiaode Liu, Yinglei Wang, Xuhui Huang, Zhe Ma
+ Using natural language and program abstractions to instill human inductive biases in machines Sreejan Kumar, Carlos G. Correa, Ishita Dasgupta, Raja Marjieh, Michael Y Hu, Robert Hawkins, Jonathan D Cohen, nathaniel daw, Karthik Narasimhan, Tom Griffiths
+ Second Thoughts are Best: Learning to Re-Align With Human Values from Text Edits Ruibo Liu, Chenyan Jia, Ge Zhang, Ziyu Zhuang, Tony Liu, Soroush Vosoughi
+ SatMAE: Pre-training Transformers for Temporal and Multi-Spectral Satellite Imagery Yezhen Cong, Samar Khanna, Chenlin Meng, Patrick Liu, Erik Rozi, Yutong He, Marshall Burke, David Lobell, Stefano Ermon
+ On Sample Optimality in Personalized Collaborative and Federated Learning Mathieu Even, Laurent Massoulié, Kevin Scaman
+ Offline Multi-Agent Reinforcement Learning with Knowledge Distillation Wei-Cheng Tseng, Tsun-Hsuan Johnson Wang, Yen-Chen Lin, Phillip Isola
+ Decentralized Gossip-Based Stochastic Bilevel Optimization over Communication Networks Shuoguang Yang, Xuezhou Zhang, Mengdi Wang
+ Conditional Meta-Learning of Linear Representations Giulia Denevi, Massimiliano Pontil, Carlo Ciliberto
+ Theory and Approximate Solvers for Branched Optimal Transport with Multiple Sources Peter Lippmann, Enrique Fita Sanmartín, Fred A. Hamprecht
+ CHIMLE: Conditional Hierarchical IMLE for Multimodal Conditional Image Synthesis Shichong Peng, Seyed Alireza Moazenipourasil, Ke Li
+ Active Ranking without Strong Stochastic Transitivity Hao Lou, Tao Jin, Yue Wu, Pan Xu, Quanquan Gu, Farzad Farnoud
+ Offline Goal-Conditioned Reinforcement Learning via 

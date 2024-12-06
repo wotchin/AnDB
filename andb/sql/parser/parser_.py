@@ -18,6 +18,7 @@ from .ast.misc import Constant, Star, Tuple
 from .exception import ParsingException
 from .ast.drop import DropTable, DropIndex
 from .ast.utility import Command
+from .ast.semantic import FileSource, Prompt
 
 
 def check_select_keywords(select, operation):
@@ -200,7 +201,7 @@ class SQLParser(sly.Parser):
         select = p.select
         check_select_keywords(select, 'WHERE')
         where_expr = p.expr
-        if not isinstance(where_expr, Operation):
+        if not isinstance(where_expr, (Operation, Prompt)):
             raise ParsingException(
                 f"Require an operation for WHERE clause.")
         select.where = where_expr
@@ -598,3 +599,12 @@ class SQLParser(sly.Parser):
     #         return Constant(value=-p.expr.value)
     #     # Handle negative expressions
     #     return BinaryOperation(op='*', args=(Constant(value=-1), p.expr))
+
+    # Add new parsing rules
+    @_('PROMPT LPAREN expr RPAREN')
+    def expr(self, p):
+        return Prompt(p.expr)
+        
+    @_('FILE LPAREN expr RPAREN')
+    def from_table(self, p):
+        return FileSource(p.expr)

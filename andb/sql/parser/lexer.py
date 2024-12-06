@@ -46,7 +46,11 @@ class SQLLexer(sly.Lexer):
         CAST,
 
         # COMMANDS
-        CHECKPOINT
+        CHECKPOINT,
+
+        # Add new tokens
+        PROMPT,
+        FILE
     }
 
     CREATE = 'CREATE'
@@ -95,6 +99,8 @@ class SQLLexer(sly.Lexer):
     INTO = 'INTO'
     VALUES = 'VALUES'
     CHECKPOINT = 'CHECKPOINT'
+    PROMPT = 'PROMPT'
+    FILE = 'FILE'
 
     DOT = r'\.'
     COMMA = r','

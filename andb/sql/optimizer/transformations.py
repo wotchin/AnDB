@@ -1,4 +1,5 @@
-from andb.catalog.oid import INVALID_OID
+import os
+from andb.catalog.oid import INVALID_OID, OID_SCANNING_FILE
 from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_CLASS
 from andb.errno.errors import AnDBNotImplementedError, InitializationStageError
 from andb.executor.operator.logical import *
@@ -13,6 +14,7 @@ from andb.sql.parser.ast.join import Join
 from andb.sql.parser.ast.misc import Star
 from andb.sql.parser.ast.operation import Function
 from andb.sql.parser.ast.select import Select
+from andb.sql.parser.ast.semantic import Prompt, FileSource
 from andb.sql.parser.ast.update import Update
 from andb.storage.engines.heap.relation import RelationKinds
 from andb.sql.parser.ast.utility import Command
@@ -187,6 +189,23 @@ class QueryLogicalPlanTransformation(BaseTransformation):
         query.children = [operator]
 
     @staticmethod
+    def process_semantic_transform(query: LogicalQuery):
+        # Check if there are any prompt columns in target list
+        prompt_columns = [col for col in query.target_list if isinstance(col, PromptColumn)]
+        if not prompt_columns:
+            return
+            
+        # Create semantic transform operator
+        for prompt_col in prompt_columns:
+            semantic_op = SemanticTransformOperator(
+                columns=query.target_list,
+                prompt_text=prompt_col.prompt_text,
+                children=query.children
+            )
+            # Replace query's children with semantic operator
+            query.children = [semantic_op]
+
+    @staticmethod
     def on_transform(query: LogicalQuery):
         #TODO: extract all involved columns, then prune useless columns
         #TODO: rewrite
@@ -195,6 +214,9 @@ class QueryLogicalPlanTransformation(BaseTransformation):
             QueryLogicalPlanTransformation.process_non_join_scan(query)
         else:
             QueryLogicalPlanTransformation.process_join_scan(query)
+
+        # Add semantic transform processing before other operations
+        QueryLogicalPlanTransformation.process_semantic_transform(query)
 
         #TODO: limit, ...
         if query.sort_clause:
@@ -268,32 +290,45 @@ class SelectTransformation(BaseTransformation):
         return target_table_name
 
     @classmethod
-    def transform_from_clause(cls, ast, query):
-        unchecked_tables = []
-        if isinstance(ast.from_table, Identifier):
-            unchecked_tables.append(ast.from_table.parts)
-        elif isinstance(ast.from_table, Join):
-            unchecked_tables.append(ast.from_table.left.parts)
-            unchecked_tables.append(ast.from_table.right.parts)
-        else:
-            raise NotImplementedError()
-
-        for table_name in unchecked_tables:
-            table_oid = CATALOG_ANDB_CLASS.get_relation_oid(table_name, database_oid=session_vars.SessionVars.database_oid,
-                                                            kind=None)
-            if table_oid != INVALID_OID:
-                query.from_tables[table_name] = table_oid
-                query.table_attr_forms[table_name] = CATALOG_ANDB_ATTRIBUTE.get_table_forms(table_oid)
+    def transform_from_clause(cls, ast_outer, query):
+        def inner_transform(ast):
+            unchecked_tables = []
+            unchecked_files = []
+            if isinstance(ast, Identifier):
+                unchecked_tables.append(ast.parts)
+            elif isinstance(ast, Join):
+                inner_transform(ast.left)
+                inner_transform(ast.right)
+            elif isinstance(ast, FileSource):
+                unchecked_files.append(ast.file_path.value)
             else:
-                raise InitializationStageError(f'not found the table {table_name}.')
+                raise NotImplementedError()
 
+            for table_name in unchecked_tables:
+                table_oid = CATALOG_ANDB_CLASS.get_relation_oid(table_name, database_oid=session_vars.SessionVars.database_oid,
+                                                                kind=None)
+                if table_oid != INVALID_OID:
+                    query.from_tables[table_name] = table_oid
+                    query.table_attr_forms[table_name] = CATALOG_ANDB_ATTRIBUTE.get_table_forms(table_oid)
+                else:
+                    raise InitializationStageError(f'not found the table {table_name}.')
+
+            for file_path in unchecked_files:
+                # scan the file from current working director
+                real_file_path = os.path.join(os.path.realpath('./files'), file_path)
+                if os.path.exists(real_file_path):
+                    query.from_tables[file_path] = OID_SCANNING_FILE
+                else:
+                    raise InitializationStageError(f'not found the file {file_path} from files directory.')
+
+        inner_transform(ast_outer)
         # scan operator
-        for table_name in query.from_tables:
-            query.scan_operators.append(ScanOperator(table_name, table_oid=query.from_tables[table_name]))
+        for name_or_path in query.from_tables:
+            query.scan_operators.append(ScanOperator(name_or_path, table_oid=query.from_tables[name_or_path]))
 
     @classmethod
     def transform_target_list(cls, ast, query):
-        for target in ast.targets:
+        for target in ast:
             # parse star
             if isinstance(target, Star):
                 for table_name in query.from_tables:
@@ -346,14 +381,19 @@ class SelectTransformation(BaseTransformation):
                 if target.alias:
                     function_column.alias = target.alias.parts
                 query.target_list.append(function_column)
+            elif isinstance(target, Prompt):
+                prompt_column = PromptColumn(target.prompt_text)
+                if target.alias:
+                    prompt_column.alias = target.alias.parts
+                query.target_list.append(prompt_column)
             else:
                 #TODO: function and agg
                 raise NotImplementedError('not supported this syntax.')
 
     @classmethod
     def transform_where_clause(cls, ast, query):
-        if ast.where is not None:
-            where_condition = ConditionTransformation.on_transform(Condition(ast.where))
+        if ast is not None:
+            where_condition = ConditionTransformation.on_transform(Condition(ast))
             if isinstance(where_condition, bool):
                 if where_condition:
                     query.condition = None  # we don't need condition
@@ -367,8 +407,14 @@ class SelectTransformation(BaseTransformation):
 
     @classmethod
     def transform_join_clause(cls, ast, query):
-        if isinstance(ast.from_table, Join):
-            join_clause = ast.from_table
+        if isinstance(ast, Join):
+            # maybe it is a multi-way join
+            if isinstance(ast.left, Join):
+                SelectTransformation.transform_join_clause(ast.left, query)
+            if isinstance(ast.right, Join):
+                SelectTransformation.transform_join_clause(ast.right, query)
+
+            join_clause = ast
             if not join_clause.implicit:
                 join_condition = ConditionTransformation.on_transform(Condition(join_clause.condition))
                 join_condition = cls._supplement_table_name(join_condition, query.table_attr_forms)
@@ -393,10 +439,10 @@ class SelectTransformation(BaseTransformation):
 
     @classmethod
     def transform_order_clause(cls, ast, query):
-        if ast.order_by:
+        if ast:
             sort_columns = []
             ascending_orders = []
-            for node in ast.order_by:
+            for node in ast:
                 table_column = TableColumn(table_name=DummyTableName.UNKNOWN, column_name=None)
                 for table_name in query.table_attr_forms:
                     for attr_form in query.table_attr_forms[table_name]:
@@ -436,12 +482,12 @@ class SelectTransformation(BaseTransformation):
     def on_transform(cls, ast: Select):
         query = LogicalQuery()
 
-        cls.transform_from_clause(ast, query)
-        cls.transform_target_list(ast, query)
-        cls.transform_where_clause(ast, query)
-        cls.transform_join_clause(ast, query)
-        cls.transform_order_clause(ast, query)
-        cls.transform_group_clause(ast, query)
+        cls.transform_from_clause(ast.from_table, query)
+        cls.transform_target_list(ast.targets, query)
+        cls.transform_where_clause(ast.where, query)
+        cls.transform_join_clause(ast.from_table, query)
+        cls.transform_order_clause(ast.order_by, query)
+        cls.transform_group_clause(ast, query)  # we need to pass both ast.group_by and ast.having
 
         #TODO: distinct
         #TODO: limit
@@ -545,6 +591,10 @@ class UpdateTransformation(BaseTransformation):
         operator = UpdateOperator(table_name=ast.table.parts, query=query, columns=columns,
                                   values=values, condition=condition)
         return operator
+
+
+class SemanticQueryTransformation(BaseTransformation):
+    pass
 
 
 _all_transformations = [trans() for trans in BaseTransformation.__subclasses__()]

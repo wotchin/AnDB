@@ -1,5 +1,5 @@
 from andb.constants.macros import INVALID_XID
-from andb.constants.values import QUERY_TERMINATOR
+from andb.constants.strings import QUERY_TERMINATOR
 from andb.sql.parser import andb_query_parse, get_ast_type, CmdType
 from andb.sql.optimizer import andb_query_plan
 from andb.executor.portal import ExecutionPortal
@@ -55,3 +55,5 @@ def execute_simple_query(query_string):
     return portal.results()
 
 
+def execute_nl_query(query_string):
+    pass

@@ -1,3 +1,5 @@
+import os
+from andb.ai import embedding_model
 from andb.sql.parser.ast.operation import Function
 from andb.storage.engines.heap.relation import close_relation, open_relation
 from andb.storage.lock import rlock
@@ -8,7 +10,7 @@ from andb.runtime import global_vars, session_vars
 from andb.sql.parser.ast.misc import Constant, Star
 from andb.sql.parser.ast.join import JoinType
 
-from ..logical import Condition, TableColumn, AggregationFunctions, FunctionColumn
+from ..logical import Condition, DummyTableName, TableColumn, AggregationFunctions, FunctionColumn
 from ..utils import expression_eval, ExprOperation
 from .base import PhysicalOperator
 from andb.executor.operator import utils
@@ -453,6 +455,33 @@ class TempTableScan(Append):
 
 class FunctionScan(Scan):
     pass
+
+
+
+class FileScan(PhysicalOperator):
+    def __init__(self, file_path, columns):
+        super().__init__('FileScan')
+        self.file_path = file_path
+        self.fd = None
+        self.columns = columns
+    
+    def open(self):
+        if self.file_path[-3:] != 'txt':
+            raise NotImplementedError(f"File {self.file_path} is not supported")
+        
+        real_file_path = os.path.join(os.path.realpath('./files'), self.file_path)
+
+        self.fd = open(real_file_path, 'r', errors='ignore')
+
+    def next(self):
+        assert len(self.columns) == 2  # content, embedding
+
+        content = self.fd.readlines()
+        embedding = embedding_model.text_to_embedding(content)
+        yield (str(content), embedding)
+    
+    def close(self):
+        self.fd.close()
 
 
 class Join(PhysicalOperator):

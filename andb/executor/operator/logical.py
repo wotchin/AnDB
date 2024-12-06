@@ -1,5 +1,6 @@
 from enum import Enum
 
+from andb.catalog.oid import OID_SCANNING_FILE
 from andb.executor.operator.utils import ExprOperation
 from andb.sql.parser.ast.operation import BinaryOperation, Function
 from andb.sql.parser.ast.misc import Constant
@@ -34,6 +35,7 @@ class LogicalOperator:
 
 class DummyTableName:
     TEMP_TABLE_NAME = 'temp_table'
+    SCANNING_FILE_NAME = 'scanning_file'
     FUNCTION_PLACEHOLDER = 'function'
     UNKNOWN = 'unknown'
 
@@ -103,10 +105,33 @@ class FunctionColumn(AbstractColumn):
         return hash((self.function_name, *self.columns))
 
 
+class PromptColumn(AbstractColumn):
+    def __init__(self, prompt_text):
+        super().__init__()
+        self.prompt_text = prompt_text
+        self.table_name = DummyTableName.TEMP_TABLE_NAME
+        self.column_name = 'prompt'
+        self.function_name = None
+        self.alias = None
+
+    def __repr__(self):
+        return f'PROMPT'
+
+    def __eq__(self, other):
+        if not isinstance(other, PromptColumn):
+            return False
+        return str(self) == str(other)
+
+    def __hash__(self):
+        return hash((self.prompt_text))
+
+    def core(self):
+        return PromptColumn(self.prompt_text)
+
 class Condition(LogicalOperator):
     def __init__(self, operation, children=None):
         super().__init__('Expression', children)
-        assert isinstance(operation, BinaryOperation)
+        assert isinstance(operation, (BinaryOperation))
         self.expr = None
         for o in ExprOperation:
             if o.value == operation.op:
@@ -198,12 +223,17 @@ class LogicalQuery(LogicalOperator):
     def get_seen_table_columns(self, lookup_table_name=None):
         # return table columns in order
         table_columns = []
-        for table_name in self.from_tables:
+        for table_name, table_oid in self.from_tables.items():
             if lookup_table_name is not None and lookup_table_name != table_name:
                 continue
-            for attr_from in self.table_attr_forms[table_name]:
-                if (table_name, attr_from.name) in self._seen_table_columns:
-                    table_columns.append(TableColumn(table_name, attr_from.name))
+            if table_oid == OID_SCANNING_FILE:
+                # for scanning table, we have two columns: content and embedding
+                table_columns.extend([TableColumn(DummyTableName.SCANNING_FILE_NAME, 'content'), 
+                                     TableColumn(DummyTableName.SCANNING_FILE_NAME, 'embedding')])
+            else:
+                for attr_from in self.table_attr_forms[table_name]:
+                    if (table_name, attr_from.name) in self._seen_table_columns:
+                        table_columns.append(TableColumn(table_name, attr_from.name))
         return table_columns
 
 
@@ -214,6 +244,15 @@ class ProjectionOperator(LogicalOperator):
 
     def get_args(self):
         return ('columns', self.columns),
+
+class SemanticTransformOperator(LogicalOperator):
+    def __init__(self, columns, prompt_text, children=None):
+        super().__init__('SemanticTransform', children)
+        self.columns = columns
+        self.semantic_prompt = prompt_text
+
+    def get_args(self):
+        return ('columns', self.columns), ('prompt_text', self.semantic_prompt)
 
 
 class SelectionOperator(LogicalOperator):

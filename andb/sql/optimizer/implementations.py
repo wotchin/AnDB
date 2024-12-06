@@ -1,9 +1,10 @@
-from andb.catalog.oid import INVALID_OID, OID_TEMP_TABLE
+from andb.catalog.oid import INVALID_OID, OID_SCANNING_FILE, OID_TEMP_TABLE
 from andb.catalog.syscache import CATALOG_ANDB_CLASS, CATALOG_ANDB_INDEX, CATALOG_ANDB_ATTRIBUTE
 from andb.errno.errors import InitializationStageError
-from andb.executor.operator.physical import select, insert, delete, update, utility
-from andb.executor.operator.physical.select import TableScan, IndexScan, CoveredIndexScan, Filter
+from andb.executor.operator.physical import select, insert, delete, semantic, update, utility
+from andb.executor.operator.physical.select import FileScan, TableScan, IndexScan, CoveredIndexScan, Filter
 from andb.runtime import session_vars
+from andb.sql.parser.ast.join import JoinType
 from andb.storage.engines.heap.relation import RelationKinds
 from .base import BaseImplementation
 from .patterns import *
@@ -83,7 +84,10 @@ class ScanImplementation(BaseImplementation):
         assert scan_operator.table_oid != INVALID_OID
         table_kind = CATALOG_ANDB_CLASS.get_relation_kind(scan_operator.table_oid)
 
-        if scan_operator.table_name == DummyTableName.TEMP_TABLE_NAME:
+        if scan_operator.table_oid == OID_SCANNING_FILE:
+            return select.FileScan(file_path=scan_operator.table_name, 
+                                   columns=scan_operator.table_columns)
+        if scan_operator.table_oid == OID_TEMP_TABLE:
             assert table_kind == RelationKinds.TEMPORARY_TABLE
             return select.TempTableScan(scan_operator.table_oid, scan_operator.table_columns,
                                         filter_=Filter(scan_operator.condition))
@@ -157,10 +161,19 @@ class JoinImplementation(BaseImplementation):
         return isinstance(operator, JoinOperator)
 
     @classmethod
-    def on_implement(cls, old_operator: JoinOperator):
-        return select.NestedLoopJoin(join_type=old_operator.join_type,
-                                     target_columns=old_operator.table_columns,
-                                     join_filter=Filter(old_operator.join_condition))
+    def on_implement(cls, join_operator: JoinOperator):
+        #TODO: choose the best join type (e.g., HashJoin, SortMergeJoin)
+        left_node, right_node = join_operator.children[0], join_operator.children[1]
+        if left_node.table_oid == OID_SCANNING_FILE or right_node.table_oid == OID_SCANNING_FILE:
+            return semantic.SemanticJoin(join_type=join_operator.join_type,
+                                        target_columns=join_operator.table_columns,
+                                        join_filter=Filter(join_operator.join_condition))
+        else:
+            # that means the scan operator includes index scan
+            return select.NestedLoopJoin(join_type=join_operator.join_type,
+                                        target_columns=join_operator.table_columns,
+                                        join_filter=Filter(join_operator.join_condition))
+
 
 
 class SortImplementation(BaseImplementation):
@@ -220,6 +233,8 @@ class QueryImplementation(BaseImplementation):
             new_node = SortImplementation.on_implement(node)
         elif AggregationImplementation.match(node):
             new_node = AggregationImplementation.on_implement(node)
+        elif SemanticTransformImplementation.match(node):
+            new_node = SemanticTransformImplementation.on_implement(node)
         else:
             raise NotImplementedError(f'unknown operator {node.name}')
 
@@ -301,6 +316,23 @@ class UpdateImplementation(BaseImplementation):
 
         return update.UpdatePhysicalOperator(table_oid=table_oid, scan_operator=physical_query.children[0],
                                              attr_num_value_pair=attr_num_value_pair)
+
+
+class SemanticTransformImplementation(BaseImplementation):
+    @classmethod
+    def match(cls, operator) -> bool:
+        # Check if any target in the target list is a PromptColumn
+        return isinstance(operator, SemanticTransformOperator)
+
+    @classmethod 
+    def on_implement(cls, old_operator):
+        # Create semantic target list operator to process prompt columns
+        return semantic.SemanticTransform(
+            # Pass through the original columns
+            target_columns=old_operator.columns,
+            # Pass through any filter conditions
+            prompt_text=old_operator.semantic_prompt
+        )
 
 
 _all_implementations = [impl() for impl in BaseImplementation.__subclasses__()]

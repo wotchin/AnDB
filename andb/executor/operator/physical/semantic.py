@@ -1,5 +1,9 @@
 import logging
 import os
+import pandas as pd
+import numpy as np
+import re
+from io import StringIO
 
 from openai import OpenAI
 from andb.errno.errors import ExecutionStageError
@@ -9,37 +13,29 @@ from andb.constants.strings import OPENAI_API_KEY
 from andb.executor.operator.physical.select import Filter
 from andb.sql.parser.ast.join import JoinType
 
-lm_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY') or OPENAI_API_KEY)
-lm_model_name = 'gpt-4o-mini'
-
 class SemanticPrompt(PhysicalOperator):
-    def __init__(self, prompt_text):
+    def __init__(self, prompt_text, prompt_model):
         super().__init__('SemanticPrompt')
         self.prompt_text = prompt_text
+        self.prompt_model = prompt_model
         self.stream = None
 
     def open(self):
-        self.stream = lm_client.chat.completions.create(
-            model=lm_model_name,
-            messages=[{
-                "role": "user", 
-                "content": f"Hello, this is a specific requirments: \"{self.prompt_text}\". "
-                          f"And then, I am gonna give you a text, please generate a response "
-                          f"based on the requirments and the text."
-            }],
-            stream=True
-        )
+        messages=[{
+            "role": "user", 
+            "content": f"Hello, these are specific requirements: \"{self.prompt_text}\". "
+                        f"Then, I am going to give you a text, please generate a response "
+                        f"based on the requirements and the text."
+        }]
+        self.stream = self.prompt_model.complete_messages(messages=messages, stream=True)
 
     def next(self):
         for text in self.children[0].next():
-            response_stream = lm_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "assistant", "content": "I understand. Please provide the text."},
-                    {"role": "user", "content": text}
-                ],
-                stream=True
-            )
+            messages=[
+                {"role": "assistant", "content": "I understand. Please provide the text."},
+                {"role": "user", "content": text}
+            ]
+            response_stream = self.prompt_model.complete_messages(messages=messages, stream=True)
             
             full_response = ""
             try:
@@ -64,8 +60,9 @@ class SemanticPrompt(PhysicalOperator):
 
 
 class SemanticFilter(PhysicalOperator):
-    def __init__(self, condition):
+    def __init__(self, condition, prompt_model):
         super().__init__('SemanticFilter')
+        self.prompt_model = prompt_model
         if isinstance(condition, Condition):
             self.condition_prompt = f'we only consider the following condition: {str(condition)}'
         elif isinstance(condition, str):
@@ -93,17 +90,15 @@ class SemanticFilter(PhysicalOperator):
             """
             
             # Call OpenAI API
-            response = lm_client.chat.completions.create(
-                model=lm_model_name,
-                messages=[
-                    {"role": "system", "content": "You are a precise evaluator that only responds with 'true' or 'false'."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1  # Low temperature for more consistent responses
-            )
+            messages=[
+                {"role": "system", "content": "You are a precise evaluator that only responds with 'true' or 'false'."},
+                {"role": "user", "content": prompt}
+            ]
+            
+            response = self.prompt_model.complete_messages(messages=messages, temperature=0.1)
             
             # Get the response and convert to boolean
-            result = response.choices[0].message.content.strip().lower()
+            result = response.strip().lower()
             return result == 'true'
             
         except Exception as e:
@@ -119,9 +114,9 @@ class SemanticJoin(PhysicalOperator):
     """
     Semantic Join operator that uses OpenAI API to join documents based on their semantic meaning
     """
-    def __init__(self, join_type, target_columns=None, join_filter: Filter = None):
+    def __init__(self, join_type, prompt_model, target_columns=None, join_filter: Filter = None):
         super().__init__('SemanticJoin')
-        self.client = lm_client
+        self.prompt_model = prompt_model
         self.join_type = join_type
         self.target_columns = target_columns
         self.join_filter = join_filter
@@ -187,19 +182,17 @@ class SemanticJoin(PhysicalOperator):
             {self.join_prompt}
             """
             
+            messages=[
+                {"role": "system", "content": "You are a text analysis expert focused on finding relationships between documents."},
+                {"role": "user", "content": prompt}
+            ]
+            
             # Call OpenAI API
-            response = self.client.chat.completions.create(
-                model=lm_model_name,  # Using GPT-4 for better understanding
-                messages=[
-                    {"role": "system", "content": "You are a text analysis expert focused on finding relationships between documents."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,  # Lower temperature for more focused responses
-                max_tokens=200    # Limit response length
-            )
+            # Lower temperature for more focused responses and limit response length
+            response = self.prompt_model.complete_messages(messages=messages, temperature=0.3, max_tokens=200)
             
             # Extract and return the relationship description
-            return response.choices[0].message.content.strip()
+            return response.strip()
             
         except Exception as e:
             raise ExecutionStageError(f"Error in semantic analysis: {e}")
@@ -216,22 +209,23 @@ class SemanticJoin(PhysicalOperator):
 class SemanticTransform(PhysicalOperator):
     """Physical operator for processing semantic target list with prompts"""
     
-    def __init__(self, target_columns, prompt_text):
+    def __init__(self, target_columns, prompt_text, prompt_model):
         """
         Args:
             target_columns: List of target columns including prompts
             prompt_text: Prompt text
         """
-        super().__init__('SemanticTarget')
+        super().__init__('SemanticTransform')
         self.columns = target_columns
         self.prompt_text = prompt_text
+        self.prompt_model = prompt_model
         self.prompt_columns = [col for col in target_columns if isinstance(col, PromptColumn)]
         self.stream = None
 
     def open(self):
         """Initialize the operator"""
         if len(self.children) != 1:
-            raise ValueError("SemanticTarget requires exactly one input operator")
+            raise ValueError("SemanticTransform requires exactly one input operator")
         self.children[0].open()
 
     def next(self):
@@ -252,15 +246,12 @@ class SemanticTransform(PhysicalOperator):
                 if isinstance(target, PromptColumn):
                     # Process semantic prompt
                     try:
-                        response = lm_client.chat.completions.create(
-                            model=lm_model_name,
-                            messages=[
-                                {"role": "system", "content": "Process the following text based on the given prompt."},
-                                {"role": "user", "content": f"Prompt: {self.prompt_text}\nText: {input_text}"}
-                            ],
-                            temperature=0.3
-                        )
-                        result = response.choices[0].message.content.strip()
+                        messages=[
+                            {"role": "system", "content": "Process the following text based on the given prompt."},
+                            {"role": "user", "content": f"Prompt: {self.prompt_text}\nText: {input_text}"}
+                        ]
+                        response = self.prompt_model.complete_messages(messages=messages, temperature=0.3)
+                        result = response.strip()
                         result_tuple.append(result)
                     except Exception as e:
                         logging.error(f"Error in semantic processing: {e}")
@@ -281,3 +272,72 @@ class SemanticTransform(PhysicalOperator):
                 pass
         self.stream = None
         self.children[0].close()
+        
+class SemanticScan(PhysicalOperator):
+    """Physical operator for processing document into a proper table with prompts"""
+    
+    def __init__(self, schema, document, prompt_model):
+        """
+        Args:
+            schema: Schema of the table.
+            document: Document from which information will be extracted.
+            prompt_model: Model for prompting.
+        """
+        super().__init__('SemanticScan')
+        self.schema = schema
+        self.document = document
+        self.prompt_model = prompt_model
+        self.stream = None
+
+    def open(self):
+        return super.open()
+    
+    def _parse_markdown_into_dataframe(self, raw_markdown):
+        """
+        Parses a markdown-style table into a pandas DataFrame.
+        The assumption is that `|` is used as the separator.
+        """
+        # Clean and split lines and combine into a CSV string
+        lines = raw_markdown.strip().split("\n")
+        cleaned_lines = [line.strip("|").strip() for line in lines]
+        cleaned_table = "\n".join(cleaned_lines)
+        
+        # Read into a pandas DataFrame and replace dashes with NaN
+        df = pd.read_csv(StringIO(cleaned_table), delimiter="|")
+        df = df.map(lambda x: np.nan if re.fullmatch(r"-+", str(x).strip()) else x)
+        df = df.dropna(how='all')
+        
+        return df
+        
+    def next(self):
+        """
+        Process whole document with semantic prompts
+        Returns:
+            Dataframe
+        """
+        prompt_system = """
+        You are a data extraction assistant.
+        Your task is to extract structured information from unstructured text and format it into a row-based tabular format.
+        Follow the provided schema exactly and ensure the output adheres to the specified structure.
+        """
+        prompt_schema = f"Schema: {self.schema}"
+        
+        messages = [
+            {"role": "system", "content": prompt_system},
+            {"role": "user", "content": f"""
+            Convert the following raw text into a row-based tabular format with `|` as the delimitter, and use this schema: '{prompt_schema}'.
+            Do not include any additional text or explanation outside the table.
+            
+            Raw text:
+            {self.document}
+            """}
+        ]
+        
+        response = self.model.complete_messages(messages, temperature=0.1)
+        
+        yield self._parse_markdown_table(response)
+
+    def close(self):
+        """Clean up resources"""
+        return super.close()
+

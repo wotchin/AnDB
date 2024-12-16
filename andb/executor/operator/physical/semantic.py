@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 import pandas as pd
 import numpy as np
 import re
@@ -276,17 +277,22 @@ class SemanticTransform(PhysicalOperator):
 class SemanticScan(PhysicalOperator):
     """Physical operator for processing document into a proper table with prompts"""
     
-    def __init__(self, schema, document, prompt_model):
+    def __init__(self, schema, document, prompt_model, intermediate_data="tabular"):
         """
         Args:
             schema: Schema of the table.
             document: Document from which information will be extracted.
             prompt_model: Model for prompting.
+            intermediate_data: Intermediate output (for debugging purposes between 'json' and 'tabular')
         """
         super().__init__('SemanticScan')
         self.schema = schema
         self.document = document
         self.prompt_model = prompt_model
+        self.intermediate_data = intermediate_data
+        if self.intermediate_data not in ["json", "tabular"]:
+            raise NotImplementedError(f"Intermediate data `{self.intermediate_data}` is not implemented!")
+        
         self.stream = None
 
     def open(self):
@@ -308,6 +314,36 @@ class SemanticScan(PhysicalOperator):
         df = df.dropna(how='all')
         
         return df
+
+    def _parse_json(output):
+        try:
+            # Try parsing directly first
+            return json.loads(output)
+        except json.JSONDecodeError:
+            # Clean the output for common issues
+            cleaned_output = output.strip()
+
+            # Extract potential JSON objects or arrays
+            cleaned_entries = []
+            json_object_pattern = re.compile(r'\{.*?\}', re.DOTALL)
+            entries = json_object_pattern.findall(cleaned_output)
+            for entry in entries:
+                try:
+                    # Test if each entry is valid JSON
+                    json.loads(entry)
+                    cleaned_entries.append(entry)
+                except json.JSONDecodeError:
+                    # Skip invalid entries
+                    pass
+
+            # Reconstruct the cleaned JSON array
+            cleaned_output = "[" + ",".join(cleaned_entries) + "]"
+
+            # Attempt to parse again
+            try:
+                return json.loads(cleaned_output)
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"Error cleaning JSON: {e}")
         
     def next(self):
         """
@@ -315,23 +351,43 @@ class SemanticScan(PhysicalOperator):
         Returns:
             Dataframe
         """
-        prompt_system = """
-        You are a data extraction assistant.
-        Your task is to extract structured information from unstructured text and format it into a row-based tabular format.
-        Follow the provided schema exactly and ensure the output adheres to the specified structure.
-        """
         prompt_schema = f"Schema: {self.schema}"
-        
-        messages = [
-            {"role": "system", "content": prompt_system},
-            {"role": "user", "content": f"""
-            Convert the following raw text into a row-based tabular format with `|` as the delimitter, and use this schema: '{prompt_schema}'.
-            Do not include any additional text or explanation outside the table.
+
+        if self.intermediate_data == 'json':
+            prompt_system = """
+            You are a data extraction assistant.
+            Your task is to extract structured information from unstructured text and format it into JSON.
+            Follow the provided schema exactly.
+            """
+
+            messages = [
+                {"role": "system", "content": prompt_system},
+                {"role": "user", "content": f"""
+                Convert the following raw text into a JSON array using this schema: '{prompt_schema}'.
+                Ensure the response starts with '[' and ends with ']', with no additional text or explanation.
+                Missing or empty values should be represented as null. 
+                
+                Raw text:
+                {self.document}
+                """}
+            ]
+        else:
+            prompt_system = """
+            You are a data extraction assistant.
+            Your task is to extract structured information from unstructured text and format it into a row-based tabular format.
+            Follow the provided schema exactly and ensure the output adheres to the specified structure.
+            """
             
-            Raw text:
-            {self.document}
-            """}
-        ]
+            messages = [
+                {"role": "system", "content": prompt_system},
+                {"role": "user", "content": f"""
+                Convert the following raw text into a row-based tabular format with `|` as the delimitter, and use this schema: '{prompt_schema}'.
+                Do not include any additional text or explanation outside the table.
+                
+                Raw text:
+                {self.document}
+                """}
+            ]
         
         response = self.model.complete_messages(messages, temperature=0.1)
         

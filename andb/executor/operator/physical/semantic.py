@@ -1,24 +1,19 @@
 import logging
 import os
 import json
-import pandas as pd
-import numpy as np
 import re
-from io import StringIO
 
-from openai import OpenAI
 from andb.errno.errors import ExecutionStageError
 from andb.executor.operator.logical import Condition, DummyTableName, PromptColumn, TableColumn
 from andb.executor.operator.physical.base import PhysicalOperator
-from andb.constants.strings import OPENAI_API_KEY
 from andb.executor.operator.physical.select import Filter
 from andb.sql.parser.ast.join import JoinType
 
 class SemanticPrompt(PhysicalOperator):
-    def __init__(self, prompt_text, prompt_model):
+    def __init__(self, prompt_text, client_model):
         super().__init__('SemanticPrompt')
         self.prompt_text = prompt_text
-        self.prompt_model = prompt_model
+        self.client_model = client_model
         self.stream = None
 
     def open(self):
@@ -28,7 +23,7 @@ class SemanticPrompt(PhysicalOperator):
                         f"Then, I am going to give you a text, please generate a response "
                         f"based on the requirements and the text."
         }]
-        self.stream = self.prompt_model.complete_messages(messages=messages, stream=True)
+        self.stream = self.client_model.complete_messages(messages=messages, stream=True)
 
     def next(self):
         for text in self.children[0].next():
@@ -36,7 +31,7 @@ class SemanticPrompt(PhysicalOperator):
                 {"role": "assistant", "content": "I understand. Please provide the text."},
                 {"role": "user", "content": text}
             ]
-            response_stream = self.prompt_model.complete_messages(messages=messages, stream=True)
+            response_stream = self.client_model.complete_messages(messages=messages, stream=True)
             
             full_response = ""
             try:
@@ -61,9 +56,9 @@ class SemanticPrompt(PhysicalOperator):
 
 
 class SemanticFilter(PhysicalOperator):
-    def __init__(self, condition, prompt_model):
+    def __init__(self, condition, client_model):
         super().__init__('SemanticFilter')
-        self.prompt_model = prompt_model
+        self.client_model = client_model
         if isinstance(condition, Condition):
             self.condition_prompt = f'we only consider the following condition: {str(condition)}'
         elif isinstance(condition, str):
@@ -96,7 +91,7 @@ class SemanticFilter(PhysicalOperator):
                 {"role": "user", "content": prompt}
             ]
             
-            response = self.prompt_model.complete_messages(messages=messages, temperature=0.1)
+            response = self.client_model.complete_messages(messages=messages, temperature=0.1)
             
             # Get the response and convert to boolean
             result = response.strip().lower()
@@ -115,9 +110,9 @@ class SemanticJoin(PhysicalOperator):
     """
     Semantic Join operator that uses OpenAI API to join documents based on their semantic meaning
     """
-    def __init__(self, join_type, prompt_model, target_columns=None, join_filter: Filter = None):
+    def __init__(self, join_type, client_model, target_columns=None, join_filter: Filter = None):
         super().__init__('SemanticJoin')
-        self.prompt_model = prompt_model
+        self.client_model = client_model
         self.join_type = join_type
         self.target_columns = target_columns
         self.join_filter = join_filter
@@ -190,7 +185,7 @@ class SemanticJoin(PhysicalOperator):
             
             # Call OpenAI API
             # Lower temperature for more focused responses and limit response length
-            response = self.prompt_model.complete_messages(messages=messages, temperature=0.3, max_tokens=200)
+            response = self.client_model.complete_messages(messages=messages, temperature=0.3, max_tokens=200)
             
             # Extract and return the relationship description
             return response.strip()
@@ -210,7 +205,7 @@ class SemanticJoin(PhysicalOperator):
 class SemanticTransform(PhysicalOperator):
     """Physical operator for processing semantic target list with prompts"""
     
-    def __init__(self, target_columns, prompt_text, prompt_model):
+    def __init__(self, target_columns, prompt_text, client_model):
         """
         Args:
             target_columns: List of target columns including prompts
@@ -219,7 +214,7 @@ class SemanticTransform(PhysicalOperator):
         super().__init__('SemanticTransform')
         self.columns = target_columns
         self.prompt_text = prompt_text
-        self.prompt_model = prompt_model
+        self.client_model = client_model
         self.prompt_columns = [col for col in target_columns if isinstance(col, PromptColumn)]
         self.stream = None
 
@@ -251,7 +246,7 @@ class SemanticTransform(PhysicalOperator):
                             {"role": "system", "content": "Process the following text based on the given prompt."},
                             {"role": "user", "content": f"Prompt: {self.prompt_text}\nText: {input_text}"}
                         ]
-                        response = self.prompt_model.complete_messages(messages=messages, temperature=0.3)
+                        response = self.client_model.complete_messages(messages=messages, temperature=0.3)
                         result = response.strip()
                         result_tuple.append(result)
                     except Exception as e:
@@ -277,44 +272,28 @@ class SemanticTransform(PhysicalOperator):
 class SemanticScan(PhysicalOperator):
     """Physical operator for processing document into a proper table with prompts"""
     
-    def __init__(self, schema, document, prompt_model, intermediate_data="tabular"):
+    def __init__(self, schema, document, client_model, intermediate_data="tabular"):
         """
         Args:
             schema: Schema of the table.
             document: Document from which information will be extracted.
-            prompt_model: Model for prompting.
+            client_model: Model for prompting.
             intermediate_data: Intermediate output (for debugging purposes between 'json' and 'tabular')
         """
         super().__init__('SemanticScan')
         self.schema = schema
         self.document = document
-        self.prompt_model = prompt_model
+        self.client_model = client_model
         self.intermediate_data = intermediate_data
         if self.intermediate_data not in ["json", "tabular"]:
             raise NotImplementedError(f"Intermediate data `{self.intermediate_data}` is not implemented!")
         
         self.stream = None
+        self.columns = None
 
     def open(self):
         return super.open()
     
-    def _parse_markdown_into_dataframe(self, raw_markdown):
-        """
-        Parses a markdown-style table into a pandas DataFrame.
-        The assumption is that `|` is used as the separator.
-        """
-        # Clean and split lines and combine into a CSV string
-        lines = raw_markdown.strip().split("\n")
-        cleaned_lines = [line.strip("|").strip() for line in lines]
-        cleaned_table = "\n".join(cleaned_lines)
-        
-        # Read into a pandas DataFrame and replace dashes with NaN
-        df = pd.read_csv(StringIO(cleaned_table), delimiter="|")
-        df = df.map(lambda x: np.nan if re.fullmatch(r"-+", str(x).strip()) else x)
-        df = df.dropna(how='all')
-        
-        return df
-
     def _parse_json(output):
         try:
             # Try parsing directly first
@@ -344,6 +323,48 @@ class SemanticScan(PhysicalOperator):
                 return json.loads(cleaned_output)
             except json.JSONDecodeError as e:
                 raise RuntimeError(f"Error cleaning JSON: {e}")
+    
+    def _parse_markdown_into_tuples(self, raw_markdown):
+        """
+        Parses a markdown-style table into a list of tuples.
+        The assumption is that `|` is used as the separator.
+        """
+        # Clean and split lines and combine into a CSV string
+        lines = raw_markdown.strip().split("\n")
+        cleaned_lines = [line.strip("|").strip() for line in lines]
+        
+        # Convert each line into a list of cells
+        table_tuples = []
+        for line in cleaned_lines:
+            # Split on '|' and strip spaces
+            cells = [cell.strip() for cell in line.split("|")]
+            
+            # Replace any cell with only dashes with None (to simulate NaN)
+            cells = [None if re.fullmatch(r"-+", cell) else cell for cell in cells]
+            
+            # Append as a tuple
+            table_tuples.append(tuple(cells))
+        
+        # Remove the separator row (if exists)
+        if len(table_tuples) > 0:
+            self.columns = list(table_tuples.pop(0))
+        if len(table_tuples) > 1 and all(cell is None for cell in table_tuples[0]):
+            table_tuples.pop(0)
+        if len(table_tuples) > 1 and all(cell is None for cell in table_tuples[-1]):
+            table_tuples.pop()
+        
+        return table_tuples
+    
+    def _parse_json_into_tuples(self, raw_output):
+        cleaned_json = self._parse_json(raw_output)
+        if len(cleaned_json) == 0:
+            return []
+
+        # Extract column names (keys of the first dictionary)
+        self.columns = list(cleaned_json[0].keys())
+        table_tuples = [tuple(item.get(col, None) for col in self.columns) for item in cleaned_json]
+
+        return table_tuples
         
     def next(self):
         """
@@ -351,7 +372,9 @@ class SemanticScan(PhysicalOperator):
         Returns:
             Dataframe
         """
+        temperature = 0.1
         prompt_schema = f"Schema: {self.schema}"
+        table_tuples = []
 
         if self.intermediate_data == 'json':
             prompt_system = """
@@ -371,6 +394,9 @@ class SemanticScan(PhysicalOperator):
                 {self.document}
                 """}
             ]
+            response = self.model.complete_messages(messages, temperature=temperature)
+            table_tuples = self._parse_json_into_tuples(response)
+            
         else:
             prompt_system = """
             You are a data extraction assistant.
@@ -388,10 +414,11 @@ class SemanticScan(PhysicalOperator):
                 {self.document}
                 """}
             ]
+            response = self.model.complete_messages(messages, temperature=temperature)
+            table_tuples = self._parse_markdown_into_tuples(response)
         
-        response = self.model.complete_messages(messages, temperature=0.1)
-        
-        yield self._parse_markdown_table(response)
+        for tup in table_tuples:
+            yield tup
 
     def close(self):
         """Clean up resources"""

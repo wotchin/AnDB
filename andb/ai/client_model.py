@@ -1,27 +1,22 @@
 import os
-
-import openai
-from openai import OpenAI
 import logging
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from huggingface_hub import InferenceClient
 
 from andb.constants.strings import OPENAI_API_KEY
 
 DEFAULT_TEMPERATURE = 0.1
 DEFAULT_MAX_TOKENS = 1024
 
-class PromptModelFactory:
+class ClientModelFactory:
     @staticmethod
     def create_model(config):
         """
-        Factory method to initialize the correct PromptModel subclass based on config.
+        Factory method to initialize the correct ClientModel subclass based on config.
 
         Args:
             config (dict): Configuration containing model type and related settings.
 
         Returns:
-            PromptModel: An instance of the appropriate subclass.
+            ClientModel: An instance of the appropriate subclass.
         """
         model_type = config.get("model_type")
         if model_type == "hf_api":
@@ -33,7 +28,7 @@ class PromptModelFactory:
         else:
             raise ValueError("Invalid model type. Choose 'hf_api', 'openai', or 'offline'.")
 
-class PromptModel:
+class ClientModel:
     def complete_messages(self, messages, max_tokens=DEFAULT_MAX_TOKENS, temperature=DEFAULT_TEMPERATURE, stream=False):
         """
         Generate a completion for the given prompt using the specified model.
@@ -49,8 +44,10 @@ class PromptModel:
         """
         raise NotImplementedError("complete_messages must be implemented in subclasses.")
 
-class HFAPIModel(PromptModel):
+class HFAPIModel(ClientModel):
     def __init__(self, config):
+        from huggingface_hub import InferenceClient
+
         self.client = InferenceClient()
         self.model = config.get("hf_repo_id")
 
@@ -68,8 +65,11 @@ class HFAPIModel(PromptModel):
         else:
             return response.choices[0].message.content
 
-class OpenAIModel(PromptModel):
+class OpenAIModel(ClientModel):
     def __init__(self, config):
+        import openai
+        from openai import OpenAI
+
         openai.api_key = config["openai_api_key"]
         self.openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY') or config["openai_api_key"])
         self.openai_model = config["openai_model"]
@@ -88,8 +88,10 @@ class OpenAIModel(PromptModel):
         else:
             return response.choices[0].message.content
 
-class OfflineModel(PromptModel):
+class OfflineModel(ClientModel):
     def __init__(self, config):
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
         self.tokenizer = AutoTokenizer.from_pretrained(config["model_path"])
         self.model = AutoModelForCausalLM.from_pretrained(
             config["model_path"],

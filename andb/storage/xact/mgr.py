@@ -36,7 +36,7 @@ class TransactionManager:
         self.active_transactions = {}
 
     def begin_transaction(self, xid):
-        if xid in self.active_transactions:
+        if xid < FIRST_XID or xid in self.active_transactions:
             return
         self.set_xid(xid)
         self.undo_manager.begin_transaction(xid)
@@ -56,7 +56,7 @@ class TransactionManager:
         2. Ensure all dirty pages are written (redo logs)
         3. Write commit record to WAL
         """
-        if xid not in self.active_transactions:
+        if xid < FIRST_XID or xid not in self.active_transactions:
             return
 
         transaction = self.active_transactions[xid]
@@ -81,7 +81,7 @@ class TransactionManager:
         self.set_xid(INVALID_XID)
 
     def abort_transaction(self, xid):
-        if xid not in self.active_transactions:
+        if xid < FIRST_XID or xid not in self.active_transactions:
             return
 
         transaction = self.active_transactions[xid]

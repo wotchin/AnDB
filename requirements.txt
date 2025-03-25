@@ -1,1 +1,4 @@
 sly>=0.4
+numpy
+faiss-cpu
+openai

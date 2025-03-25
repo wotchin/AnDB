@@ -191,7 +191,6 @@ class BufferManager:
             for buffer_page in self.cache.items():
                 if buffer_page.dirty:
                     logging.info(f"writing dirty page: {buffer_page}")
-                    print(f"writing dirty page: {buffer_page}")
                     self._write_page_to_disk(buffer_page)
                     buffer_page.erase_dirty()
             self.sync_evicted_pages()

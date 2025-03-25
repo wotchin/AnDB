@@ -1,6 +1,7 @@
 from andb.catalog.oid import OID_RELATION_START
 from ._base import CatalogTable, CatalogForm
-from .oid import OID_RELATION_END, OID_DATABASE_ANDB, INVALID_OID, OID_SYSTEM_TABLE_CLASS, OID_SYSTEM_TABLE_END, OID_SYSTEM_TABLE_START, OID_TEMP_TABLE, OID_MEMORY_TABLE_START, OID_MEMORY_TABLE_END, OID_SYSTEM_TABLE_FUNCTIONS
+from .oid import OID_RELATION_END, OID_DATABASE_ANDB, INVALID_OID, OID_SYSTEM_TABLE_CLASS, OID_SYSTEM_TABLE_END, \
+    OID_SYSTEM_TABLE_START, OID_TEMP_TABLE, OID_MEMORY_TABLE_START, OID_MEMORY_TABLE_END, OID_SYSTEM_TABLE_FUNCTIONS
 from .database import _ANDB_DATABASE
 from andb.errno.errors import DDLException
 from .function import _ANDB_FUNCTIONS
@@ -44,7 +45,6 @@ class AndbClassTable(CatalogTable):
         self.system_tables = []
         self.memory_tables = []
 
-
     def init(self):
         pass
 
@@ -83,7 +83,7 @@ class AndbClassTable(CatalogTable):
             # we think we have found the result from regular tables
             # then, we don't need to search system tables and memory tables
             return results
-        
+
         for r in self.system_tables:
             if lambda_condition(r):
                 results.append(r)
@@ -95,15 +95,15 @@ class AndbClassTable(CatalogTable):
         return results
 
     def get_relation_oid(self, relation_name, database_oid=OID_DATABASE_ANDB,
-                          kind=None):
+                         kind=None):
         # if kind is not specified, we search all kinds of relations    
         if kind is None:
             results = self.search(lambda r: r.name == relation_name
-                                    and r.database_oid == database_oid)
+                                            and r.database_oid == database_oid)
         else:
             results = self.search(lambda r: r.name == relation_name
-                                    and r.database_oid == database_oid
-                                    and r.kind == kind)
+                                            and r.database_oid == database_oid
+                                            and r.kind == kind)
         if len(results) != 1:
             return INVALID_OID
 
@@ -127,10 +127,10 @@ class AndbClassTable(CatalogTable):
         return self.get_relation_oid(index_name, database_oid, RelationKinds.BTREE_INDEX) != INVALID_OID
 
     def create(self, name, kind, database_oid=OID_DATABASE_ANDB):
-        assert kind not in (RelationKinds.TEMPORARY_TABLE, 
-                            RelationKinds.MEMORY_TABLE, 
+        assert kind not in (RelationKinds.TEMPORARY_TABLE,
+                            RelationKinds.MEMORY_TABLE,
                             RelationKinds.SYSTEM_TABLE), \
-        "temporary table, memory table, and system table cannot be created by this function."
+            "temporary table, memory table, and system table cannot be created by this function."
         results = _ANDB_DATABASE.search(lambda r: r.oid == database_oid)
         if len(results) == 0:
             return INVALID_OID
@@ -138,7 +138,7 @@ class AndbClassTable(CatalogTable):
         next_oid = self.allocate_oid(kind)
         if next_oid == INVALID_OID:
             raise DDLException('Relation oid cannot be allocated.')
-        
+
         if len(self.search(lambda r: r.name == name)) > 0:
             raise DDLException('Cannot create a same name relation.')
 
@@ -147,20 +147,23 @@ class AndbClassTable(CatalogTable):
                           kind=kind, database_oid=database_oid)
         )
         return next_oid
-    
+
     def create_non_persistent(self, name, kind, database_oid=OID_DATABASE_ANDB, table_oid=None):
         # for creating a memory table or system table information
         # for storing intermediate results
-        assert kind in (RelationKinds.MEMORY_TABLE, 
+        assert kind in (RelationKinds.MEMORY_TABLE,
                         RelationKinds.SYSTEM_TABLE), \
-        "only memory table and system table can be created by this function."
+            "only memory table and system table can be created by this function."
         if table_oid is None:
             table_oid = self.allocate_oid(kind)
         if table_oid == INVALID_OID:
-            raise DDLException('The oid for non-persistent relation cannot be allocated.') 
-        
-        #TODO: binary search for optimization
+            raise DDLException('The oid for non-persistent relation cannot be allocated.')
+
+            # TODO: binary search for optimization
         if kind == RelationKinds.MEMORY_TABLE:
+            for memory_table in self.memory_tables:
+                if memory_table.name == name:
+                    raise DDLException('Cannot create a same name memory table.')
             self.memory_tables.append(AndbClassForm(oid=table_oid, name=name,
                                                     kind=kind, database_oid=database_oid))
             self.memory_tables.sort()
@@ -173,5 +176,23 @@ class AndbClassTable(CatalogTable):
             self.system_tables.append(AndbClassForm(oid=table_oid, name=name,
                                                     kind=kind, database_oid=database_oid))
             self.system_tables.sort()
+        return table_oid
+
+    def delete_by_kind(self, kind, oid):
+        if kind == RelationKinds.MEMORY_TABLE or kind == RelationKinds.TEMPORARY_TABLE:
+            for i, table in enumerate(self.memory_tables):
+                if table.oid == oid:
+                    self.memory_tables.pop(i)
+                    break
+        elif kind == RelationKinds.SYSTEM_TABLE:
+            for i, table in enumerate(self.system_tables):
+                if table.oid == oid:
+                    self.system_tables.pop(i)
+                    break
+        elif kind == RelationKinds.HEAP_TABLE:
+            self.delete(lambda r: r.oid == oid)
+        else:
+            raise ValueError(f'Invalid relation kind: {kind}')
+
 
 _ANDB_CLASS = AndbClassTable()

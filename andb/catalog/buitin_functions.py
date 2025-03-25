@@ -1,5 +1,6 @@
 from math import sqrt
 
+
 def cosine_distance(v1, v2):
     # Ensure vectors are of the same length
     if len(v1) != len(v2):

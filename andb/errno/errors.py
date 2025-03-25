@@ -71,3 +71,10 @@ class UndoError(RollbackError):
         super().__init__(msg)
 
         self.errno = 25
+
+
+class ConfigError(RollbackError):
+    def __init__(self, msg):
+        super().__init__(msg)
+
+        self.errno = 26

@@ -1,0 +1,5 @@
+vllm
+transformers
+sentence-transformers
+torch
+huggingface_hub

@@ -1,5 +1,6 @@
 from andb.catalog.buitin_functions import cosine_distance
 from andb.catalog.type import cast_value
+from andb.errno.errors import DDLException
 from ._base import CatalogTable, CatalogForm
 from .oid import (
     OID_SYSTEM_TABLE_FUNCTIONS,
@@ -8,12 +9,12 @@ from .oid import (
     OID_FUNCTION_END,
     OID_DATABASE_ANDB
 )
-from andb.errno.errors import DDLException
-from functools import partial
+
 
 class FunctionKinds:
     BUILTIN = 'b'
     USER_DEFINED = 'u'
+
 
 class AndbFunctionForm(CatalogForm):
     __fields__ = {
@@ -34,10 +35,11 @@ class AndbFunctionForm(CatalogForm):
         self.return_type = return_type
         self.arg_types = arg_types
         self.arg_count = arg_count
-    
+
     def __lt__(self, other):
         return self.oid < other.oid
-    
+
+
 BUILTIN_FUNCTIONS = [
     {
         'name': 'cosine_distance',
@@ -46,6 +48,7 @@ BUILTIN_FUNCTIONS = [
         'callback': cosine_distance
     },
 ]
+
 
 class AndbFunctionTable(CatalogTable):
     __tablename__ = 'andb_function'
@@ -67,7 +70,7 @@ class AndbFunctionTable(CatalogTable):
                 return_type=func['return_type'],
                 arg_types=func['arg_types'],
                 callback=func['callback']
-        )
+            )
 
     def register_builtin_function(self, name, return_type, arg_types, callback):
         """
@@ -88,7 +91,6 @@ class AndbFunctionTable(CatalogTable):
             arg_count=len(arg_types)
         ))
 
-
     def allocate_oid(self):
         if len(self.rows) == 0:
             return OID_FUNCTION_START
@@ -102,8 +104,8 @@ class AndbFunctionTable(CatalogTable):
         get function OID by name (and optional database OID and kind).
         """
         results = self.search(lambda r: r.name == name and
-                                     (database_oid is None or r.database_oid == database_oid) and
-                                     (kind is None or r.kind == kind))
+                                        (database_oid is None or r.database_oid == database_oid) and
+                                        (kind is None or r.kind == kind))
         if len(results) != 1:
             return INVALID_OID
         return results[0].oid
@@ -116,17 +118,17 @@ class AndbFunctionTable(CatalogTable):
         if name in self.builtin_functions:
             return self.builtin_functions[name]
         # maybe functions are not loaded yet
-        
+
         # TODO: handle user-defined functions
         raise NotImplementedError(f"Function '{name}' not implemented.")
-    
+
     def get_function_types(self, function_name, database_oid):
         results = self.search(lambda r: r.name == function_name and
-                                     r.database_oid == database_oid)
+                                        r.database_oid == database_oid)
         if len(results) != 1:
             raise DDLException(f'Function {function_name} not found.')
         return results[0].arg_types.split(','), results[0].return_type
-        
+
     def perform_function(self, function_name, database_oid, args):
         callback = self.get_callback_by_name(function_name, database_oid)
 
@@ -134,5 +136,6 @@ class AndbFunctionTable(CatalogTable):
         casted_args = [cast_value(arg, arg_type) for arg, arg_type in zip(args, arg_types)]
         return_value = callback(*casted_args)
         return cast_value(return_value, return_type)
+
 
 _ANDB_FUNCTIONS = AndbFunctionTable()

@@ -18,6 +18,17 @@ def generic_cmp(a, b):
     return a - b
 
 
+class AndbNull:
+    def __str__(self):
+        return "null"
+
+    def __repr__(self):
+        return "AndbNull()"
+
+    def __bool__(self):
+        return False
+
+
 class AndbBaseType:
     oid = INVALID_OID
     type_name = 'undefined'
@@ -48,6 +59,10 @@ class AndbBaseType:
         if b is None:
             return NULL_LENGTH
         return cls.type_bytes
+
+    @classmethod
+    def format_value(cls, value):
+        return value
 
 
 class IntegerType(AndbBaseType):
@@ -279,6 +294,11 @@ class VectorType(AndbBaseType):
         length = cstructure.unpack_one(_VARIABLE_TYPE_CTYPE, b[:VARIABLE_TYPE_HEADER_LENGTH])
         return VARIABLE_TYPE_HEADER_LENGTH + length * cstructure.calcsize(cls.type_char)
 
+    @classmethod
+    def format_value(cls, value):
+        vector = cls.cast_from_string(value)
+        return f'[{", ".join(map(str, vector))}]'
+
 
 class AndbTypeForm(CatalogForm):
     __fields__ = {
@@ -333,6 +353,13 @@ class AndbTypeTable(CatalogTable):
         r = self._lookup_cache[name]
         return _BUILTIN_TYPES_DICT[r.type_name]
 
+    @memoize
+    def get_type_form_by_oid(self, oid):
+        for r in self.rows:
+            if r.oid == oid:
+                return _BUILTIN_TYPES_DICT[r.type_name]
+        return None
+
     def get_type_oid(self, name):
         meta = self.get_type_form(name)
         return meta.oid if meta else INVALID_OID
@@ -352,8 +379,13 @@ class AndbTypeTable(CatalogTable):
         meta = self.get_type_form(type_name)
         return meta.to_datum(bytes_)
 
+
+_ANDB_TYPE = AndbTypeTable()
+
+
 def cast_value(value, destination_type_name):
-    meta: AndbBaseType = _ANDB_TYPE.get_type_form(destination_type_name)
+    # get the inheritance class from AndbBaseType
+    meta = _ANDB_TYPE.get_type_form(destination_type_name)
     if isinstance(value, str):
         return meta.cast_from_string(value)
     elif isinstance(value, type(meta.type_default)):
@@ -362,4 +394,3 @@ def cast_value(value, destination_type_name):
     else:
         raise NotImplementedError(f"Unsupported value type: {type(value)}")
 
-_ANDB_TYPE = AndbTypeTable()

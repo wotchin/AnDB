@@ -1,6 +1,6 @@
-from andb.catalog.oid import OID_SYSTEM_TABLE_ATTRIBUTE
+from andb.catalog.oid import OID_SYSTEM_TABLE_ATTRIBUTE, OID_SCANNING_FILE, OID_SCANNING_DIRECTORY
 from ._base import CatalogTable, CatalogForm
-from .type import _ANDB_TYPE, VarcharType
+from .type import _ANDB_TYPE, VarcharType, TextType
 
 
 class AndbAttributeForm(CatalogForm):
@@ -10,16 +10,17 @@ class AndbAttributeForm(CatalogForm):
         'type_oid': 'bigint',
         'length': 'integer',
         'num': 'integer',
-        'notnull': 'boolean'
+        'notnull': 'boolean',
     }
 
-    def __init__(self, class_oid, name, type_oid, length, num, notnull=False):
+    def __init__(self, class_oid, name, type_oid, length, num, notnull=False, enum_vals=None):
         self.class_oid = class_oid
         self.name = name
         self.type_oid = type_oid
         self.length = length
         self.num = num
         self.notnull = notnull
+        self.enum_vals = enum_vals
 
     def __lt__(self, other):
         if self.class_oid == other.class_oid:
@@ -33,14 +34,23 @@ class AndbAttributeTable(CatalogTable):
     __form__ = AndbAttributeForm
 
     def init(self):
-        #TODO: insert system catalog information?
+        # TODO: insert system catalog information?
         pass
 
-    def get_table_forms(self, class_oid):
-        return self.search(lambda r: r.class_oid == class_oid)
+    def get_table_forms(self, table_oid):
+        if table_oid == OID_SCANNING_FILE or table_oid == OID_SCANNING_DIRECTORY:
+            # for scanning table, we have one column: content
+            return (AndbAttributeForm(class_oid=table_oid, name='content',
+                                      type_oid=_ANDB_TYPE.get_type_oid('text'),
+                                      length=0, num=0, notnull=False),)
+        return self.search(lambda r: r.class_oid == table_oid)
 
     def get_table_attr(self, table_oid, attr_name):
-        result = self.search(lambda r: r.class_oid == table_oid and r.name == attr_name)
+        result = []
+        for form in self.get_table_forms(table_oid=table_oid):
+            if form.name == attr_name:
+                result.append(form)
+
         if len(result) != 1:
             return None
         return result[0]
@@ -55,26 +65,32 @@ class AndbAttributeTable(CatalogTable):
         num = 0
         while num < len(fields):
             name, type_name, notnull = fields[num]
-            #TODO: atomic
+            # TODO: atomic
+            values = None
+            if isinstance(type_name, list):
+                values = type_name
+                type_name = TextType.type_name
+
             if type_name.startswith(VarcharType.type_name):
                 # varchar is fixed length
                 length = int(type_name.replace(VarcharType.type_name, ''))
                 type_name = VarcharType.type_name
             else:
                 length = _ANDB_TYPE.get_type_form(type_name).type_bytes
-            
+
             row = AndbAttributeForm(
                 class_oid=class_oid,
                 name=name,
                 type_oid=_ANDB_TYPE.get_type_oid(type_name),
                 length=length,
                 num=num,
-                notnull=notnull
+                notnull=notnull,
+                enum_vals=values
             )
             if persistent:
                 self.insert(row)
             else:
-                #TODO: binary search
+                # TODO: binary search
                 self.rows.append(row)
                 self.rows.sort()
             num += 1

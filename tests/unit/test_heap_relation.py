@@ -108,7 +108,7 @@ def test_hot():
 
 
 def test_btree():
-    global_vars.xact_manager.begin_transaction(0)
+    #global_vars.xact_manager.begin_transaction(0)
     # create a data table first
     fields = (
         ('id', 'int', True),
@@ -118,6 +118,9 @@ def test_btree():
     created_table_oid = hot_create_table('test_bt_table', fields, database_oid=OID_DATABASE_ANDB)
     table_oid = CATALOG_ANDB_CLASS.search(lambda r: r.name == 'test_bt_table')[0].oid
     assert created_table_oid == table_oid
+
+    xid = global_vars.xact_manager.allocate_xid()
+    global_vars.xact_manager.begin_transaction(xid)
 
     test_hot_relation = open_relation(table_oid)
     results = hot_simple_select(test_hot_relation, test_hot_relation.last_pageno(), 0)

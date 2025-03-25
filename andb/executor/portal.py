@@ -5,10 +5,13 @@ from andb.common.tabular_format import TabularFormat
 from andb.catalog.attribute import AndbAttributeForm
 from andb.catalog import CATALOG_ANDB_TYPE
 from andb.catalog.oid import INVALID_OID, OID_TEMP_TABLE
-from andb.catalog.syscache import get_attribute_by_name
-from andb.executor.operator.logical import TableColumn, FunctionColumn
+from andb.catalog.type import AndbNull
+from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, get_attribute_by_name
+from andb.executor.operator.logical import PromptColumn, TableColumn, FunctionColumn, SemanticTransformColumn, \
+    VirtualColumn
 from andb.sql.parser import CmdType
 from andb.runtime import session_vars
+
 
 class ExecutionResult:
     def __init__(self, success=True, notice=None, warning=None, effect_rows=0, elapsed=0):
@@ -37,7 +40,7 @@ class ExecuteResultTuple(ExecutionResult):
 
 class ExecuteResultSet(ExecutionResult):
     def __init__(self, **kwargs):
-        #TODO: the ResultSet is a tabular that can be scanned again and has
+        # TODO: the ResultSet is a tabular that can be scanned again and has
         # its own name, attributes ...
         super().__init__(**kwargs)
         self.attr_forms = []
@@ -97,7 +100,7 @@ class ExecutionPortal:
     def initialize(self):
         start_time = time.monotonic()
         self.plan_tree.open()
-        #TODO: self.attr_forms
+        # TODO: self.attr_forms
         self.init_elapsed = time.monotonic() - start_time
 
     def execute(self):
@@ -106,7 +109,7 @@ class ExecutionPortal:
         self._results = list(root.next())
         self.target_list_columns = root.columns
         self.execute_elapsed = time.monotonic() - start_time
-        #TODO: result type
+        # TODO: result type
 
     def finalize(self):
         start_time = time.monotonic()
@@ -114,7 +117,7 @@ class ExecutionPortal:
         self.final_elapsed = time.monotonic() - start_time
 
     def results(self):
-        #TODO: result type
+        # TODO: result type
         total_elapsed = self.init_elapsed + self.execute_elapsed + self.final_elapsed
         if self.cmd_type == CmdType.CMD_UTILITY:
             return ExecutionResult(elapsed=total_elapsed)
@@ -130,27 +133,42 @@ class ExecutionPortal:
             rv.tuples = self._results
             return rv
         elif self.cmd_type == CmdType.CMD_SELECT:
-            #TODO: result set
+            # TODO: result set
             rv = ExecuteResultSet(elapsed=total_elapsed)
 
             # construct output fields
-            #TODO: can be reused and scanned again
+            # TODO: can be reused and scanned again
             to_be_defined_fields = []
             for column in self.target_list_columns:
                 if isinstance(column, TableColumn):
                     attr = get_attribute_by_name(column.table_name, column.column_name,
-                                                 database_oid=session_vars.SessionVars.database_oid)
+                                                 database_oid=session_vars.get_session_value('database_oid'))
+                    if not attr:
+                        # we cannot get attributes according to table name and column name
+                        # perhaps, this is not a regular table. we could try to get the table oid by logical query
+                        relation_oid = self.plan_tree.logical_query.from_tables[column.table_name]
+                        attr = CATALOG_ANDB_ATTRIBUTE.get_table_attr(relation_oid, column.column_name)
                     to_be_defined_fields.append((column.standard_name, attr.type_oid, attr.length, attr.notnull))
                 elif isinstance(column, FunctionColumn):
-                    #TODO: TBH, we have to determine what the type of function return value is
+                    # TODO: TBH, we have to determine what the type of function return value is
                     # and construct the field according to the information but we haven't implemented
                     # the catalog to record what the type is.
                     # Hence, we have to mock data here but it still works.
                     to_be_defined_fields.append((column.standard_name, INVALID_OID, 0, True))
+                elif isinstance(column, PromptColumn):
+                    to_be_defined_fields.append((column.standard_name, CATALOG_ANDB_TYPE.get_type_oid("text"), 0, True))
+                elif isinstance(column, SemanticTransformColumn):
+                    to_be_defined_fields.append((column.column_name, CATALOG_ANDB_TYPE.get_type_oid("text"), 0, False))
+                elif isinstance(column, VirtualColumn):
+                    to_be_defined_fields.append((column.column_name, CATALOG_ANDB_TYPE.get_type_oid("text"), 0, False))
 
             rv.define_fields(to_be_defined_fields)
             # directly assigned? maybe a not good form but easier
-            rv.tuples = self._results
+            rv.tuples = [
+                tuple(AndbNull() if item is None else item for item in row)
+                for row in self._results
+            ]
+
             rv.effect_rows = len(self._results)
             return rv
         elif self.cmd_type in (CmdType.CMD_INSERT,

@@ -1,9 +1,14 @@
+import json
+import logging
+
 from andb.catalog.oid import INVALID_OID
 from andb.catalog.syscache import CATALOG_ANDB_ATTRIBUTE, CATALOG_ANDB_TYPE, CATALOG_ANDB_CLASS
 from andb.errno.errors import RollbackError, DDLException
 from andb.storage.engines.heap.relation import RelationKinds, bt_create_index_internal, \
     hot_create_table, hot_drop_table, bt_drop_index
 from andb.runtime import global_vars
+from andb.runtime import session_vars
+from andb.storage.engines.memory.table import memory_create_table, memory_drop_table
 
 from .base import PhysicalOperator
 
@@ -39,7 +44,7 @@ class CreateIndexOperator(PhysicalOperator):
                 raise DDLException(f'not found the field {field} in the table {self.table_name}.')
             self.index_attr_form_array.append(index_attr)
 
-        self.total_cost = 1000  #TODO: estimate cost of creating index
+        self.total_cost = 1000  # TODO: estimate cost of creating index
 
     def next(self):
         self.index_oid = bt_create_index_internal(index_name=self.index_name, table_oid=self.table_oid,
@@ -63,19 +68,39 @@ class CreateTableOperator(PhysicalOperator):
             if len(fields) < 2:
                 raise DDLException('invalid table columns.')
             name, type_name = fields[0], fields[1]
-            #TODO: check name character
-            if CATALOG_ANDB_TYPE.get_type_oid(type_name) == INVALID_OID:
+            # TODO: check name character
+            if not isinstance(type_name, list) and CATALOG_ANDB_TYPE.get_type_oid(type_name) == INVALID_OID:
                 raise DDLException(f'invalid type {type_name}.')
             if len(fields) == 2:
                 calibrated_fields.append([name, type_name, False])
             else:
                 calibrated_fields.append(fields)
+
+            # we want a list of strings so during insert, we can directly compare with the ENUM values using python in
+            if isinstance(type_name, list):
+                calibrated_fields[-1][1] = [item.value for item in type_name]
+
         self.fields = calibrated_fields
 
     def next(self):
         # allow to throw DDLException
         self.table_oid = hot_create_table(table_name=self.table_name, fields=self.fields,
                                           database_oid=self.database_oid)
+        yield self.table_oid
+
+
+class CreateMemoryTableOperator(CreateTableOperator):
+    def __init__(self, table_name, fields, database_oid, temporary=True):
+        super().__init__(table_name, fields, database_oid)
+        self.temporary = temporary
+
+    def next(self):
+        # Create temporary table in memory
+        self.table_oid = memory_create_table(
+            table_name=self.table_name,
+            fields=self.fields,
+            database_oid=self.database_oid
+        )
         yield self.table_oid
 
 
@@ -103,7 +128,7 @@ class ExplainOperator(PhysicalOperator):
         super().__init__('Explain')
         self.logical_plan = logical_plan
         self.physical_plan = None
-        #TODO: add grammar and syntax support, explain analyze ...
+        # TODO: add grammar and syntax support, explain analyze ...
         self.analyze = False
 
     def open(self):
@@ -142,6 +167,15 @@ class DropTableOperator(PhysicalOperator):
         pass  # No cleanup required
 
 
+class DropMemoryTableOperator(DropTableOperator):
+    def next(self):
+        oid = CATALOG_ANDB_CLASS.get_relation_oid(
+            self.table_name, self.database_oid,
+            kind=RelationKinds.MEMORY_TABLE)
+        memory_drop_table(oid, self.database_oid)
+        yield True
+
+
 class DropIndexOperator(PhysicalOperator):
     def __init__(self, index_name, database_oid):
         super().__init__('DropIndex')
@@ -161,16 +195,21 @@ class DropIndexOperator(PhysicalOperator):
 
 
 class CommandOperator(PhysicalOperator):
-    def __init__(self, command: str):
+    def __init__(self, command: str, parameters: dict):
         super().__init__(f'Command: {command}')
         self.command = command
+        self.parameters = parameters
 
     def open(self):
         pass  # No initialization required
 
     def next(self):
-        if self.command == 'checkpoint':
+        if self.command.lower() == 'checkpoint':
             global_vars.xact_manager.checkpoint()
+        elif self.command.lower() == 'set':
+            for var_name, constant_val in self.parameters.items():
+                session_vars.set_session_value(var_name, constant_val)
+            yield True  # To by pass list() output
         else:
             raise RuntimeError(f"Unsupported command: {self.command}")
 

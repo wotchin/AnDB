@@ -19,7 +19,6 @@ class Node:
         return hash(self.key)
 
 
-
 class LRUCache(BaseCache):
     def __init__(self, capacity):
         super().__init__(capacity)
@@ -113,4 +112,3 @@ class LRUCache(BaseCache):
 
     def __iter__(self):
         return self.items()
-

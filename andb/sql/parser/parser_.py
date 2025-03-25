@@ -4,7 +4,7 @@ from .lexer import SQLLexer
 from .ast.base import ASTNode
 from .ast.explain import Explain
 from .ast.alter import AlterTable
-from .ast.create import CreateIndex, CreateTable
+from .ast.create import CreateIndex, CreateTable, CreateMemoryTable, DropMemoryTable
 from .ast.union import Union
 from .ast.select import Select
 from .ast.insert import Insert
@@ -18,7 +18,19 @@ from .ast.misc import Constant, Star, Tuple
 from .exception import ParsingException
 from .ast.drop import DropTable, DropIndex
 from .ast.utility import Command
+from .ast.semantic import FileSource, DirectorySource, Prompt, SemanticTabular, SemanticGroup, SemanticMatch
 
+
+class CTE:
+    def __init__(self, select, with_queries):
+        self.main_query = select
+        self.sub_queries = with_queries
+
+class SubQuery:
+    def __init__(self, name, query, columns=None):
+        self.name = name
+        self.query = query
+        self.columns = columns
 
 def check_select_keywords(select, operation):
     operations = (
@@ -85,6 +97,7 @@ class SQLParser(sly.Parser):
         'update',
         'drop',
         'command',
+        'cte'
     )
     def query(self, p):
         return p[0]
@@ -146,7 +159,7 @@ class SQLParser(sly.Parser):
         select.offset = p.constant0
         select.limit = p.constant1
         return select
-
+    
     @_('select ORDER_BY ordering_terms')
     def select(self, p):
         select = p.select
@@ -200,7 +213,7 @@ class SQLParser(sly.Parser):
         select = p.select
         check_select_keywords(select, 'WHERE')
         where_expr = p.expr
-        if not isinstance(where_expr, Operation):
+        if not isinstance(where_expr, (Operation, Prompt, SemanticMatch)):
             raise ParsingException(
                 f"Require an operation for WHERE clause.")
         select.where = where_expr
@@ -208,32 +221,60 @@ class SQLParser(sly.Parser):
 
     @_('select FROM from_table_aliased',
        'select FROM join_tables_implicit',
-       'select FROM join_tables')
+       'select FROM join_tables',
+       'select FROM from_tabular')
     def select(self, p):
         select = p.select
         check_select_keywords(select, 'FROM')
         select.from_table = p[2]
         return select
 
-    # TODO: subquery, CTE
+    @_('WITH identifier AS LPAREN select RPAREN',
+       'WITH identifier LPAREN column_list RPAREN AS LPAREN select RPAREN')
+    def cte_queries(self, p):
+        query = SubQuery(p.identifier, p.select)
+        if hasattr(p, 'column_list'):
+            query.columns = p.column_list
+        return [query]
+    
+    @_('cte_queries COMMA identifier AS LPAREN select RPAREN', 
+       'cte_queries COMMA identifier LPAREN column_list RPAREN AS LPAREN select RPAREN')
+    def cte_queries(self, p):
+        query = SubQuery(p.identifier, p.select)
+        if hasattr(p, 'column_list'):
+            query.columns = p.column_list
+        return p.cte_queries + [query]
+
+    @_('cte_queries select')
+    @_('cte_queries insert')
+    def cte(self, p):
+        return CTE(p[1], p.cte_queries)
+
+    # TODO: subquery
     # join
     @_('from_table_aliased join_clause from_table_aliased',
-       'join_tables join_clause from_table_aliased')
+       'join_tables join_clause from_table_aliased',
+       'from_tabular join_clause from_tabular',
+       'join_tables join_clause from_tabular')
     def join_tables(self, p):
         return Join(left=p[0],
                     right=p[2],
                     join_type=p.join_clause)
 
     @_('from_table_aliased join_clause from_table_aliased ON expr',
-       'join_tables join_clause from_table_aliased ON expr')
+       'join_tables join_clause from_table_aliased ON expr',
+       'from_tabular join_clause from_tabular ON expr',
+       'join_tables join_clause from_tabular ON expr')
     def join_tables(self, p):
         return Join(left=p[0],
                     right=p[2],
                     join_type=p.join_clause,
                     condition=p.expr)
-
+    
     @_('from_table_aliased COMMA from_table_aliased',
-       'join_tables_implicit COMMA from_table_aliased')
+       'join_tables_implicit COMMA from_table_aliased',
+       'from_tabular COMMA from_tabular',
+       'join_tables_implicit COMMA from_tabular')
     def join_tables_implicit(self, p):
         return Join(left=p[0],
                     right=p[2],
@@ -248,12 +289,6 @@ class SQLParser(sly.Parser):
         if hasattr(p, 'identifier'):
             entity.alias = p.identifier
         return entity
-
-    @_('LPAREN query RPAREN')
-    def from_table(self, p):
-        query = p.query
-        query.parentheses = True
-        return query
 
     @_('identifier')
     def from_table(self, p):
@@ -298,12 +333,6 @@ class SQLParser(sly.Parser):
         col.alias = p.identifier
         return col
 
-    @_('LPAREN select RPAREN')
-    def result_column(self, p):
-        select = p.select
-        select.parentheses = True
-        return select
-
     @_('star')
     def result_column(self, p):
         return p.star
@@ -314,12 +343,6 @@ class SQLParser(sly.Parser):
         return p[0]
 
     # OPERATIONS
-
-    @_('LPAREN select RPAREN')
-    def expr(self, p):
-        select = p.select
-        select.parentheses = True
-        return select
 
     @_('LPAREN expr RPAREN')
     def expr(self, p):
@@ -381,10 +404,17 @@ class SQLParser(sly.Parser):
        'expr NOT expr',
        'expr IS expr',
        'expr LIKE expr',
-       'expr CONCAT expr',
-       'expr IN expr')
+       'expr CONCAT expr')
     def expr(self, p):
         return BinaryOperation(op=p[1], args=(p.expr0, p.expr1))
+
+    @_('expr IN expr')
+    def expr(self, p):
+        return BinaryOperation(op=p[1], args=(p.expr0, p.expr1))
+
+    @_('expr IN LPAREN select RPAREN')
+    def expr(self, p):
+        return BinaryOperation(op=p[1], args=(p.expr, p.select))
 
     # update fields list
     @_('update_parameter',
@@ -449,6 +479,14 @@ class SQLParser(sly.Parser):
     def identifier(self, p):
         return Identifier(p[0])
 
+    @_('column_list COMMA identifier')
+    def column_list(self, p):
+        return p.column_list + [p.identifier]
+    
+    @_('identifier')
+    def column_list(self, p):
+        return [p.identifier]
+
     @_('ID')
     def id(self, p):
         return p[0]
@@ -485,17 +523,17 @@ class SQLParser(sly.Parser):
             raise ParsingException("Syntax error at EOF")
 
     # insert
-    @_('INSERT INTO from_table LPAREN result_columns RPAREN select',
+    @_('INSERT INTO from_table LPAREN column_list RPAREN select',
        'INSERT INTO from_table select')
     def insert(self, p):
-        columns = getattr(p, 'result_columns', None)
-        return Insert(table=p.from_table, columns=columns, from_select=p.select)
+        columns = getattr(p, 'column_list', None)
+        return Insert(table=p.from_table, columns=columns, from_values=p.select)
 
-    @_('INSERT INTO from_table LPAREN result_columns RPAREN VALUES expr_list_set',
+    @_('INSERT INTO from_table LPAREN column_list RPAREN VALUES expr_list_set',
        'INSERT INTO from_table VALUES expr_list_set')
     def insert(self, p):
-        columns = getattr(p, 'result_columns', None)
-        return Insert(table=p.from_table, columns=columns, values=p.expr_list_set)
+        columns = getattr(p, 'column_list', None)
+        return Insert(table=p.from_table, columns=columns, from_values=p.expr_list_set)
 
     @_('expr_list_set COMMA expr_list_set')
     def expr_list_set(self, p):
@@ -531,22 +569,44 @@ class SQLParser(sly.Parser):
     def defined_columns(self, p):
         p.defined_columns.append(p.defined_column)
         return p.defined_columns
+    
+    @_('ENUM LPAREN enumeration RPAREN')
+    def enum_type(self, p):
+        return p.enumeration
 
     @_('defined_column')
     def defined_columns(self, p):
         return [p.defined_column]
 
-    @_('id id')
+    @_('id id',
+       'id enum_type')
     def defined_column(self, p):
-        return [p.id0, p.id1]
+        return [p[0], p[1]]
 
-    @_('id id NOT NULL')
+    @_('id id NOT NULL',
+       'id enum_type NOT NULL')
     def defined_column(self, p):
-        return [p.id0, p.id1, True]
+        return [p[0], p[1], True]
 
     @_('CREATE TABLE identifier LPAREN defined_columns RPAREN')
     def create(self, p):
         return CreateTable(name=p.identifier, columns=p.defined_columns)
+    
+    @_('CREATE TEMPORARY TABLE identifier LPAREN defined_columns RPAREN')
+    def create(self, p):
+        return CreateMemoryTable(
+            name=p.identifier,
+            columns=p.defined_columns,
+            temporary=True
+        )
+    
+    @_('CREATE MEMORY TABLE identifier LPAREN defined_columns RPAREN')
+    def create(self, p):
+        return CreateMemoryTable(
+            name=p.identifier,
+            columns=p.defined_columns,
+            temporary=False
+        )
 
     @_('CREATE INDEX identifier ON identifier LPAREN result_columns RPAREN',
        'CREATE INDEX identifier ON identifier LPAREN result_columns RPAREN USING identifier')
@@ -562,15 +622,27 @@ class SQLParser(sly.Parser):
     def drop(self, p):
         return DropTable(name=p.identifier)
 
+    @_('DROP TEMPORARY TABLE identifier')
+    def drop(self, p):
+        return DropMemoryTable(name=p.identifier)
+
     # Drop Index
     @_('DROP INDEX identifier')
     def drop(self, p):
         return DropIndex(name=p.identifier)
 
     # Define parsing rule for 'Command'
-    @_('CHECKPOINT')
+    @_('CHECKPOINT',
+       'SET update_parameter_list')
     def command(self, p):
-        return Command(command=p[0])
+        if len(p) == 1:
+            # Handle command without parameter, e.g., CHECKPOINT
+            return Command(command=p[0])
+        elif len(p) == 2:
+            # Handle command with parameter, e.g., SET a=b
+            return Command(command=p[0], parameters=p[1])
+        else:
+            raise NotImplementedError("Unsupported command.")
 
     # Add new rules for function calls
     @_('identifier LPAREN expr_list RPAREN')
@@ -598,3 +670,45 @@ class SQLParser(sly.Parser):
     #         return Constant(value=-p.expr.value)
     #     # Handle negative expressions
     #     return BinaryOperation(op='*', args=(Constant(value=-1), p.expr))
+
+    # Add new parsing rules  
+    @_('PROMPT LPAREN expr RPAREN',
+       'PROMPT LPAREN expr RPAREN AS defined_column')
+    def expr(self, p):
+        defined_column = getattr(p, "defined_column", None)
+        return Prompt(p.expr, defined_column)
+    
+    @_('string AS defined_column')
+    def expr(self, p):
+        return (p.string, p.defined_column)
+    
+    @_('expr AS defined_column')
+    def expr(self, p):
+        return (p.expr, p.defined_column)
+        
+    @_('FILE LPAREN expr RPAREN')
+    def from_table(self, p):
+        return FileSource(p.expr)
+    
+    @_('DIRECTORY LPAREN expr RPAREN')
+    def from_table(self, p):
+        return DirectorySource(p.expr)
+    
+    @_('TABULAR LPAREN expr_list FROM from_table RPAREN identifier',
+       'TABULAR LPAREN expr_list FROM join_tables_implicit RPAREN identifier',
+       'TABULAR LPAREN expr_list FROM from_table_aliased RPAREN identifier')
+    def from_tabular(self, p):
+        return SemanticTabular(identifier=p.identifier,
+                               expr_list=p.expr_list,
+                               table_source=p[4])
+        
+    @_('SEM_CLUSTER LPAREN identifier COMMA expr COMMA integer RPAREN identifier',
+       'SEM_CLUSTER LPAREN identifier COMMA expr COMMA integer RPAREN AS identifier')
+    def result_column(self, p):
+        return SemanticGroup(identifier=p.identifier0, prompt=p.expr, k=p.integer, alias=p.identifier1)
+    
+    @_('SEM_MATCH LPAREN string RPAREN',
+       'SEM_MATCH LPAREN string COMMA constant RPAREN')
+    def expr(self, p):
+        threshold = getattr(p, "constant", None)
+        return SemanticMatch(p.string, threshold)

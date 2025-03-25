@@ -14,3 +14,4 @@ class Select(ASTNode):
         self.order_by = None
         self.limit = None
         self.offset = None
+        self.alias = None

@@ -4,6 +4,7 @@ from andb.catalog.buitin_functions import cosine_distance
 from andb.sql.parser.ast.misc import Constant
 from andb.sql.parser.ast.operation import Function
 
+
 def expression_eval(op, left, right):
     if op == '=':
         return left == right
@@ -27,14 +28,16 @@ def expression_eval(op, left, right):
         if left is None or right is None:
             return None  # null
         else:
-            #TODO: string type 'true' and 'false'
+            # TODO: string type 'true' and 'false'
             return left and right
     elif op == 'or':
         if left is None or right is None:
             return None  # null
         else:
-            #TODO: string type 'true' and 'false'
+            # TODO: string type 'true' and 'false'
             return left or right
+    elif op == 'in':
+        return left in right
     else:
         raise NotImplementedError()
 
@@ -58,6 +61,7 @@ class ExprOperation(Enum):
     LIKE = 'like'
     IN = 'in'
 
+
 def is_const_value(value):
     for type_ in (int, float, str, bool, type(None), list):
         if isinstance(value, type_):
@@ -65,4 +69,3 @@ def is_const_value(value):
         elif isinstance(value, list):
             return all(is_const_value(item) for item in value)
     return False
-

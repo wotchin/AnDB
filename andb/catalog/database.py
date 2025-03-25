@@ -20,6 +20,7 @@ class AndbDatabaseTable(CatalogTable):
     __tablename__ = 'andb_database'
     __oid__ = OID_SYSTEM_TABLE_DATABASE
     __form__ = AndbDatabaseForm
+
     def init(self):
         self.insert(AndbDatabaseForm(
             oid=OID_DATABASE_ANDB,
@@ -31,7 +32,7 @@ class AndbDatabaseTable(CatalogTable):
         if len(results) > 0:
             return False
 
-        #TODO: reuse deleted oid
+        # TODO: reuse deleted oid
         next_oid = self.rows[-1].oid + 1
         if next_oid > OID_RELATION_END:
             return False

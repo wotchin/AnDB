@@ -1,0 +1,112 @@
+Skip to yearly menu barSkip to main content
+Main Navigation
+conference_logo
+NeurIPS 
+My Stuff
+Search
+
+ Login
+Start Here
+Schedule
+Tutorials
+Main Conference 
+Community 
+Workshops
+Exhibitors
+Help 
+
+
+Browse
+
+
+
+
+Find
+
+
+
+
+by
+
+serendipity
+showing 400 of 4543 papers
+Add/Remove Bookmark to my calendar for this paper
+PaGoDA: Progressive Growing of a One-Step Generator from a Low-Resolution Diffusion Teacher
+Dongjun Kim, Chieh-Hsin Lai, Wei-Hsiang Liao, Yuhta Takida, Naoki Murata, Toshimitsu Uesaka, Yuki Mitsufuji, Stefano Ermon
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+FreeSplat: Generalizable 3D Gaussian Splatting Towards Free View Synthesis of Indoor Scenes
+Yunsong Wang, Tianxin Huang, Hanlin Chen, Gim Hee Lee
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+A distributional simplicity bias in the learning dynamics of transformers
+Riccardo Rende, Federica Gerace, Alessandro Laio, Sebastian Goldt
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+INQUIRE: A Natural World Text-to-Image Retrieval Benchmark
+Edward Vendrow, Omiros Pantazis, Alexander Shepard, Gabriel Brostow, Kate Jones, Oisin Mac Aodha, Sara Beery, Grant Van Horn
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Partial Structure Discovery is Sufficient for No-regret Learning in Causal Bandits
+Muhammad Qasim Elahi, Mahsa Ghasemi, Murat Kocaoglu
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+The Sample Complexity of Gradient Descent in Stochastic Convex Optimization
+Roi Livni
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+MMScan: A Multi-Modal 3D Scene Dataset with Hierarchical Grounded Language Annotations
+Ruiyuan Lyu, Tai WANG, Jingli Lin, Shuaiyang, Xiaohan Mao, Yilun Chen, Runsen Xu, Haifeng Huang, Chenming Zhu, Dahua Lin, Jiangmiao Pang
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+GC-Bench: An Open and Unified Benchmark for Graph Condensation
+Qingyun Sun, Ziying Chen, Beining Yang, Cheng Ji, Xingcheng Fu, Sheng Zhou, Hao Peng, Jianxin Li, Philip S Yu
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+Latent Neural Operator for Solving Forward and Inverse PDE Problems
+Tian Wang, Chuang Wang
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Era3D: High-Resolution Multiview Diffusion using Efficient Row-wise Attention
+Peng Li, Yuan Liu, Xiaoxiao Long, Feihu Zhang, Cheng Lin, Mengfei Li, Xingqun Qi, Shanghang Zhang, Wei Xue, Wenhan Luo, Ping Tan, Wenping Wang, Qifeng Liu, Yike Guo
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Benchmarking Estimators for Natural Experiments: A Novel Dataset and a Doubly Robust Algorithm
+R. Teal Witter, Christopher Musco
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+What type of inference is planning?
+Miguel Lazaro-Gredilla, Li Ku, Kevin Murphy, Dileep George
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+TAPVid-3D: A Benchmark for Tracking Any Point in 3D
+Skanda Koppula, Ignacio Rocco, Yi Yang, joseph heyward, Joao Carreira, Andrew Zisserman, Gabriel Brostow, Carl Doersch
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Hybrid Generative AI for De Novo Design of Co-Crystals with Enhanced Tabletability
+Nina Gubina, Andrei Dmitrenko, Gleb Solovev, Lyubov Yamshchikova, Oleg Petrov, Ivan Lebedev, Nikita Serov, Grigorii Kirgizov, Nikolay Nikitin, Vladimir Vinogradov
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+A Kernel Perspective on Distillation-based Collaborative Learning
+Sejun Park, Kihun Hong, Ganguk Hwang
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Can We Leave Deepfake Data Behind in Training Deepfake Detector?
+Jikang Cheng, Zhiyuan Yan, Ying Zhang, Yuhao Luo, Zhongyuan Wang, Chen Li
+--
+Add/Remove Bookmark to my calendar for this paper
+Latent Diffusion for Neural Spiking Data
+Jaivardhan Kapoor, Auguste Schulz, Julius Vetter, Felix Pei, Richard Gao, Jakob H Macke
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Provably Robust Score-Based Diffusion Posterior Sampling for Plug-and-Play Image Reconstruction
+Xingyu Xu, Yuejie Chi
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Towards Safe Concept Transfer of Multi-Modal Diffusion via Causal Representation Editing
+Peiran Dong, Bingjie WANG, Song Guo, Junxiao Wang, Jie ZHANG, Zicong Hong
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+What makes unlearning hard and what to do about it
+KAIRAN ZHAO, Meghdad Kurmanji, George-Octavian Bărbulescu, Eleni Triantafillou, Peter Triantafillou
+We, Dec 11, 14:00 EST -- Poster Session 1 East

@@ -1,1 +1,2 @@
 BIG_END = 'big'
+QUERY_TERMINATOR = ';'

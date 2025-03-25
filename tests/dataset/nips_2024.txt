@@ -1,0 +1,1642 @@
+Skip to yearly menu barSkip to main content
+Main Navigation
+conference_logo
+NeurIPS 
+My Stuff
+Search
+
+ Login
+Start Here
+Schedule
+Tutorials
+Main Conference 
+Community 
+Workshops
+Exhibitors
+Help 
+
+
+Browse
+
+
+
+
+Find
+
+
+
+
+by
+
+serendipity
+showing 400 of 4543 papers
+Add/Remove Bookmark to my calendar for this paper
+PaGoDA: Progressive Growing of a One-Step Generator from a Low-Resolution Diffusion Teacher
+Dongjun Kim, Chieh-Hsin Lai, Wei-Hsiang Liao, Yuhta Takida, Naoki Murata, Toshimitsu Uesaka, Yuki Mitsufuji, Stefano Ermon
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+FreeSplat: Generalizable 3D Gaussian Splatting Towards Free View Synthesis of Indoor Scenes
+Yunsong Wang, Tianxin Huang, Hanlin Chen, Gim Hee Lee
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+A distributional simplicity bias in the learning dynamics of transformers
+Riccardo Rende, Federica Gerace, Alessandro Laio, Sebastian Goldt
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+INQUIRE: A Natural World Text-to-Image Retrieval Benchmark
+Edward Vendrow, Omiros Pantazis, Alexander Shepard, Gabriel Brostow, Kate Jones, Oisin Mac Aodha, Sara Beery, Grant Van Horn
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Partial Structure Discovery is Sufficient for No-regret Learning in Causal Bandits
+Muhammad Qasim Elahi, Mahsa Ghasemi, Murat Kocaoglu
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+The Sample Complexity of Gradient Descent in Stochastic Convex Optimization
+Roi Livni
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+MMScan: A Multi-Modal 3D Scene Dataset with Hierarchical Grounded Language Annotations
+Ruiyuan Lyu, Tai WANG, Jingli Lin, Shuaiyang, Xiaohan Mao, Yilun Chen, Runsen Xu, Haifeng Huang, Chenming Zhu, Dahua Lin, Jiangmiao Pang
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+GC-Bench: An Open and Unified Benchmark for Graph Condensation
+Qingyun Sun, Ziying Chen, Beining Yang, Cheng Ji, Xingcheng Fu, Sheng Zhou, Hao Peng, Jianxin Li, Philip S Yu
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+Latent Neural Operator for Solving Forward and Inverse PDE Problems
+Tian Wang, Chuang Wang
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Era3D: High-Resolution Multiview Diffusion using Efficient Row-wise Attention
+Peng Li, Yuan Liu, Xiaoxiao Long, Feihu Zhang, Cheng Lin, Mengfei Li, Xingqun Qi, Shanghang Zhang, Wei Xue, Wenhan Luo, Ping Tan, Wenping Wang, Qifeng Liu, Yike Guo
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Benchmarking Estimators for Natural Experiments: A Novel Dataset and a Doubly Robust Algorithm
+R. Teal Witter, Christopher Musco
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+What type of inference is planning?
+Miguel Lazaro-Gredilla, Li Ku, Kevin Murphy, Dileep George
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+TAPVid-3D: A Benchmark for Tracking Any Point in 3D
+Skanda Koppula, Ignacio Rocco, Yi Yang, joseph heyward, Joao Carreira, Andrew Zisserman, Gabriel Brostow, Carl Doersch
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Hybrid Generative AI for De Novo Design of Co-Crystals with Enhanced Tabletability
+Nina Gubina, Andrei Dmitrenko, Gleb Solovev, Lyubov Yamshchikova, Oleg Petrov, Ivan Lebedev, Nikita Serov, Grigorii Kirgizov, Nikolay Nikitin, Vladimir Vinogradov
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+A Kernel Perspective on Distillation-based Collaborative Learning
+Sejun Park, Kihun Hong, Ganguk Hwang
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Can We Leave Deepfake Data Behind in Training Deepfake Detector?
+Jikang Cheng, Zhiyuan Yan, Ying Zhang, Yuhao Luo, Zhongyuan Wang, Chen Li
+--
+Add/Remove Bookmark to my calendar for this paper
+Latent Diffusion for Neural Spiking Data
+Jaivardhan Kapoor, Auguste Schulz, Julius Vetter, Felix Pei, Richard Gao, Jakob H Macke
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Provably Robust Score-Based Diffusion Posterior Sampling for Plug-and-Play Image Reconstruction
+Xingyu Xu, Yuejie Chi
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Towards Safe Concept Transfer of Multi-Modal Diffusion via Causal Representation Editing
+Peiran Dong, Bingjie WANG, Song Guo, Junxiao Wang, Jie ZHANG, Zicong Hong
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+What makes unlearning hard and what to do about it
+KAIRAN ZHAO, Meghdad Kurmanji, George-Octavian Bărbulescu, Eleni Triantafillou, Peter Triantafillou
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Decoding-Time Language Model Alignment with Multiple Objectives
+Ruizhe Shi, Yifang Chen, Yushi Hu, Alisa Liu, Hanna Hajishirzi, Noah Smith, Simon Du
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+TFS-NeRF: Template-Free NeRF for Semantic 3D Reconstruction of Dynamic Scene
+Sandika Biswas, Qianyi Wu, Biplab Banerjee, Hamid Rezatofighi
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Neural P$^3$M: A Long-Range Interaction Modeling Enhancer for Geometric GNNs
+Yusong Wang, Chaoran Cheng, Shaoning Li, Yuxuan Ren, Bin Shao, Ge Liu, Pheng-Ann Heng, Nanning Zheng
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+No "Zero-Shot" Without Exponential Data: Pretraining Concept Frequency Determines Multimodal Model Performance
+Vishaal Udandarao, Ameya Prabhu, Adhiraj Ghosh, Yash Sharma, Philip Torr, Adel Bibi, Samuel Albanie, Matthias Bethge
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Sample-Efficient Private Learning of Mixtures of Gaussians
+Hassan Ashtiani, Mahbod Majid, Shyam Narayanan
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+Meteor: Mamba-based Traversal of Rationale for Large Language and Vision Models
+Byung-Kwan Lee, Chae Won Kim, Beomchan Park, Yong Man Ro
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Lips Are Lying: Spotting the Temporal Inconsistency between Audio and Visual in Lip-Syncing DeepFakes
+Weifeng Liu, Tianyi She, Jiawei Liu, Boheng Li, Dongyu Yao, 子游 梁, Run Wang
+--
+Add/Remove Bookmark to my calendar for this paper
+WildTeaming at Scale: From In-the-Wild Jailbreaks to (Adversarially) Safer Language Models
+Liwei Jiang, Kavel Rao, Seungju Han, Allyson Ettinger, Faeze Brahman, Sachin Kumar, Niloofar Mireshghallah, Ximing Lu, Maarten Sap, Yejin Choi, Nouha Dziri
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Emotion-LLaMA: Multimodal Emotion Recognition and Reasoning with Instruction Tuning
+Zebang Cheng, Zhi-Qi Cheng, Jun-Yan He, Kai Wang, Yuxiang Lin, Zheng Lian, Xiaojiang Peng, Alexander Hauptmann
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+NN4SysBench: Characterizing Neural Network Verification for Computer Systems
+Shuyi Lin, Haoyu He, Tianhao WEI, Kaidi Xu, Huan Zhang, Gagandeep Singh, Changliu Liu, Cheng Tan
+--
+Add/Remove Bookmark to my calendar for this paper
+In-Context Learning with Transformers: Softmax Attention Adapts to Function Lipschitzness
+Liam Collins, Advait Parulekar, Aryan Mokhtari, Sujay Sanghavi, Sanjay Shakkottai
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+SeeA*: Efficient Exploration-Enhanced A* Search by Selective Sampling
+Dengwei Zhao, Shikui Tu, Lei Xu
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+We, Dec 11, 19:10 EST -- Oral Session 2C: Reinforcement Learning
+Add/Remove Bookmark to my calendar for this paper
+DACO: Towards Application-Driven and Comprehensive Data Analysis via Code Generation
+Xueqing Wu, Rui Zheng, Jingzhen Sha, Te-Lin Wu, Hanyu Zhou, Tang Mohan, Kai-Wei Chang, Nanyun Peng, Haoran Huang
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+Towards Dynamic Message Passing on Graphs
+Junshu Sun, Chenxue Yang, Xiangyang Ji, Qingming Huang, Shuhui Wang
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Amortized Planning with Large-Scale Transformers: A Case Study on Chess
+Anian Ruoss, Grégoire Delétang, Sourabh Medapati, Jordi Grau-Moya, Kevin Li, Elliot Catt, John Reid, Cannada Lewis, Joel Veness, Tim Genewein
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Policy Learning from Tutorial Books via Understanding, Rehearsing and Introspecting
+Xiong-Hui Chen, Ziyan Wang, Yali Du, Shengyi Jiang, Meng Fang, Yang Yu, Jun Wang
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+We, Dec 11, 19:10 EST -- Oral Session 2B: Reinforcement Learning
+Add/Remove Bookmark to my calendar for this paper
+The Edge-of-Reach Problem in Offline Model-Based Reinforcement Learning
+Anya Sims, Cong Lu, Jakob Foerster, Yee Whye Teh
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Trap-MID: Trapdoor-based Defense against Model Inversion Attacks
+ZhenTing Liu, ShangTse Chen
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+SEEV: Synthesis with Efficient Exact Verification for ReLU Neural Barrier Functions
+Hongchao Zhang, Zhizhen Qin, Sicun Gao, Andrew Clark
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Tiny Time Mixers (TTMs): Fast Pre-trained Models for Enhanced Zero/Few-Shot Forecasting of Multivariate Time Series
+Vijay Ekambaram, Arindam Jati, Pankaj Dayama, Sumanta Mukherjee, Nam Nguyen, Wesley M Gifford, Chandra Reddy, Jayant Kalagnanam
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Testing Semantic Importance via Betting
+Jacopo Teneggi, Jeremias Sulam
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+ShopBench: A Massive Multi-Task Online Shopping Benchmark for Large Language Models
+Yilun Jin, Zheng Li, Chenwei Zhang, Tianyu Cao, Yifan Gao, Pratik Jayarao, Mao Li, Xin Liu, Ritesh Sarkhel, Xianfeng Tang, Haodong Wang, Zhengyang Wang, Wenju Xu, Jingfeng Yang, Qingyu Yin, Xian Li, Priyanka Nigam, Yi Xu, Kai Chen, Qiang Yang, Meng Jiang, Bing Yin
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+In-Context Symmetries: Self-Supervised Learning through Contextual World Models
+Sharut Gupta, Chenyu Wang, Yifei Wang, Tommi Jaakkola, Stefanie Jegelka
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Taming Generative Diffusion Prior for Universal Blind Image Restoration
+Siwei Tu, Weidong Yang, Ben Fei
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Unique3D: High-Quality and Efficient 3D Mesh Generation from a Single Image
+Kailu Wu, Fangfu Liu, Zhihan Cai, Runjie Yan, Hanyang Wang, Yating Hu, Yueqi Duan, Kaisheng Ma
+--
+Add/Remove Bookmark to my calendar for this paper
+Paths to Equilibrium in Games
+Bora Yongacoglu, Gurdal Arslan, Lacra Pavel, Serdar Yuksel
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+Dynamic Model Predictive Shielding for Provably Safe Reinforcement Learning
+Arko Banerjee, Kia Rahmani, Joydeep Biswas, Isil Dillig
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+When to Sense and Control? A Time-adaptive Approach for Continuous-Time RL
+Lenart Treven, Bhavya, Yarden As, Florian Dorfler, Andreas Krause
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+A Decision-Language Model (DLM) for Dynamic Restless Multi-Armed Bandit Tasks in Public Health
+Nikhil Behari, Edwin Zhang, YUNFAN ZHAO, Aparna Taneja, Dheeraj Nagaraj, Milind Tambe
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Reinforcement Learning Gradients as Vitamin for Online Finetuning Decision Transformers
+Kai Yan, Alex Schwing, Yu-Xiong Wang
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+Geometry Awakening: Cross-Geometry Learning Exhibits Superiority over Individual Structures
+YADONG SUN, Xiaofeng Cao, Yu Wang, Wei Ye, Jingcai Guo, Qing Guo
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Assemblage: Automatic Binary Dataset Construction for Machine Learning
+Chang Liu, Rebecca Saul, Yihao Sun, Edward Raff, Maya Fuchs, Townsend Southard Pantano, James Holt, Kristopher Micinski
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+FlexCap: Describe Anything in Images in Controllable Detail
+Debidatta Dwibedi, Vidhi Jain, Jonathan Tompson, Andrew Zisserman, Yusuf Aytar
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Score-based generative models are provably robust: an uncertainty quantification perspective
+Nikiforos Mimikos-Stamatopoulos, Benjamin Zhang, Markos Katsoulakis
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Cooperative Hardware-Prompt Learning for Snapshot Compressive Imaging
+JIAMIAN WANG, Zongliang Wu, Yulun Zhang, Xin Yuan, Tao Lin, Zhiqiang Tao
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+WizardArena: Post-training Large Language Models via Simulated Offline Chatbot Arena
+HAIPENG LUO, Qingfeng Sun, Can Xu, Pu Zhao, Qingwei Lin, Jian-Guang Lou, Shifeng Chen, Yansong Tang, Weizhu Chen
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Identification of Analytic Nonlinear Dynamical Systems with Non-asymptotic Guarantees
+Negin Musavi, Ziyao Guo, Geir Dullerud, Yingying Li
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+LLM-based Skill Diffusion for Zero-shot Policy Adaptation
+Woo Kyung Kim, Youngseok Lee, Jooyoung Kim, Honguk Woo
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+ControlMLLM: Training-Free Visual Prompt Learning for Multimodal Large Language Models
+Mingrui Wu, Xinyue Cai, Jiayi Ji, Jiale Li, Oucheng Huang, Gen Luo, Hao Fei, GUANNAN JIANG, Xiaoshuai Sun, Rongrong Ji
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Why Go Full? Elevating Federated Learning Through Partial Network Updates
+Haolin Wang, Xuefeng Liu, Jianwei Niu, Wenkai Guo, Shaojie Tang
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+A Single-Step, Sharpness-Aware Minimization is All You Need to Achieve Efficient and Accurate Sparse Training
+Jie Ji, Gen Li, Jingjing Fu, Fatemeh Afghah, Linke Guo, Xiaoyong Yuan, Xiaolong Ma
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Navigating the Safety Landscape: Measuring Risks in Finetuning Large Language Models
+ShengYun Peng, Pin-Yu Chen, Matthew Hull, Duen Horng Chau
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+CleanDiffuser: An Easy-to-use Modularized Library for Diffusion Models in Decision Making
+Zibin Dong, Yifu Yuan, Jianye Hao, Fei Ni, Yi Ma, Pengyi Li, YAN ZHENG
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+Muscles in Time: Learning to Understand Human Motion In-Depth by Simulating Muscle Activations
+David Schneider, Simon Reiß, Marco Kugler, Alexander Jaus, Kunyu Peng, Susanne Sutschet, M. Saquib Sarfraz, Sven Matthiesen, Rainer Stiefelhagen
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+On the Impacts of the Random Initialization in the Neural Tangent Kernel Theory
+Guhan Chen, Yicheng Li, Qian Lin
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+Self-Calibrated Tuning of Vision-Language Models for Out-of-Distribution Detection
+Geng Yu, Jianing Zhu, Jiangchao Yao, Bo Han
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Wasserstein convergence of Cech persistence diagrams for samplings of submanifolds
+Charles Arnal, David Cohen-Steiner, Vincent Divol
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+DDGS-CT: Direction-Disentangled Gaussian Splatting for Realistic Volume Rendering
+Zhongpai Gao, Benjamin Planche, Meng Zheng, Xiao Chen, Terrence Chen, Ziyan Wu
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Fundamental Limits of Prompt Compression: A Rate-Distortion Framework for Black-Box Language Models
+Alliot Nagle, Adway Girish, Marco Bondaschi, Michael Gastpar, Ashok Vardhan Makkuva, Hyeji Kim
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+RealMAN: A Real-Recorded and Annotated Microphone Array Dataset for Dynamic Speech Enhancement and Localization
+Bing Yang, Changsheng Quan, Yabo Wang, Pengyu Wang, Yujie Yang, Ying Fang, Nian Shao, Hui Bu, Xin Xu, Xiaofei Li
+--
+Add/Remove Bookmark to my calendar for this paper
+StrategyLLM: Large Language Models as Strategy Generators, Executors, Optimizers, and Evaluators for Problem Solving
+Chang Gao, Haiyun Jiang, Deng Cai, Shuming Shi, Wai Lam
+--
+Add/Remove Bookmark to my calendar for this paper
+Deep Support Vectors
+JunHoo Lee, Hyunho Lee, Kyomin Hwang, Nojun Kwak
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+How Do Large Language Models Acquire Factual Knowledge During Pretraining?
+Hoyeon Chang, Jinho Park, Seonghyeon Ye, Sohee Yang, Youngkyung Seo, Du-Seong Chang, Minjoon Seo
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Explanations that reveal all through the deﬁnition of encoding
+Aahlad Manas Puli, Nhi Nguyen, Rajesh Ranganath
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+A Theory of Optimistically Universal Online Learnability for General Concept Classes
+Steve Hanneke, Hongao Wang
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+Aligner: Efficient Alignment by Learning to Correct
+Jiaming Ji, Boyuan Chen, Hantao Lou, Donghai Hong, Borong Zhang, Xuehai Pan, Tianyi (Alex) Qiu, Juntao Dai, Yaodong Yang
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Fr, Dec 13, 18:30 EST -- Oral Session 6B: Safety, New Data
+Add/Remove Bookmark to my calendar for this paper
+Log-concave Sampling from a Convex Body with a Barrier: a Robust and Unified Dikin Walk
+Yuzhou Gu, Nikki Lijing Kuang, Yian Ma, Zhao Song, Lichen Zhang
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+DISP-LLM: Dimension-Independent Structural Pruning for Large Language Models
+Shangqian Gao, Chi-Heng Lin, Ting Hua, Zheng Tang, Yilin Shen, Hongxia Jin, Yen-Chang Hsu
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+DeepITE: Designing Variational Graph Autoencoders for Intervention Target Estimation
+Hongyuan Tao, Hang Yu, Jianguo Li
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+Game-Traversal-Benchmark: Evaluating Planning Abilities Of Large Language Models Via Traversing 2D Game Maps
+Muhammad Umair Nasir, Steven James, Julian Togelius
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+The PRISM Alignment Dataset: What Participatory, Representative and Individualised Human Feedback Reveals About the Subjective and Multicultural Alignment of Large Language Models
+Hannah Rose Kirk, Alexander Whitefield, Paul Rottger, Andrew M. Bean, Katerina Margatina, Rafael Mosquera-Gomez, Juan Ciro, Max Bartolo, Adina Williams, He He, Bertie Vidgen, Scott Hale
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+We, Dec 11, 13:40 EST -- Oral Session 1B: Human-AI Interaction
+Add/Remove Bookmark to my calendar for this paper
+Navigating Chemical Space with Latent Flows
+Guanghao Wei, Yining Huang, Chenru Duan, Yue Song, Yuanqi Du
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Human-Object Interaction Detection Collaborated with Large Relation-driven Diffusion Models
+Liulei Li, Wenguan Wang, Yi Yang
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Effective Exploration Based on the Structural Information Principles
+Xianghua Zeng, Hao Peng, Angsheng Li
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+OMG-LLaVA: Bridging Image-level, Object-level, Pixel-level Reasoning and Understanding
+Tao Zhang, Xiangtai Li, Hao Fei, Haobo Yuan, Shengqiong Wu, Shunping Ji, Chen Change Loy, Shuicheng Yan
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Lumen: Unleashing Versatile Vision-Centric Capabilities of Large Multimodal Models
+Yang Jiao, Shaoxiang Chen, Zequn Jie, Jingjing Chen, Lin Ma, Yu-Gang Jiang
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Interpreting Learned Feedback Patterns in Large Language Models
+Luke Marks, Amir Abdullah, Clement Neo, Rauno Arike, David Krueger, Philip Torr, Fazl Barez
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Vista: A Generalizable Driving World Model with High Fidelity and Versatile Controllability
+Shenyuan Gao, Jiazhi Yang, Li Chen, Kashyap Chitta, Yihang Qiu, Andreas Geiger, Jun Zhang, Hongyang Li
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Higher-Order Causal Message Passing for Experimentation with Complex Interference
+Mohsen Bayati, Yuwei Luo, William Overman, Mohamad Sadegh Shirani Faradonbeh, Ruoxuan Xiong
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+ETO:Efficient Transformer-based Local Feature Matching by Organizing Multiple Homography Hypotheses
+Junjie Ni, Guofeng Zhang, Guanglin Li, Yijin Li, Xinyang Liu, Zhaoyang Huang, Hujun Bao
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+A Benchmark Suite for Systematically Evaluating Reasoning Shortcuts
+Samuele Bortolotti, Emanuele Marconato, Tommaso Carraro, Paolo Morettin, Emile van Krieken, Antonio Vergari, Stefano Teso, Andrea Passerini
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+Cross-modal Representation Flattening for Multi-modal Domain Generalization
+Yunfeng FAN, Wenchao Xu, Haozhao Wang, Song Guo
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Inverse M-Kernels for Linear Universal Approximators of Non-Negative Functions
+Hideaki Kim
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Exploring Structured Semantic Priors Underlying Diffusion Score for Test-time Adaptation
+Mingjia Li, Shuang Li, Tongrui Su, Longhui Yuan, Jian Liang, Wei Li
+--
+Add/Remove Bookmark to my calendar for this paper
+UniTS: A Unified Multi-Task Time Series Model
+Shanghua Gao, Teddy Koker, Owen Queen, Tom Hartvigsen, Theodoros Tsiligkaridis, Marinka Zitnik
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+ArkVale: Efficient Generative LLM Inference with Recallable Key-Value Eviction
+Renze Chen, Zhuofeng Wang, Beiquan Cao, Tong Wu, Size Zheng, Xiuhong Li, Xuechao Wei, Shengen Yan, Meng Li, Yun Liang
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Optimistic Critic Reconstruction and Constrained Fine-Tuning for General Offline-to-Online RL
+Qin-Wen Luo, Ming-Kun Xie, Yewen Wang, Sheng-Jun Huang
+--
+Add/Remove Bookmark to my calendar for this paper
+From Instance Training to Instruction Learning: Task Adapters Generation from Instructions
+Huanxuan Liao, Shizhu He, Yao Xu, Yuanzhe Zhang, Yanchao Hao, Shengping Liu, Kang Liu, Jun Zhao
+--
+Add/Remove Bookmark to my calendar for this paper
+Separation and Bias of Deep Equilibrium Models on Expressivity and Learning Dynamics
+Zhoutong Wu, Yimu Zhang, Cong Fang, Zhouchen Lin
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+Scaling laws for learning with real and surrogate data
+Ayush Jain, Andrea Montanari, Eren Sasoglu
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+BitsFusion: 1.99 bits Weight Quantization of Diffusion Model
+Yang Sui, Yanyu Li, Anil Kag, Yerlan Idelbayev, Junli Cao, Ju Hu, Dhritiman Sagar, Bo Yuan, Sergey Tulyakov, Jian Ren
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Data Mixture Inference Attack: BPE Tokenizers Reveal Training Data Compositions
+Jonathan Hayase, Alisa Liu, Yejin Choi, Sewoong Oh, Noah Smith
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Towards Calibrated Robust Fine-Tuning of Vision-Language Models
+Changdae Oh, Hyesu Lim, Mijoo Kim, Dongyoon Han, Sangdoo Yun, Jaegul Choo, Alexander Hauptmann, Zhi-Qi Cheng, Kyungwoo Song
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+The Group Robustness is in the Details: Revisiting Finetuning under Spurious Correlations
+Tyler LaBonte, John Hill, Xinchen Zhang, Vidya Muthukumar, Abhishek Kumar
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+The Multimodal Universe: Enabling Large-Scale Machine Learning with 100TBs of Astronomical Scientific Data
+Eirini Angeloudi, Jeroen Audenaert, Micah Bowles, Benjamin M. Boyd, David Chemaly, Brian Cherinka, Ioana Ciucă, Miles Cranmer, Aaron Do, Matthew Grayling, Erin E. Hayes, Tom Hehir, Shirley Ho, Marc Huertas-Company, Kartheik Iyer, Maja Jablonska, Francois Lanusse, Henry Leung, Kaisey Mandel, Rafael Martínez-Galarza, Peter Melchior, Lucas Meyer, Liam Parker, Helen Qu, Jeff Shen, Michael Smith, Connor Stone, Mike Walmsley, John Wu
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+SafeWorld: Geo-Diverse Safety Alignment
+Da Yin, Haoyi Qiu, Kung-Hsiang Huang, Kai-Wei Chang, Nanyun Peng
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Analyzing & Reducing the Need for Learning Rate Warmup in GPT Training
+Atli Kosson, Bettina Messmer, Martin Jaggi
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Improving Adaptivity via Over-Parameterization in Sequence Models
+Yicheng Li, Qian Lin
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Optimistic Verifiable Training by Controlling Hardware Nondeterminism
+Megha Srivastava, Simran Arora, Dan Boneh
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Tight Bounds for Learning RUMs from Small Slates
+Flavio Chierichetti, Mirko Giacchini, Ravi Kumar, Alessandro Panconesi, Andrew Tomkins
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+3DGS-Enhancer: Enhancing Unbounded 3D Gaussian Splatting with View-consistent 2D Diffusion Priors
+Xi Liu, Chaoyi Zhou, Siyu Huang
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+A versatile informative diffusion model for single-cell ATAC-seq data generation and analysis
+Lei Huang, Lei Xiong, Na Sun, Zunpeng Liu, Ka-Chun Wong, Manolis Kellis
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+CIFD: Controlled Information Flow to Enhance Knowledge Distillation
+Yashas Malur Saidutta, Rakshith Sharma Srinivasa, Jaejin Cho, Ching-Hua Lee, Chouchang Yang, Yilin Shen, Hongxia Jin
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Training Data Attribution via Approximate Unrolling
+Juhan Bae, Wu Lin, Jonathan Lorraine, Roger Grosse
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Improving Generalization of Dynamic Graph Learning via Environment Prompt
+Kuo Yang, Zhengyang Zhou, Qihe Huang, Limin Li, Yuxuan Liang, Yang Wang
+--
+Add/Remove Bookmark to my calendar for this paper
+Fine-Tuning Large Vision-Language Models as Decision-Making Agents via Reinforcement Learning
+Simon Zhai, Hao Bai, Zipeng Lin, Jiayi Pan, Peter Tong, Yifei Zhou, Alane Suhr, Saining Xie, Yann LeCun, Yi Ma, Sergey Levine
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+KFNN: K-Free Nearest Neighbor For Crowdsourcing
+Wenjun Zhang, Liangxiao Jiang, Chaoqun Li
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+SeafloorGenAI: A Large-scale Vision-Language Dataset for Seafloor Geological Survey
+Kien Nguyen, Fengchun Qiao, Arthur Trembanis, Xi Peng
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+Cross-Modality Perturbation Synergy Attack for Person Re-identification
+Yunpeng Gong, Zhun Zhong, Yansong Qu, Zhiming Luo, Rongrong Ji, Min
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+MoE Jetpack: From Dense Checkpoints to Adaptive Mixture of Experts for Vision Tasks
+xingkui zhu, Yiran Guan, Dingkang Liang, Yuchao Chen, Yuliang Liu, Xiang Bai
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Warm-starting Push-Relabel
+Sami Davies, Sergei Vassilvitskii, Yuyan Wang
+--
+Add/Remove Bookmark to my calendar for this paper
+Partial observation can induce mechanistic mismatches in data-constrained models of neural dynamics
+William Qian, Jacob Zavatone-Veth, Ben Ruben, Cengiz Pehlevan
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+SAND: Smooth imputation of sparse and noisy functional data with Transformer networks
+Ju-Sheng Hong, Junwen Yao, Jonas Mueller, Jane-Ling Wang
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+On Causal Discovery in the Presence of Deterministic Relations
+Loka Li, Haoyue Dai, Hanin Al Ghothani, Biwei Huang, Jiji Zhang, Shahar Harel, Isaac Bentwich, Guangyi Chen, Kun Zhang
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+HORSE: Hierarchical Representation for Large-Scale Neural Subset Selection
+Binghui Xie, Yixuan Wang, Yongqiang Chen, Kaiwen Zhou, Yu Li, Wei Meng, James Cheng
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Offline Multitask Representation Learning for Reinforcement Learning
+Haque Ishfaq, Thanh Nguyen-Tang, Songtao Feng, Raman Arora, Mengdi Wang, Ming Yin, Doina Precup
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+Optimal Clustering with Bandit Feedback
+Junwen Yang, Zixin Zhong, Vincent Tan
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+Can Large Language Models Analyze Graphs like Professionals? A Benchmark and Dataset
+Xin Li, Weize Chen, Qizhi Chu, Haopeng Li, Zhaojun Sun, Ran Li, Chen Qian, Yiwei Wei, Chuan Shi, Zhiyuan Liu, Maosong Sun, Cheng Yang
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Retrospective for the Dynamic Sensorium Competition for predicting large-scale mouse primary visual cortex activity from videos
+Polina Turishcheva, Paul Fahey, Michaela Vystrčilová, Laura Hansel, Rachel Froebe, Kayla Ponder, Yongrong Qiu, Konstantin Willeke, Mohammad Bashiri, Ruslan Baikulov, Yu Zhu, Lei Ma, Shan Yu, Tiejun Huang, Bryan Li, Wolf De Wulf, Nina Kudryashova, Matthias Hennig, Nathalie Rochefort, Arno Onken, Eric Y. Wang, Zhiwei Ding, Andreas Tolias, Fabian Sinz, Alexander Ecker
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+Flow Snapshot Neurons in Action: Deep Neural Networks Generalize to Biological Motion Perception
+Shuangpeng Han, Ziyu Wang, Mengmi Zhang
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Learning to Assist Humans without Inferring Rewards
+Vivek Myers, Evan Ellis, Sergey Levine, Benjamin Eysenbach, Anca Dragan
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+WebUOT-1M: Advancing Deep Underwater Object Tracking with A Million-Scale Benchmark
+Chunhui Zhang, Li Liu, Guanjie Huang, Hao Wen, XI ZHOU, Yanfeng Wang
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+Grounding Multimodal Large Language Models in Actions
+Andrew Szot, Bogdan Mazoure, Harsh Agrawal, R Devon Hjelm, Zsolt Kira, Alexander Toshev
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Inevitable Trade-off between Watermark Strength and Speculative Sampling Efficiency for Language Models
+Zhengmian Hu, Heng Huang
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Articulate your NeRF: Unsupervised articulated object modeling via conditional view synthesis
+Jianning Deng, Kartic Subr, Hakan Bilen
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Hierarchical Object-Aware Dual-Level Contrastive Learning for Domain Generalized Stereo Matching
+Yikun Miao, Meiqing Wu, Siew Kei Lam, Changsheng Li, Thambipillai Srikanthan
+--
+Add/Remove Bookmark to my calendar for this paper
+Pre-trained Text-to-Image Diffusion Models Are Versatile Representation Learners for Control
+Gunshi Gupta, Karmesh Yadav, Yarin Gal, Dhruv Batra, Zsolt Kira, Cong Lu, Tim G. J. Rudner
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Non-parametric classification via expand-and-sparsify representation
+Kaushik Sinha
+--
+Add/Remove Bookmark to my calendar for this paper
+CoMERA: Computing- and Memory-Efficient Training via Rank-Adaptive Tensor Optimization
+Zi Yang, Ziyue Liu, Samridhi Choudhary, Xinfeng Xie, Cao Gao, Siegfried Kunzmann, Zheng Zhang
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Interventionally Consistent Surrogates for Complex Simulation Models
+Joel Dyer, Nicholas Bishop, Yorgos Felekis, Fabio Massimo Zennaro, Anisoara Calinescu, Theodoros Damoulas, Michael Wooldridge
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+Analytically deriving Partial Information Decomposition for affine systems of stable and convolution-closed distributions
+Chaitanya Goswami, Amanda Merkley
+--
+Add/Remove Bookmark to my calendar for this paper
+Linking In-context Learning in Transformers to Human Episodic Memory
+Ji-An Li, Corey Zhou, Marcus Benna, Marcelo G Mattar
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Stochastic Amortization: A Unified Approach to Accelerate Feature and Data Attribution
+Ian Covert, Chanwoo Kim, Su-In Lee, James Zou, Tatsunori Hashimoto
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+Reducing Transformer Key-Value Cache Size with Cross-Layer Attention
+William Brandon, Mayank Mishra, Aniruddha Nrusimha, Rameswar Panda, Jonathan Ragan-Kelley
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+On the Saturation Effects of Spectral Algorithms in Large Dimensions
+Weihao Lu, haobo Zhang, Yicheng Li, Qian Lin
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+The Fairness-Quality Tradeoff in Clustering
+Rashida Hakim, Ana-Andreea Stoica, Christos Papadimitriou, Mihalis Yannakakis
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+DreamCatcher: A Wearer-aware Multi-modal Sleep Event Dataset Based on Earables in Non-restrictive Environments
+Zeyu Wang, Xiyuxing Zhang, Ruotong Yu, Yuntao Wang, Kenneth Christofferson, Jingru Zhang, Alex Mariakakis, Yuanchun Shi
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+OT4P: Unlocking Effective Orthogonal Group Path for Permutation Relaxation
+Yaming Guo, chen zhu, Hengshu Zhu, Tieru Wu
+--
+Add/Remove Bookmark to my calendar for this paper
+Reciprocal Reward Influence Encourages Cooperation From Self-Interested Agents
+John L Zhou, Weizhe Hong, Jonathan Kao
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+Certified Machine Unlearning via Noisy Stochastic Gradient Descent
+Eli Chien, Haoyu Wang, Ziang Chen, Pan Li
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+Supervised Kernel Thinning
+Albert Gong, Kyuseong Choi, Raaz Dwivedi
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+HARMONIC: Harnessing LLMs for Tabular Data Synthesis and Privacy Protection
+Yuxin Wang, Duanyu Feng, Yongfu Dai, Zhengyu Chen, Jimin Huang, Sophia Ananiadou, Qianqian Xie, Hao Wang
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+Magnet: We Never Know How Text-to-Image Diffusion Models Work, Until We Learn How Vision-Language Models Function
+Chenyi Zhuang, Ying Hu, Pan Gao
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Unconditional stability of a recurrent neural circuit implementing divisive normalization
+Shivang Rawat, David Heeger, Stefano Martiniani
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Exploring Adversarial Robustness of Deep State Space Models
+Biqing Qi, Yiang Luo, Junqi Gao, Pengfei Li, Kai Tian, Zhiyuan Ma, Bowen Zhou
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Generalized Fast Exact Conformalization
+Diyang Li
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+Integrating Deep Metric Learning with Coreset for Active Learning in 3D Segmentation
+Arvind Vepa, Zukang Yang, Andrew Choi, Jungseock Joo, Fabien Scalzo, Yizhou Sun
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+Accelerating Non-Maximum Suppression: A Graph Theory Perspective
+King-Siong Si, Lu Sun, Weizhan Zhang, Tieliang Gong, Jiahao Wang, Jiang Liu, Hao Sun
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+Understanding Bias in Large-Scale Visual Datasets
+Boya Zeng, Yida Yin, Zhuang Liu
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+PhyloGen: Language Model-Enhanced Phylogenetic Inference via Graph Structure Generation
+ChenRui Duan, Zelin Zang, Siyuan Li, Yongjie Xu, Stan Z. Li
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+Information-theoretic Limits of Online Classification with Noisy Labels
+Changlong Wu, Ananth Grama, Wojciech Szpankowski
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Be Confident in What You Know: Bayesian Parameter Efficient Fine-Tuning of Vision Foundation Models
+Deep Pandey, Spandan Pyakurel, Qi Yu
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Zero-Shot Scene Reconstruction from Single Images with Deep Prior Assembly
+Junsheng Zhou, Yu-Shen Liu, Zhizhong Han
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+PureGen: Universal Data Purification for Train-Time Poison Defense via Generative Model Dynamics
+Omead Pooladzandi, Sunay Bhat, Jeffrey Jiang, Alexander Branch, Gregory Pottie
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Towards the Transferability of Rewards Recovered via Regularized Inverse Reinforcement Learning
+Andreas Schlaginhaufen, Maryam Kamgarpour
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+GlotCC: An Open Broad-Coverage CommonCrawl Corpus and Pipeline for Minority Languages
+Amir Hossein Kargaran, François Yvon, Hinrich Schuetze
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Exponential Quantum Communication Advantage in Distributed Inference and Learning
+Dar Gilboa, Hagay Michaeli, Daniel Soudry, Jarrod McClean
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+SyncVIS: Synchronized Video Instance Segmentation
+Rongkun Zheng, Lu Qi, Xi Chen, Yi Wang, Kun Wang, Yu Qiao, Hengshuang Zhao
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Disentangling Interpretable Factors with Supervised Independent Subspace Principal Component Analysis
+Jiayu Su, David A Knowles, Raúl Rabadán
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Enhancing Zero-Shot Vision Models by Label-Free Prompt Distribution Learning and Bias Correcting
+Xingyu Zhu, Beier Zhu, Yi Tan, Shuo Wang, Yanbin Hao, Hanwang Zhang
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+A Primal-Dual-Assisted Penalty Approach to Bilevel Optimization with Coupled Constraints
+Liuyuan Jiang, Quan Xiao, Victor Tenorio, Fernando Real-Rojas, Antonio G. Marques, Tianyi Chen
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+Using Time-Aware Graph Neural Networks to Predict Temporal Centralities in Dynamic Graphs
+Franziska Heeg, Ingo Scholtes
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Expecting The Unexpected: Towards Broad Out-Of-Distribution Detection
+Charles Guille-Escuret, Pierre-André Noël, Ioannis Mitliagkas, David Vazquez, Joao Monteiro
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Preventing Dimensional Collapse in Self-Supervised Learning via Orthogonality Regularization
+Junlin He, Jinxiao Du, Wei Ma
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+AttnDreamBooth: Towards Text-Aligned Personalized Text-to-Image Generation
+Lianyu Pang, Jian Yin, Baoquan Zhao, Feize Wu, Fu Lee Wang, Qing Li, Xudong Mao
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+CRAYM: Neural Field Optimization via Camera RAY Matching
+Liqiang Lin, Wenpeng Wu, Chi-Wing Fu, Hao Zhang, Hui Huang
+--
+Add/Remove Bookmark to my calendar for this paper
+Ultrafast classical phylogenetic method beats large protein language models on variant effect prediction
+Sebastian Prillo, Wilson Wu, Yun Song
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Progressive Exploration-Conformal Learning for Sparsely Annotated Object Detection in Aerial Images
+Zihan Lu, Chenxu Wang, Chunyan Xu, Xiangwei Zheng, Zhen Cui
+--
+Add/Remove Bookmark to my calendar for this paper
+LG-VQ: Language-Guided Codebook Learning
+Liang Guotao, Baoquan Zhang, Yaowei Wang, Yunming Ye, Xutao Li, Wanghuaibin, Luo Chuyao, kolaye, luolinfeng
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+An Analysis of Tokenization: Transformers under Markov Data
+Nived Rajaraman, Jiantao Jiao, Kannan Ramchandran
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+Rethinking The Training And Evaluation of Rich-Context Layout-to-Image Generation
+Jiaxin Cheng, ZIXU ZHAO, Tong He, Tianjun Xiao, Yicong Zhou, Zheng Zhang
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+SPO: Sequential Monte Carlo Policy Optimisation
+Matthew Macfarlane, Edan Toledo, Donal Byrne, Paul Duckworth, Alexandre Laterre
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+ProbTS: Benchmarking Point and Distributional Forecasting across Diverse Prediction Horizons
+Jiawen Zhang, Xumeng Wen, Zhenwei Zhang, Shun Zheng, Jia Li, Jiang Bian
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+Globally Convergent Variational Inference
+Declan McNamara, Jackson Loper, Jeffrey Regier
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Frequency Adaptive Normalization For Non-stationary Time Series Forecasting
+Weiwei Ye, Songgaojun Deng, Qiaosha Zou, Ning Gui
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Random Representations Outperform Online Continually Learned Representations
+Ameya Prabhu, Shiven Sinha, Ponnurangam Kumaraguru, Philip Torr, Ozan Sener, Puneet Dokania
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Prediction-Powered Ranking of Large Language Models
+Ivi Chatzi, Eleni Straitouri, Suhas Thejaswi, Manuel Rodriguez
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+CultureLLM: Incorporating Cultural Differences into Large Language Models
+Cheng Li, Mengzhuo Chen, Jindong Wang, Sunayana Sitaram, Xing Xie
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+MambaLLIE: Implicit Retinex-Aware Low Light Enhancement with Global-then-Local State Space
+Jiangwei Weng, Zhiqiang Yan, Ying Tai, Jianjun Qian, Jian Yang, Jun Li
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+All-in-One Image Coding for Joint Human-Machine Vision with Multi-Path Aggregation
+Xu Zhang, Peiyao Guo, Ming Lu, Zhan Ma
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+VASA-1: Lifelike Audio-Driven Talking Faces Generated in Real Time
+Sicheng Xu, Guojun Chen, Yu-Xiao Guo, Jiaolong Yang, Chong Li, Zhenyu Zang, Yizhong Zhang, Xin Tong, Baining Guo
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+We, Dec 11, 18:50 EST -- Oral Session 2D: Generative Models
+Add/Remove Bookmark to my calendar for this paper
+Refusal in Language Models Is Mediated by a Single Direction
+Andy Arditi, Oscar Obeso, Aaquib Syed, Daniel Paleka, Nina Panickssery, Wes Gurnee, Neel Nanda
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+The Space Complexity of Approximating Logistic Loss
+Gregory Dexter, Petros Drineas, Rajiv Khanna
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+Scanning Trojaned Models Using Out-of-Distribution Samples
+Hossein Mirzaei, Ali Ansari, Bahar Dibaei Nia, Mojtaba Nafez, Moein Madadi, Sepehr Rezaee, Zeinab Taghavi, Arad Maleki, Kian Shamsaie, Mahdi Hajialilue, Jafar Habibi, Mohammad Sabokrou, Mohammad Hossein Rohban
+--
+Add/Remove Bookmark to my calendar for this paper
+Understanding Transformer Reasoning Capabilities via Graph Algorithms
+Clayton Sanford, Bahare Fatemi, Ethan Hall, Anton Tsitsulin, Mehran Kazemi, Jonathan Halcrow, Bryan Perozzi, Vahab Mirrokni
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+ANAH-v2: Scaling Analytical Hallucination Annotation of Large Language Models
+Yuzhe Gu, Ziwei Ji, Wenwei Zhang, Chengqi Lyu, Dahua Lin, Kai Chen
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Discovering Preference Optimization Algorithms with and for Large Language Models
+Chris Lu, Samuel Holt, Claudio Fanconi, Alex Chan, Jakob Foerster, Mihaela van der Schaar, Robert Lange
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Semi-Discrete Optimal Transport: Nearly Minimax Estimation With Stochastic Gradient Descent and Adaptive Entropic Regularization
+Ferdinand Genans, Antoine Godichon-Baggioni, Francois-Xavier Vialard, Olivier Wintenberger
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+One-to-Multiple: A Progressive Style Transfer Unsupervised Domain-Adaptive Framework for Kidney Tumor Segmentation
+Kai Hu, JinHao Li, Yuan Zhang, Xiongjun Ye, Xieping Gao
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+SeeClear: Semantic Distillation Enhances Pixel Condensation for Video Super-Resolution
+Qi Tang, Yao Zhao, Meiqin Liu, Chao Yao
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Truthful High Dimensional Sparse Linear Regression
+Liyang Zhu, Amina Manseur, Meng Ding, Jinyan Liu, Jinhui Xu, Di Wang
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+MaskLLM: Learnable Semi-Structured Sparsity for Large Language Models
+Gongfan Fang, Hongxu Yin, Saurav Muralidharan, Greg Heinrich, Jeff Pool, Jan Kautz, Pavlo Molchanov, Xinchao Wang
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Instructor-inspired Machine Learning for Robust Molecular Property Prediction
+Fang Wu, Shuting Jin, Siyuan Li, Stan Z. Li
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Gaussian Approximation and Multiplier Bootstrap for Polyak-Ruppert Averaged Linear Stochastic Approximation with Applications to TD Learning
+Sergey Samsonov, Eric Moulines, Qi-Man Shao, Zhuo-Song Zhang, Alexey Naumov
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+RashomonGB: Analyzing the Rashomon Effect and Mitigating Predictive Multiplicity in Gradient Boosting
+Hsiang Hsu, Ivan Brugere, Shubham Sharma, Freddy Lecue, Richard Chen
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+GenAI Arena: An Open Evaluation Platform for Generative Models
+Dongfu Jiang, Max KU, Tianle Li, Yuansheng Ni, Shizhuo Sun, Rongqi Fan, Wenhu Chen
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Fair Wasserstein Coresets
+Zikai Xiong, Niccolo Dalmasso, Shubham Sharma, Freddy Lecue, Daniele Magazzeni, Vamsi Potluru, Tucker Balch, Manuela Veloso
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+On Divergence Measures for Training GFlowNets
+Tiago Silva, Eliezer de Souza da Silva, Diego Mesquita
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Continual Counting with Gradual Privacy Expiration
+Joel Daniel Andersson, Monika Henzinger, Rasmus Pagh, Teresa Anna Steiner, Jalaj Upadhyay
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+Non-asymptotic Approximation Error Bounds of Parameterized Quantum Circuits
+Zhan Yu, Qiuhao Chen, Yuling Jiao, Yinan Li, Xiliang Lu, Xin Wang, Jerry Yang
+--
+Add/Remove Bookmark to my calendar for this paper
+AdaNovo: Towards Robust \emph{De Novo} Peptide Sequencing in Proteomics against Data Biases
+Jun Xia, Shaorong Chen, Jingbo Zhou, Shan Xiaojun, Wenjie Du, Zhangyang Gao, Cheng Tan, Bozhen Hu, Jiangbin Zheng, Stan Z. Li
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+Learning rigid-body simulators over implicit shapes for large-scale scenes and vision
+Yulia Rubanova, Tatiana Lopez-Guevara, Kelsey Allen, Will Whitney, Kimberly Stachenfeld, Tobias Pfaff
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Fr, Dec 13, 13:00 EST -- Oral Session 5A: Graph Neural Networks
+Add/Remove Bookmark to my calendar for this paper
+Predictor-Corrector Enhanced Transformers with Exponential Moving Average Coefficient Learning
+Bei Li, Tong Zheng, Rui Wang, Jiahao Liu, 清妍 郭, Junliang Guo, Xu Tan, Tong Xiao, JingBo Zhu, Jingang Wang, Xunliang Cai
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+MVGamba: Unify 3D Content Generation as State Space Sequence Modeling
+Xuanyu Yi, Zike Wu, Qiuhong Shen, Qingshan Xu, Pan Zhou, Joo-Hwee Lim, Shuicheng Yan, Xinchao Wang, Hanwang Zhang
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Communication Bounds for the Distributed Experts Problem
+Zhihao Jia, Qi Pang, Trung Tran, David Woodruff, Zhihao Zhang, Wenting Zheng
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+PINNacle: A Comprehensive Benchmark of Physics-Informed Neural Networks for Solving PDEs
+Hao Zhongkai, Jiachen Yao, Chang Su, Hang Su, Ziao Wang, Fanzhi Lu, Zeyu Xia, Yichi Zhang, Songming Liu, Lu Lu, Jun Zhu
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+Speculative Monte-Carlo Tree Search
+Scott Cheng, Mahmut T Kandemir, Ding-Yong Hong
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+Equivariant Blurring Diffusion for Hierarchical Molecular Conformer Generation
+Jiwoong Park, Yang Shen
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Make Continual Learning Stronger via C-Flat
+Ang Bian, Wei Li, Hangjie Yuan, yu chengrong, Mang Wang, Zixiang Zhao, Aojun Lu, Pengliang Ji, Tao Feng
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Nonparametric Classification on Low Dimensional Manifolds using Overparameterized Convolutional Residual Networks
+Zixuan Zhang, Kaiqi Zhang, Minshuo Chen, Yuma Takeda, Mengdi Wang, Tuo Zhao, Yu-Xiang Wang
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+Adam on Local Time: Addressing Nonstationarity in RL with Relative Adam Timesteps
+Benjamin Ellis, Matthew T Jackson, Andrei Lupu, Alexander D. Goldie, Mattie Fellows, Shimon Whiteson, Jakob Foerster
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+Learning Complete Protein Representation by Dynamically Coupling of Sequence and Structure
+Bozhen Hu, Cheng Tan, Jun Xia, Yue Liu, Lirong Wu, Jiangbin Zheng, Yongjie Xu, Yufei Huang, Stan Z. Li
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Beyond Single Stationary Policies: Meta-Task Players as Naturally Superior Collaborators
+Wang Haoming, Zhaoming Tian, Yunpeng Song, Xiangliang Zhang, Zhongmin Cai
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Boosting Transferability and Discriminability for Time Series Domain Adaptation
+Mingyang Liu, Xinyang Chen, Yang Shu, Xiucheng Li, Weili Guan, Liqiang Nie
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+TPC: Test-time Procrustes Calibration for Diffusion-based Human Image Animation
+Sunjae Yoon, Gwanhyeong Koo, Younghwan Lee, Chang Yoo
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Through the Looking-Glass: Tracing Shifts in AI Data Consent across the Web
+Shayne Longpre, Robert Mahari, Ariel Lee, Campbell Lund, Hamidah Oderinwale, William Brannon, Nayan Saxena, Naana Obeng-Marnu, Tobin South, Cole Hunter, Kevin Klyman, Christopher Klamm, Hailey Schoelkopf, Nikhil Singh, Manuel Cherep, Ahmad Anis, An Dinh, Caroline Shamiso Chitongo, Da Yin, Damien Sileo, Deividas Mataciunas, Diganta Misra, Emad Alghamdi, Enrico Shippole, Jianguo Zhang, Joanna Materzynska, Kun Qian, Kushagra Tiwary, Lester James V. Miranda, Manan Dey, Minnie Liang, Mohammed Hamdy, Niklas Muennighoff, Seonghyeon Ye, Seungone Kim, Shrestha Mohanty, Vipul Gupta, Vivek Sharma, Minh Chien Vu, Xuhui Zhou, Yizhi Li, Caiming Xiong, Luis Villa, Stella Biderman, Hanlin Li, Daphne Ippolito, Sara Hooker, Jad Kabbara, Alex Pentland
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+Robust Reinforcement Learning from Corrupted Human Feedback
+Alexander Bukharin, Ilgee Hong, Haoming Jiang, Zichong Li, Qingru Zhang, Zixuan Zhang, Tuo Zhao
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+Quantifying Aleatoric Uncertainty of the Treatment Effect: A Novel Orthogonal Learner
+Valentyn Melnychuk, Stefan Feuerriegel, Mihaela van der Schaar
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+Learning Noisy Halfspaces with a Margin: Massart is No Harder than Random
+Gautam Chandrasekaran, Vasilis Kontonis, Konstantinos Stavropoulos, Kevin Tian
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+CE-NAS: An End-to-End Carbon-Efficient Neural Architecture Search Framework
+Yiyang Zhao, Yunzhuo Liu, Bo Jiang, Tian Guo
+--
+Add/Remove Bookmark to my calendar for this paper
+Twin-Merging: Dynamic Integration of Modular Expertise in Model Merging
+Zhenyi Lu, Chenghao Fan, Wei Wei, Xiaoye Qu, Dangyang Chen, Yu Cheng
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Efficient Leverage Score Sampling for Tensor Train Decomposition
+Vivek Bharadwaj, Beheshteh Toloueirakhshan, Osman Asif Malik, Guillaume Rabusseau
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Variational Delayed Policy Optimization
+Qingyuan Wu, Simon Zhan, Yixuan Wang, Yuhui Wang, Chung-Wei Lin, Chen Lv, Qi Zhu, Chao Huang
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+MSPE: Multi-Scale Patch Embedding Prompts Vision Transformers to Any Resolution
+Wenzhuo Liu, Fei Zhu, Shijie Ma, Cheng-lin Liu
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+Self-Supervised Adversarial Training via Diverse Augmented Queries and Self-Supervised Double Perturbation
+Ruize Zhang, Sheng Tang, Juan Cao
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Lower Bounds and Optimal Algorithms for Non-Smooth Convex Decentralized Optimization over Time-Varying Networks
+Dmitry Kovalev, Ekaterina Borodich, Alexander Gasnikov, Dmitrii Feoktistov
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+4Real: Towards Photorealistic 4D Scene Generation via Video Diffusion Models
+Heng Yu, Chaoyang Wang, Peiye Zhuang, Willi Menapace, Aliaksandr Siarohin, Junli Cao, László Jeni, Sergey Tulyakov, Hsin-Ying Lee
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+BiScope: AI-generated Text Detection by Checking Memorization of Preceding Tokens
+Hanxi Guo, Siyuan Cheng, Xiaolong Jin, Zhuo Zhang, Kaiyuan Zhang, Guanhong Tao, Guangyu Shen, Xiangyu Zhang
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Neur2BiLO: Neural Bilevel Optimization
+Justin Dumouchelle, Esther Julien, Jannis Kurtz, Elias Khalil
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+Curriculum Fine-tuning of Vision Foundation Model for Medical Image Classification Under Label Noise
+Yeonguk Yu, Minhwan Ko, Sungho Shin, Kangmin Kim, Kyoobin Lee
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Learning Human-like Representations to Enable Learning Human Values
+Andrea Wynn, Ilia Sucholutsky, Tom Griffiths
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Recurrent neural network dynamical systems for biological vision
+Wayne Soo, Aldo Battista, Puria Radmard, Xiao-Jing Wang
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+ActSort: An active-learning accelerated cell sorting algorithm for large-scale calcium imaging datasets
+Yiqi Jiang, Hakki Akengin, Ji Zhou, Mehmet Aslihak, Yang Li, Radoslaw Chrapkiewicz, Oscar Hernandez, sadegh ebrahimi, Omar Jaidar, Yanping Zhang, Hakan Inan, Christopher Miranda, Fatih Dinc, Marta Pozo, Mark Schnitzer
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Unsupervised Anomaly Detection in The Presence of Missing Values
+Feng Xiao, Jicong Fan
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+DINTR: Tracking via Diffusion-based Interpolation
+Pha Nguyen, Ngan Le, Jackson Cothren, Alper Yilmaz, Khoa Luu
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Enhancing In-Context Learning Performance with just SVD-Based Weight Pruning: A Theoretical Perspective
+Xinhao Yao, Xiaolin Hu, Shenzhi Yang, Yong Liu
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+FouRA: Fourier Low-Rank Adaptation
+Shubhankar Borse, Shreya Kadambi, Nilesh Pandey, Kartikeya Bhardwaj, Viswanath Ganapathy, Sweta Priyadarshi, Risheek Garrepalli, Rafael Esteves, Munawar Hayat, Fatih Porikli
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+MVSDet: Multi-View Indoor 3D Object Detection via Efficient Plane Sweeps
+Yating Xu, Chen Li, Gim Hee Lee
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Freya PAGE: First Optimal Time Complexity for Large-Scale Nonconvex Finite-Sum Optimization with Heterogeneous Asynchronous Computations
+Alexander Tyurin, Kaja Gruntkowska, Peter Richtarik
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+Generalizing CNNs to graphs with learnable neighborhood quantization
+Isaac Osafo Nkansah, Neil Gallagher, Ruchi Sandilya, Conor Liston, Logan Grosenick
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Improving Environment Novelty Quantification for Effective Unsupervised Environment Design
+Jayden Teoh, Wenjun Li, Pradeep Varakantham
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+We, Dec 11, 18:30 EST -- Oral Session 2B: Reinforcement Learning
+Add/Remove Bookmark to my calendar for this paper
+AdaptiveISP: Learning an Adaptive Image Signal Processor for Object Detection
+Yujin Wang, Tianyi Xu, Zhang Fan, Tianfan Xue, Jinwei Gu
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+QVAE-Mole: The Quantum VAE with Spherical Latent Variable Learning for 3-D Molecule Generation
+Huaijin Wu, Xinyu Ye, Junchi Yan
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Efficient Graph Matching for Correlated Stochastic Block Models
+Shuwen Chai, Miklos Z. Racz
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+WenMind: A Comprehensive Benchmark for Evaluating Large Language Models in Chinese Classical Literature and Language Arts
+Jiahuan Cao, Yang Liu, Yongxin Shi, Kai Ding, Lianwen Jin
+--
+Add/Remove Bookmark to my calendar for this paper
+ST$_k$: A Scalable Module for Solving Top-k Problems
+Hanchen Xia, Weidong Liu, Xiaojun Mao
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Higher-Rank Irreducible Cartesian Tensors for Equivariant Message Passing
+Viktor Zaverkin, Francesco Alesiani, Takashi Maruyama, Federico Errica, Henrik Christiansen, Makoto Takamoto, Nicolas Weber, Mathias Niepert
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Heterogeneity-Guided Client Sampling: Towards Fast and Efficient Non-IID Federated Learning
+Huancheng Chen, Haris Vikalo
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Regression under demographic parity constraints via unlabeled post-processing
+Gayane Taturyan, Evgenii Chzhen, Mohamed Hebiri
+--
+Add/Remove Bookmark to my calendar for this paper
+Stopping Bayesian Optimization with Probabilistic Regret Bounds
+James Wilson
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+$\textit{NeuroPath}$: A Neural Pathway Transformer for Joining the Dots of Human Connectomes
+Ziquan Wei, Tingting Dan, Jiaqi Ding, Guorong Wu
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Is Knowledge Power? On the (Im)possibility of Learning from Strategic Interactions
+Nivasini Ananthakrishnan, Nika Haghtalab, Chara Podimata, Kunhe Yang
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+Latent Intrinsics Emerge from Training to Relight
+Xiao Zhang, William Gao, Seemandhar Jain, Michael Maire, David Forsyth, Anand Bhattad
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+NVRC: Neural Video Representation Compression
+Ho Man Kwan, Ge Gao, Fan Zhang, Andrew Gower, David Bull
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+CAT: Coordinating Anatomical-Textual Prompts for Multi-Organ and Tumor Segmentation
+Zhongzhen Huang, Yankai Jiang, Rongzhao Zhang, Shaoting Zhang, Xiaofan Zhang
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+How to Use Diffusion Priors under Sparse Views?
+Qisen Wang, Yifan Zhao, Jiawei Ma, Jia Li
+--
+Add/Remove Bookmark to my calendar for this paper
+LoQT: Low-Rank Adapters for Quantized Pretraining
+Sebastian Loeschcke, Mads Toftrup, Michael Kastoryano, Serge Belongie, Vésteinn Snæbjarnarson
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+Zero-Shot Tokenizer Transfer
+Benjamin Minixhofer, Edoardo Maria Ponti, Ivan Vulić
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+A Simple Remedy for Dataset Bias via Self-Influence: A Mislabeled Sample Perspective
+Yeonsung Jung, Jaeyun Song, June Yong Yang, Jin-Hwa Kim, Sung-Yub Kim, Eunho Yang
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+On the Stability and Generalization of Meta-Learning
+Yunjuan Wang, Raman Arora
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Practical Bayesian Algorithm Execution via Posterior Sampling
+Chu Xin Cheng, Raul Astudillo, Thomas A Desautels, Yisong Yue
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Diffusion PID: Interpreting Diffusion via Partial Information Decomposition
+Shaurya Dewan, Rushikesh Zawar, Prakanshul Saxena, Yingshan CHANG, Andrew Luo, Yonatan Bisk
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+CryoSPIN: Improving Ab-Initio Cryo-EM Reconstruction with Semi-Amortized Pose Inference
+Shayan Shekarforoush, David Lindell, Marcus Brubaker, David Fleet
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+A Nearly Optimal and Low-Switching Algorithm for Reinforcement Learning with General Function Approximation
+Heyang Zhao, Jiafan He, Quanquan Gu
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+BAM! Just Like That: Simple and Efficient Parameter Upcycling for Mixture of Experts
+Qizhen (Irene) Zhang, Nikolas Gritsch, Dwaraknath Gnaneshwar Talupuru, Simon Guo, David Cairuz, Bharat Venkitesh, Jakob Foerster, Phil Blunsom, Sebastian Ruder, Ahmet Üstün, Acyr Locatelli
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Slot-VLM: Object-Event Slots for Video-Language Modeling
+Jiaqi Xu, Cuiling Lan, Wenxuan Xie, Xuejin Chen, Yan Lu
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+DiffuPac: Contextual Mimicry in Adversarial Packets Generation via Diffusion Model
+Abdullah Bin Jasni, Akiko Manada, Kohei Watabe
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Learning Place Cell Representations and Context-Dependent Remapping
+Markus Pettersen, Frederik Rogge, Mikkel Lepperød
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+TSDS: Data Selection for Task-Specific Model Finetuning
+Zifan Liu, Amin Karbasi, Theodoros Rekatsinas
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+SARDet-100K: Towards Open-Source Benchmark and ToolKit for Large-Scale SAR Object Detection
+Yuxuan Li, Xiang Li, Weijie Li, Qibin Hou, Li Liu, Ming-Ming Cheng, Jian Yang
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+RLE: A Unified Perspective of Data Augmentation for Cross-Spectral Re-Identification
+Lei Tan, Yukang Zhang, Keke Han, Pingyang Dai, Yan Zhang, Yongjian Wu, Rongrong Ji
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Sample Selection via Contrastive Fragmentation for Noisy Label Regression
+Chris Dongjoo Kim, Sangwoo Moon, Jihwan Moon, Dongyeon Woo, Gunhee Kim
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Goal Reduction with Loop-Removal Accelerates RL and Models Human Brain Activity in Goal-Directed Learning
+Huzi Cheng, Joshua Brown
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+IPO: Interpretable Prompt Optimization for Vision-Language Models
+Yingjun Du, Wenfang Sun, Cees Snoek
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+The Implicit Bias of Adam on Separable Data
+Chenyang Zhang, Difan Zou, Yuan Cao
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+Memory-Efficient Gradient Unrolling for Large-Scale Bi-level Optimization
+Qianli Shen, Yezhen Wang, Zhouhao Yang, Xiang Li, Haonan Wang, Yang Zhang, Jonathan Scarlett, Zhanxing Zhu, Kenji Kawaguchi
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+GAVEL: Generating Games via Evolution and Language Models
+Graham Todd, Alexander G Padula, Matthew Stephenson, Eric Piette, Dennis Soemers, Julian Togelius
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Reproducibility Study of "ITI-GEN: Inclusive Text-to-Image Generation"
+Daniel Gallo Fernández, Răzvan-Andrei Matișan, Alejandro Monroy, Janusz Partyka
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+Seek Commonality but Preserve Differences: Dissected Dynamics Modeling for Multi-modal Visual RL
+Yangru Huang, Peixi Peng, Yifan Zhao, Guangyao Chen, Yonghong Tian
+--
+Add/Remove Bookmark to my calendar for this paper
+Solving Inverse Problems via Diffusion Optimal Control
+Henry Li, Marcus Pereira
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Reproducibility study of "Robust Fair Clustering: A Novel Fairness Attack and Defense Framework"
+Lucas Ponticelli, Vincent Loos, Eren Kocadag, Kacper Bartosik
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+FreqMark: Invisible Image Watermarking via Frequency Based Optimization in Latent Space
+YiYang Guo, Ruizhe Li, Mude Hui, Hanzhong Guo, Chen Zhang, Chuangjian Cai, Le Wan, shangfei wang
+--
+Add/Remove Bookmark to my calendar for this paper
+Learning Cooperative Trajectory Representations for Motion Forecasting
+Hongzhi Ruan, Haibao Yu, Wenxian Yang, Siqi Fan, Zaiqing Nie
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+SuperDeepFool: a new fast and accurate minimal adversarial attack
+alireza abdollahpour, Mahed Abroshan, Seyed-Mohsen Moosavi-Dezfooli
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Autoregressive Image Diffusion: Generation of Image Sequence and Application in MRI
+Guanxiong Luo, Shoujin Huang, Martin Uecker
+--
+Add/Remove Bookmark to my calendar for this paper
+Trading off Consistency and Dimensionality of Convex Surrogates for Multiclass Classification
+Enrique Nueve, Dhamma Kimpara, Bo Waggoner, Jessica Finocchiaro
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Learning on Large Graphs using Intersecting Communities
+Ben Finkelshtein, Ismail Ceylan, Michael Bronstein, Ron Levie
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+SPEAR: Exact Gradient Inversion of Batches in Federated Learning
+Dimitar I. Dimitrov, Maximilian Baader, Mark Müller, Martin Vechev
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+Exploration by Learning Diverse Skills through Successor State Representations
+Paul-Antoine LE TOLGUENEC, Yann BESSE, Florent Teichteil-Koenigsbuch, Dennis Wilson, Emmanuel Rachelson
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Amortizing intractable inference in diffusion models for vision, language, and control
+Siddarth Venkatraman, Moksh Jain, Luca Scimeca, Minsu Kim, Marcin Sendera, Mohsin Hasan, Luke Rowe, Sarthak Mittal, Pablo Lemos, Emmanuel Bengio, Alexandre Adam, Jarrid Rector-Brooks, Yoshua Bengio, Glen Berseth, Nikolay Malkin
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+LLaMo: Large Language Model-based Molecular Graph Assistant
+Jinyoung Park, Minseong Bae, Dohwan Ko, Hyunwoo Kim
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Multi-Object Hallucination in Vision Language Models
+Xuweiyi Chen, Ziqiao Ma, Xuejun Zhang, Sihan Xu, Shengyi Qian, Jianing Yang, David Fouhey, Joyce Chai
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Faster Repeated Evasion Attacks in Tree Ensembles
+Lorenzo Cascioli, Laurens Devos, Ondrej Kuzelka, Jesse Davis
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+A Sober Look at the Robustness of CLIPs to Spurious Features
+Qizhou Wang, Yong Lin, Yongqiang Chen, Ludwig Schmidt, Bo Han, Tong Zhang
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Learning from Highly Sparse Spatio-temporal Data
+Leyan Deng, Chenwang Wu, Defu Lian, Enhong Chen
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+Learning with Fitzpatrick Losses
+Seta Rakotomandimby, Jean-Philippe Chancelier, Michel De Lara, Mathieu Blondel
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+Can large language models explore in-context?
+Akshay Krishnamurthy, Keegan Harris, Dylan J Foster, Cyril Zhang, Aleksandrs Slivkins
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Identifying Functionally Important Features with End-to-End Sparse Dictionary Learning
+Dan Braun, Jordan Taylor, Nicholas Goldowsky-Dill, Lee Sharkey
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Stronger Than You Think: Benchmarking Weak Supervision on Realistic Tasks
+Tianyi Zhang, Linrong Cai, Jeffrey Li, Nicholas Roberts, Neel Guha, Frederic Sala
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+Compositional Generalization Across Distributional Shifts with Sparse Tree Operations
+Paul Soulos, Henry Conklin, Mattia Opper, Paul Smolensky, Jianfeng Gao, Roland Fernandez
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+JaxMARL: Multi-Agent RL Environments and Algorithms in JAX
+Alexander Rutherford, Benjamin Ellis, Matteo Gallici, Jonathan Cook, Andrei Lupu, Garðar Ingvarsson Juto, Timon Willi, Ravi Hammond, Akbir Khan, Christian Schroeder de Witt, Alexandra Souly, Saptarashmi Bandyopadhyay, Mikayel Samvelyan, Minqi Jiang, Robert Lange, Shimon Whiteson, Bruno Lacerda, Nick Hawes, Tim Rocktäschel, Chris Lu, Jakob Foerster
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+MARVEL: Multidimensional Abstraction and Reasoning through Visual Evaluation and Learning
+Yifan Jiang, jiarui zhang, Kexuan Sun, Zhivar Sourati Hassan Zadeh, Kian Ahrabian, Kaixin Ma, Filip Ilievski, Jay Pujara
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+ClavaDDPM: Multi-relational Data Synthesis with Cluster-guided Diffusion Models
+Wei Pang, Masoumeh Shafieinejad, Lucy Liu, Stephanie Hazlewood, Xi He
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Road Network Representation Learning with the Third Law of Geography
+Haicang Zhou, Weiming Huang, Yile Chen, Tiantian He, Gao Cong, Yew Soon Ong
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+FVEL: Interactive Formal Verification Environment with Large Language Models via Theorem Proving
+Xiaohan Lin, Qingxing Cao, Yinya Huang, Haiming Wang, Jianqiao Lu, Zhengying Liu, Linqi Song, Xiaodan Liang
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+Small steps no more: Global convergence of stochastic gradient bandits for arbitrary learning rates
+Jincheng Mei, Bo Dai, Alekh Agarwal, Sharan Vaswani, Anant Raj, Csaba Szepesvari, Dale Schuurmans
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+FERERO: A Flexible Framework for Preference-Guided Multi-Objective Learning
+Lisha Chen, A Saif, Yanning Shen, Tianyi Chen
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+DiffGS: Functional Gaussian Splatting Diffusion
+Junsheng Zhou, Weiqi Zhang, Yu-Shen Liu
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Kronecker-Factored Approximate Curvature for Physics-Informed Neural Networks
+Felix Dangel, Johannes Müller, Marius Zeinhofer
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+Learning to Balance Altruism and Self-interest Based on Empathy in Mixed-Motive Games
+Fanqi Kong, Yizhe Huang, Song-Chun Zhu, Siyuan Qi, Xue Feng
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+FLAME : Factuality-Aware Alignment for Large Language Models
+Sheng-Chieh Lin, Luyu Gao, Barlas Oguz, Wenhan Xiong, Jimmy Lin, Scott Yih, Xilun Chen
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Accurate and Steady Inertial Pose Estimation through Sequence Structure Learning and Modulation
+Yinghao Wu, chaoran wang, Lu Yin, Shihui Guo, Yipeng Qin
+--
+Add/Remove Bookmark to my calendar for this paper
+Identifying Equivalent Training Dynamics
+William Redman, Juan Bello-Rivas, Maria Fonoberova, Ryan Mohr, Yannis Kevrekidis, Igor Mezic
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Learning Elastic Costs to Shape Monge Displacements
+Michal Klein, Aram-Alexandre Pooladian, Pierre Ablin, Eugene Ndiaye, Jonathan Niles-Weed, Marco Cuturi
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+Predicting Future Actions of Reinforcement Learning Agents
+Stephen Chung, Scott Niekum, David Krueger
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+Recurrent Reinforcement Learning with Memoroids
+Steven Morad, Chris Lu, Ryan Kortvelesy, Stephan Liwicki, Jakob Foerster, Amanda Prorok
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+Benign overfitting in leaky ReLU networks with moderate input dimension
+Kedar Karhadkar, Erin George, Michael Murray, Guido Montufar, Deanna Needell
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Multi-turn Reinforcement Learning with Preference Human Feedback
+Lior Shani, Aviv Rosenberg, Asaf Cassel, Oran Lang, Daniele Calandriello, Avital Zipori, Hila Noga, Orgad Keller, Bilal Piot, Idan Szpektor, Avinatan Hassidim, Yossi Matias, Remi Munos
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+Direct Unlearning Optimization for Robust and Safe Text-to-Image Models
+Yong-Hyun Park, Sangdoo Yun, Jin-Hwa Kim, Junho Kim, Geonhui Jang, Yonghyun Jeong, Junghyo Jo, Gayoung Lee
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Policy Aggregation
+Parand A. Alamdari, Soroush Ebadian, Ariel Procaccia
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+FUSU: A Multi-temporal-source Land Use Change Segmentation Dataset for Fine-grained Urban Semantic Understanding
+Shuai Yuan, Guancong Lin, Lixian Zhang, Runmin Dong, Jinxiao Zhang, Shuang Chen, Juepeng Zheng, Jie Wang, Haohuan Fu
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+Wings: Learning Multimodal LLMs without Text-only Forgetting
+Yi-Kai Zhang, Shiyin Lu, Yang Li, YanQing Ma, Qingguo Chen, Zhao Xu, Weihua Luo, Kaifu Zhang, De-Chuan Zhan, Han-Jia Ye
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+A Globally Optimal Portfolio for m-Sparse Sharpe Ratio Maximization
+Yizun Lin, Zhao-Rong Lai, Cheng Li
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+Reproducibility Study of "Robust Fair Clustering: A Novel Fairness Attack and Defense Framework"
+Iason Skylitsis, Zheng Feng, Idries Nasim, Camille Niessink
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+AID: Attention Interpolation of Text-to-Image Diffusion
+He Qiyuan, Jinghao Wang, Ziwei Liu, Angela Yao
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+HYDRA-FL: Hybrid Knowledge Distillation for Robust and Accurate Federated Learning
+Momin Ahmad Khan, Yasra Chandio, Fatima Anwar
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Parallelizing Model-based Reinforcement Learning Over the Sequence Length
+Zirui Wang, Yue DENG, Junfeng Long, Yin Zhang
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+Designs for Enabling Collaboration in Human-Machine Teaming via Interactive and Explainable Systems
+Rohan Paleja, Michael Munje, Kimberlee Chang, Reed Jensen, Matthew Gombolay
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+ROBIN: Robust and Invisible Watermarks for Diffusion Models with Adversarial Optimization
+Huayang Huang, Yu Wu, Qian Wang
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Group-wise oracle-efficient algorithms for online multi-group learning
+Samuel Deng, Jingwen Liu, Daniel Hsu
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+iVideoGPT: Interactive VideoGPTs are Scalable World Models
+Jialong Wu, Shaofeng Yin, Ningya Feng, Xu He, Dong Li, Jianye Hao, Mingsheng Long
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+BrainBits: How Much of the Brain are Generative Reconstruction Methods Using?
+David Mayo, Christopher Wang, Asa Harbin, Abdulrahman Alabdulkareem, Albert Shaw, Boris Katz, Andrei Barbu
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Adaptive Sampling for Efficient Softmax Approximation
+Tavor Baharav, Ryan Kang, Colin Sullivan, Mo Tiwari, Eric Luxenberg, David Tse, Mert Pilanci
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+START: A Generalized State Space Model with Saliency-Driven Token-Aware Transformation
+Jintao Guo, Lei Qi, Yinghuan Shi, Yang Gao
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Optimal Top-Two Method for Best Arm Identification and Fluid Analysis
+Agniv Bandyopadhyay, Sandeep Juneja, Shubhada Agrawal
+Th, Dec 12, 14:00 EST -- Poster Session 3 West
+Add/Remove Bookmark to my calendar for this paper
+Robust Contrastive Multi-view Clustering against Dual Noisy Correspondence
+Ruiming Guo, Mouxing Yang, Yijie Lin, Xi Peng, Peng Hu
+--
+Add/Remove Bookmark to my calendar for this paper
+A Cross-Domain Benchmark for Active Learning
+Thorben Werner, Johannes Burchert, Maximilian Stubbemann, Lars Schmidt-Thieme
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+Fast Proxy Experiment Design for Causal Effect Identification
+Sepehr Elahi, Sina Akbari, Jalal Etesami, Negar Kiyavash, Patrick Thiran
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+On the Worst Prompt Performance of Large Language Models
+Bowen Cao, Deng Cai, Zhisong Zhang, Yuexian Zou, Wai Lam
+--
+Add/Remove Bookmark to my calendar for this paper
+Expected Probabilistic Hierarchies
+Marcel Kollovieh, Bertrand Charpentier, Daniel Zügner, Stephan Günnemann
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Measuring Per-Unit Interpretability at Scale Without Humans
+Roland S. Zimmermann, David Klindt, Wieland Brendel
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+SLowcalSGD : Slow Query Points Improve Local-SGD for Stochastic Convex Optimization
+Tehila Dahan, Kfir Y. Levy
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Super Consistency of Neural Network Landscapes and Learning Rate Transfer
+Lorenzo Noci, Alexandru Meterez, Thomas Hofmann, Antonio Orvieto
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Conformal Classification with Equalized Coverage for Adaptively Selected Groups
+Yanfei Zhou, Matteo Sesia
+Fr, Dec 13, 19:30 EST -- Poster Session 6 West
+Add/Remove Bookmark to my calendar for this paper
+FedLPA: One-shot Federated Learning with Layer-Wise Posterior Aggregation
+Xiang Liu, Liangxi Liu, Feiyang Ye, Yunheng Shen, Xia Li, Linshan Jiang, Jialin Li
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+xLSTM: Extended Long Short-Term Memory
+Maximilian Beck, Korbinian Pöppel, Markus Spanring, Andreas Auer, Oleksandra Prudnikova, Michael Kopp, Günter Klambauer, Johannes Brandstetter, Sepp Hochreiter
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Gradients of Functions of Large Matrices
+Nicholas Krämer, Pablo Moreno-Muñoz, Hrittik Roy, Søren Hauberg
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+WildGaussians: 3D Gaussian Splatting In the Wild
+Jonas Kulhanek, Songyou Peng, Zuzana Kukelova, Marc Pollefeys, Torsten Sattler
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Controlling Counterfactual Harm in Decision Support Systems Based on Prediction Sets
+Eleni Straitouri, Suhas Thejaswi, Manuel Rodriguez
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Text-space Graph Foundation Models: Comprehensive Benchmarks and New Insights
+Zhikai Chen, Haitao Mao, Jingzhe Liu, Yu Song, Bingheng Li, Wei Jin, Bahare Fatemi, Anton Tsitsulin, Bryan Perozzi, Hui Liu, Jiliang Tang
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+A Compositional Atlas for Algebraic Circuits
+Benjie Wang, Denis Mauá, Guy Van den Broeck, YooJung Choi
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+MoGU: A Framework for Enhancing Safety of LLMs While Preserving Their Usability
+YANRUI DU, Sendong Zhao, Danyang Zhao, Ming Ma, Yuhan Chen, Liangyu Huo, Qing Yang, Dongliang Xu, Bing Qin
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+A Polar coordinate system represents syntax in large language models
+Pablo J. Diego Simon, Stéphane d'Ascoli, Emmanuel Chemla, Yair Lakretz, Jean-Remi King
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Where's Waldo: Diffusion Features For Personalized Segmentation and Retrieval
+Dvir Samuel, Rami Ben-Ari, Matan Levy, Nir Darshan, Gal Chechik
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+FIARSE: Model-Heterogeneous Federated Learning via Importance-Aware Submodel Extraction
+Feijie Wu, Xingchen Wang, Yaqing Wang, TIanci Liu, Lu Su, Jing Gao
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+On Weak Regret Analysis for Dueling Bandits
+El Mehdi Saad, Alexandra Carpentier, Tomáš Kocák, Nicolas Verzelen
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+Implicitly Guided Design with PropEn: Match your Data to Follow the Gradient
+Nataša Tagasovska, Vladimir Gligorijevic, Kyunghyun Cho, Andreas Loukas
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+StreamFlow: Streamlined Multi-Frame Optical Flow Estimation for Video Sequences
+SHANGKUN SUN, Jiaming Liu, Huaxia Li, Guoqing Liu, Thomas Li, Wei Gao
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Symmetry-Informed Governing Equation Discovery
+Jianke Yang, Wang Rao, Nima Dehmamy, Robin Walters, Rose Yu
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+MoVA: Adapting Mixture of Vision Experts to Multimodal Context
+ZHUOFAN ZONG, Bingqi Ma, Dazhong Shen, Guanglu Song, Hao Shao, DONGZHI JIANG, Hongsheng Li, Yu Liu
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Neural Cover Selection for Image Steganography
+Karl Chahine, Hyeji Kim
+--
+Add/Remove Bookmark to my calendar for this paper
+Decoupled Kullback-Leibler Divergence Loss
+Jiequan Cui, Zhuotao Tian, Zhisheng Zhong, Xiaojuan Qi, Bei Yu, Hanwang Zhang
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Nonparametric Instrumental Variable Regression through Stochastic Approximate Gradients
+Yuri Fonseca, Caio Peixoto, Yuri Saporito
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+Structured flexibility in recurrent neural networks via neuromodulation
+Julia Costacurta, Shaunak Bhandarkar, David Zoltowski, Scott Linderman
+We, Dec 11, 19:30 EST -- Poster Session 2 East
+Add/Remove Bookmark to my calendar for this paper
+Almost Free: Self-concordance in Natural Exponential Families and an Application to Bandits
+Shuai Liu, Alex Ayoub, Flore Sentenac, Xiaoqi Tan, Csaba Szepesvari
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+Job-SDF: A Multi-Granularity Dataset for Job Skill Demand Forecasting and Benchmarking
+Xi Chen, Chuan Qin, Chuyu Fang, Chao Wang, chen zhu, Fuzhen Zhuang, Hengshu Zhu, Hui Xiong
+--
+Add/Remove Bookmark to my calendar for this paper
+Quantum Algorithms for Non-smooth Non-convex Optimization
+Chengchang Liu, Chaowen Guan, Jianhao He, John C.S. Lui
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+LookHere: Vision Transformers with Directed Attention Generalize and Extrapolate
+Anthony Fuller, Daniel Kyrollos, Yousef Yassin, James Green
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Meta-Diffu$B$: A Contextualized Sequence-to-Sequence Text Diffusion Model with Meta-Exploration
+Yun-Yen Chuang, Hung-Min Hsu, Kevin Lin, Chen-Sheng Gu, Ling-Zhen Li, Ray-I Chang, Hung-yi Lee
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Cambrian-1: A Fully Open, Vision-Centric Exploration of Multimodal LLMs
+Peter Tong, Ellis Brown, Penghao Wu, Sanghyun Woo, Adithya Jairam Vedagiri IYER, Sai Charitha Akula, Shusheng Yang, Jihan Yang, Manoj Middepogu, Ziteng Wang, Xichen Pan, Rob Fergus, Yann LeCun, Saining Xie
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Fr, Dec 13, 13:40 EST -- Oral Session 5C: Machine Vision
+Add/Remove Bookmark to my calendar for this paper
+PrivCirNet: Efficient Private Inference via Block Circulant Transformation
+Tianshi Xu, Lemeng Wu, Runsheng Wang, Meng Li
+Fr, Dec 13, 14:00 EST -- Poster Session 5 West
+Add/Remove Bookmark to my calendar for this paper
+A Simple and Adaptive Learning Rate for FTRL in Online Learning with Minimax Regret of $\Theta(T^{2/3})$ and its Application to Best-of-Both-Worlds
+Taira Tsuchiya, Shinji Ito
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+A Flexible, Equivariant Framework for Subgraph GNNs via Graph Products and Graph Coarsening
+Guy Bar-Shalom, Yam Eitan, Fabrizio Frasca, Haggai Maron
+Fr, Dec 13, 14:00 EST -- Poster Session 5 East
+Add/Remove Bookmark to my calendar for this paper
+Overfitting Behaviour of Gaussian Kernel Ridgeless Regression: Varying Bandwidth or Dimensionality
+Marko Medvedev, Gal Vardi, Nati Srebro
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+Linear Regression using Heterogeneous Data Batches
+Ayush Jain, Rajat Sen, Weihao Kong, Abhimanyu Das, Alon Orlitsky
+We, Dec 11, 14:00 EST -- Poster Session 1 East
+Add/Remove Bookmark to my calendar for this paper
+Efficient Discrepancy Testing for Learning with Distribution Shift
+Gautam Chandrasekaran, Adam Klivans, Vasilis Kontonis, Konstantinos Stavropoulos, Arsen Vasilyan
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+Semi-Open 3D Object Retrieval via Hierarchical Equilibrium on Hypergraph
+Yang Xu, Yifan Feng, Jun Zhang, Jun-Hai Yong, Yue Gao
+--
+Add/Remove Bookmark to my calendar for this paper
+Decoupling Semantic Similarity from Spatial Alignment for Neural Networks.
+Tassilo Wald, Constantin Ulrich, Priyank Jaini, Gregor Koehler, David Zimmerer, Stefan Denner, Fabian Isensee, Michael Baumgartner, Klaus Maier-Hein
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Constrained Binary Decision Making
+Daniel Průša, Vojtech Franc
+Th, Dec 12, 19:30 EST -- Poster Session 4 West
+Add/Remove Bookmark to my calendar for this paper
+AdaFlow: Imitation Learning with Variance-Adaptive Flow-Based Policies
+Xixi Hu, Qiang Liu, Xingchao Liu, Bo Liu
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+Distribution Learning with Valid Outputs Beyond the Worst-Case
+Nicholas Rittler, Kamalika Chaudhuri
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+Distributed Sparse Regression via Penalization
+Yao Ji, Gesualdo Scutari, Ying Sun, Harsha Honnappa
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Einsum Benchmark: Enabling the Development of Next-Generation Tensor Execution Engines
+Mark Blacher, Christoph Staudt, Julien Klaus, Maurice Wenig, Niklas Merk, Alexander Breuer, Max Engel, Sören Laue, Joachim Giesen
+We, Dec 11, 14:00 EST -- Poster Session 1 West
+Add/Remove Bookmark to my calendar for this paper
+VISA: Variational Inference with Sequential Sample-Average Approximations
+Heiko Zimmermann, Christian Andersson Naesseth, Jan-Willem van de Meent
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Selective Attention: Enhancing Transformer through Principled Context Control
+Xuechen Zhang, Xiangyu Chang, Mingchen Li, Amit Roy-Chowdhury, Jiasi Chen, Samet Oymak
+Th, Dec 12, 19:30 EST -- Poster Session 4 East
+Add/Remove Bookmark to my calendar for this paper
+Last-Iterate Convergence for Generalized Frank-Wolfe in Monotone Variational Inequalities
+Zaiwei Chen, Eric Mazumdar
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+SuperVLAD: Compact and Robust Image Descriptors for Visual Place Recognition
+Feng Lu, Xinyao Zhang, Canming Ye, Shuting Dong, Lijun Zhang, Xiangyuan Lan, Chun Yuan
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+Add/Remove Bookmark to my calendar for this paper
+Understanding Linear Probing then Fine-tuning Language Models from NTK Perspective
+Akiyoshi Tomihari, Issei Sato
+Fr, Dec 13, 19:30 EST -- Poster Session 6 East
+Add/Remove Bookmark to my calendar for this paper
+Genetic-guided GFlowNets for Sample Efficient Molecular Optimization
+Hyeonah Kim, Minsu Kim, Sanghyeok Choi, Jinkyoo Park
+We, Dec 11, 19:30 EST -- Poster Session 2 West
+Add/Remove Bookmark to my calendar for this paper
+bit2bit: 1-bit quanta video reconstruction via self-supervised photon prediction
+Yehe Liu, Alexander Krull, Hector Basevi, Ales Leonardis, Michael Jenkins
+Th, Dec 12, 14:00 EST -- Poster Session 3 East
+We use cookies to store which papers have been visited. 
+NeurIPS uses cookies for essential functions only. We do not sell your personal information. Our Privacy Policy » 	

@@ -6,6 +6,7 @@ import platform
 database_directory = None
 buffer_pool_size = 512
 wal_buffer_size = 10
+max_memory_tables = 100
 
 unix_like_env = (platform.uname().system != 'Windows' and platform.uname().system != 'Darwin')
 

@@ -12,6 +12,7 @@ class SQLLexer(sly.Lexer):
         # DDL
         CREATE, DROP,
         DATABASE, TABLE, INDEX, VIEW, COLUMN, ALTER,
+        TEMPORARY, MEMORY,
 
         # Misc
         EXPLAIN, USING, IF_EXISTS,
@@ -46,7 +47,17 @@ class SQLLexer(sly.Lexer):
         CAST,
 
         # COMMANDS
-        CHECKPOINT
+        CHECKPOINT,
+
+        # Add new tokens
+        PROMPT,
+        FILE,
+        DIRECTORY,
+        TABULAR,
+        SEM_GROUP,
+        SEM_CLUSTER,
+        SEM_MATCH,
+        ENUM
     }
 
     CREATE = 'CREATE'
@@ -57,6 +68,8 @@ class SQLLexer(sly.Lexer):
     VIEW = 'VIEW'
     COLUMN = 'COLUMN'
     ALTER = 'ALTER'
+    TEMPORARY = 'TEMPORARY'
+    MEMORY = 'MEMORY'
     EXPLAIN = 'EXPLAIN'
     USING = 'USING'
     IF_EXISTS = 'IF EXISTS'
@@ -75,6 +88,7 @@ class SQLLexer(sly.Lexer):
     ASC = 'ASC'
     DESC = 'DESC'
     JOIN = 'JOIN'
+    FULL = 'FULL'
     INNER = 'INNER'
     OUTER = 'OUTER'
     CROSS = 'CROSS'
@@ -95,6 +109,14 @@ class SQLLexer(sly.Lexer):
     INTO = 'INTO'
     VALUES = 'VALUES'
     CHECKPOINT = 'CHECKPOINT'
+    PROMPT = 'PROMPT'
+    FILE = 'FILE'
+    DIRECTORY = 'DIRECTORY'
+    TABULAR = 'TABULAR'
+    SEM_GROUP = 'SEM_GROUP'
+    SEM_CLUSTER = 'SEM_CLUSTER'
+    SEM_MATCH = 'SEM_MATCH'
+    ENUM = 'ENUM'
 
     DOT = r'\.'
     COMMA = r','

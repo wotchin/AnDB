@@ -1,14 +1,11 @@
 from andb.catalog.syscache import CATALOG_ANDB_INDEX
 from andb.errno.errors import InitializationStageError
-from andb.storage.engines.heap.bptree import TuplePointer
-from andb.storage.engines.heap.relation import hot_simple_delete, bt_delete, hot_simple_select, open_relation, \
-    close_relation
-from andb.storage.lock import rlock
 from andb.executor.operator.physical.select import Scan
-from andb.catalog.oid import INVALID_OID
-
-from ..logical import Condition, TableColumn
-from .select import Filter
+from andb.runtime import session_vars
+from andb.storage.engines.heap.relation import hot_simple_delete, bt_delete, open_relation, \
+    close_relation
+from andb.storage.engines.memory.table import memory_delete_batch, memory_get_row_id
+from andb.storage.lock import rlock
 from .base import PhysicalOperator
 
 
@@ -65,3 +62,31 @@ class DeletePhysicalOperator(PhysicalOperator):
             close_relation(relation.oid, rlock.ROW_EXCLUSIVE_LOCK)
 
         self.scan.close()
+
+
+class DeleteMemoryTablePhysicalOperator(PhysicalOperator):
+    def __init__(self, table_oid, scan_operator: Scan):
+        super().__init__('DeleteMemoryTable')
+        self.table_oid = table_oid
+        self.database_oid = session_vars.get_session_value('database_oid')
+        self.scan = scan_operator
+        self.add_child(scan_operator)
+
+    def open(self):
+        super().open()
+        self.scan.open()
+
+    def next(self):
+        to_be_deleted_rows = []
+        for tuple_ in self.scan.next():
+            row_id = memory_get_row_id(self.table_oid, self.database_oid, tuple_)
+            to_be_deleted_rows.append(row_id)
+
+        memory_delete_batch(self.table_oid, self.database_oid, to_be_deleted_rows)
+
+        for row_id in to_be_deleted_rows:
+            yield
+
+    def close(self):
+        self.scan.close()
+        super().close()

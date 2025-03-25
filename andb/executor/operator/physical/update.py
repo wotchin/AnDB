@@ -1,14 +1,12 @@
 from andb.catalog.syscache import CATALOG_ANDB_INDEX
 from andb.errno.errors import InitializationStageError
+from andb.executor.operator.physical.select import Scan
+from andb.runtime import session_vars
 from andb.storage.engines.heap.bptree import TuplePointer
 from andb.storage.engines.heap.relation import bt_update, hot_simple_update, open_relation, close_relation, bt_delete, \
     bt_simple_insert
+from andb.storage.engines.memory.table import memory_get_row_id, memory_update
 from andb.storage.lock import rlock
-from andb.executor.operator.physical.select import Scan
-from andb.catalog.oid import INVALID_OID
-
-from ..logical import Condition, TableColumn
-from .select import Filter
 from .base import PhysicalOperator
 
 
@@ -91,5 +89,32 @@ class UpdatePhysicalOperator(PhysicalOperator):
         for relation in self.index_relations:
             close_relation(relation.oid, rlock.ROW_EXCLUSIVE_LOCK)
 
+        self.scan.close()
+        super().close()
+
+
+class UpdateMemoryTablePhysicalOperator(PhysicalOperator):
+    def __init__(self, table_oid, scan_operator: Scan, attr_num_value_pair: dict):
+        super().__init__('UpdateMemoryTable')
+        self.table_oid = table_oid
+        self.database_oid = session_vars.get_session_value('database_oid')
+        self.scan = scan_operator
+        self.attr_num_value_pair = attr_num_value_pair
+        self.add_child(scan_operator)
+
+    def open(self):
+        super().open()
+        self.scan.open()
+
+    def next(self):
+        for tuple_ in self.scan.next():
+            row_id = memory_get_row_id(self.table_oid, self.database_oid, tuple_)
+            new_tuple = list(tuple_)
+            for attr_num, new_value in self.attr_num_value_pair.items():
+                new_tuple[attr_num] = new_value
+            memory_update(self.table_oid, self.database_oid, row_id, new_tuple)
+            yield
+
+    def close(self):
         self.scan.close()
         super().close()

@@ -130,3 +130,7 @@ dmypy.json
 
 # PyCharm
 .idea/
+
+# Local client folder
+local_client_data/
+tests/integration/test_data

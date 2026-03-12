@@ -19,6 +19,7 @@ from .exception import ParsingException
 from .ast.drop import DropTable, DropIndex
 from .ast.utility import Command
 from .ast.semantic import FileSource, DirectorySource, Prompt, SemanticTabular, SemanticGroup, SemanticMatch
+from .ast.s2ql import MatchesPredicate, ExtractExpression, TransformExpression, ClassifyingGroupBy, WithClause
 
 
 class CTE:
@@ -213,7 +214,7 @@ class SQLParser(sly.Parser):
         select = p.select
         check_select_keywords(select, 'WHERE')
         where_expr = p.expr
-        if not isinstance(where_expr, (Operation, Prompt, SemanticMatch)):
+        if not isinstance(where_expr, (Operation, Prompt, SemanticMatch, MatchesPredicate)):
             raise ParsingException(
                 f"Require an operation for WHERE clause.")
         select.where = where_expr
@@ -712,3 +713,56 @@ class SQLParser(sly.Parser):
     def expr(self, p):
         threshold = getattr(p, "constant", None)
         return SemanticMatch(p.string, threshold)
+
+    # ===== S²QL Extensions =====
+
+    # MATCHES predicate: WHERE column MATCHES 'assertion'
+    @_('identifier MATCHES string')
+    def expr(self, p):
+        return MatchesPredicate(column=p.identifier, assertion=p.string)
+
+    # MATCHES with WITH clause: WHERE column MATCHES 'assertion' WITH (params)
+    @_('identifier MATCHES string WITH LPAREN with_params RPAREN')
+    def expr(self, p):
+        return MatchesPredicate(column=p.identifier, assertion=p.string,
+                                with_params=p.with_params)
+
+    # WITH parameter list
+    @_('with_param')
+    def with_params(self, p):
+        return p.with_param
+
+    @_('with_params COMMA with_param')
+    def with_params(self, p):
+        p.with_params.update(p.with_param)
+        return p.with_params
+
+    @_('id EQ constant')
+    def with_param(self, p):
+        return {p.id: p.constant.value}
+
+    @_('id EQ string')
+    def with_param(self, p):
+        return {p.id: p.string}
+
+    # EXTRACT expression: EXTRACT(source INTO (col1 TYPE1, col2 TYPE2))
+    @_('EXTRACT LPAREN identifier INTO LPAREN defined_columns RPAREN RPAREN')
+    def result_column(self, p):
+        schema = [(col[0], col[1]) for col in p.defined_columns]
+        return ExtractExpression(source_column=p.identifier, target_schema=schema)
+
+    # TRANSFORM expression: TRANSFORM(input AS output USING 'instruction')
+    @_('TRANSFORM LPAREN identifier AS id USING string RPAREN')
+    def result_column(self, p):
+        return TransformExpression(input_column=p.identifier,
+                                   output_name=p.id,
+                                   instruction=p.string)
+
+    # CLASSIFYING in GROUP BY: GROUP BY CLASSIFYING source AS key_name
+    @_('select GROUP_BY CLASSIFYING identifier AS id')
+    def select(self, p):
+        select = p.select
+        check_select_keywords(select, 'GROUP BY')
+        classifying = ClassifyingGroupBy(source_column=p.identifier, key_name=p.id)
+        select.group_by = [classifying]
+        return select

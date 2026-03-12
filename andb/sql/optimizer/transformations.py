@@ -19,6 +19,7 @@ from andb.sql.parser.ast.operation import Function
 from andb.sql.parser.ast.select import Select
 from andb.sql.parser.ast.semantic import Prompt, FileSource, DirectorySource, SemanticTabular, SemanticGroup, \
     SemanticMatch
+from andb.sql.parser.ast.s2ql import MatchesPredicate, ExtractExpression, TransformExpression, ClassifyingGroupBy
 from andb.sql.parser.ast.update import Update
 from andb.sql.parser.ast.utility import Command
 
@@ -474,6 +475,35 @@ class SelectTransformation(BaseTransformation):
                 else:
                     prompt_column = PromptColumn(prompt_text=target.prompt_text)
                 query.target_list.append(prompt_column)
+            elif isinstance(target, ExtractExpression):
+                # S²QL EXTRACT(source INTO (col1 TYPE1, ...))
+                source_name = target.source_column.parts if hasattr(target.source_column, 'parts') else str(target.source_column)
+                for col_name, col_type in target.target_schema:
+                    prompt_text = f"Extract '{col_name}' from the text"
+                    table_name = cls._find_table_name(query, source_name) or list(query.from_tables.keys())[0]
+                    prompt_column = PromptColumn(
+                        column_name=col_name,
+                        prompt_text=prompt_text,
+                        table_name=table_name,
+                        type=col_type
+                    )
+                    query.target_list.append(prompt_column)
+            elif isinstance(target, TransformExpression):
+                # S²QL TRANSFORM(input AS output USING 'instruction')
+                input_name = target.input_column.parts if hasattr(target.input_column, 'parts') else str(target.input_column)
+                table_name = cls._find_table_name(query, input_name) or list(query.from_tables.keys())[0]
+                table_column = TableColumn(table_name, input_name)
+                cls._supplement_table_name_for_column(table_column, query.table_attr_forms)
+                query.add_seen_table_column(table_column)
+                sem_col = SemanticTransformColumn(
+                    table_name=table_column.table_name,
+                    original_columns=[table_column.column_name],
+                    target_column=target.output_name,
+                    prompt_text=target.instruction,
+                    k=1,
+                    type=table_column.type
+                )
+                query.target_list.append(sem_col)
             else:
                 # TODO: function and agg
                 raise NotImplementedError('not supported this syntax.')
@@ -483,6 +513,14 @@ class SelectTransformation(BaseTransformation):
         if ast is not None:
             if isinstance(ast, SemanticMatch):
                 query.condition = cls._get_semantic_condition(ast, query)
+            elif isinstance(ast, MatchesPredicate):
+                # S²QL MATCHES predicate -> SemanticCondition
+                column = TableColumn(ast.column.items[0] if hasattr(ast.column, 'items') else None,
+                                     ast.column.parts if hasattr(ast.column, 'parts') else str(ast.column))
+                cls._supplement_table_name_for_column(column, query.table_attr_forms)
+                threshold = ast.with_params.get('threshold', None) if ast.with_params else None
+                condition_str = "'{0}' matches '" + ast.assertion + "'"
+                query.condition = SemanticCondition(condition_str, threshold, [column])
             else:
                 where_condition = ConditionTransformation.on_transform(Condition(ast))
                 if isinstance(where_condition, bool):
@@ -559,6 +597,29 @@ class SelectTransformation(BaseTransformation):
     def transform_group_clause(cls, ast, query):
         if ast.group_by:
             for id_ in ast.group_by:
+                # S²QL CLASSIFYING group by
+                if isinstance(id_, ClassifyingGroupBy):
+                    source_name = id_.source_column.parts if hasattr(id_.source_column, 'parts') else str(id_.source_column)
+                    table_name = cls._find_table_name(query, source_name)
+                    if table_name is None:
+                        table_name = list(query.from_tables.keys())[0]
+                    table_column = TableColumn(table_name, source_name)
+                    cls._supplement_table_name_for_column(table_column, query.table_attr_forms)
+                    query.add_seen_table_column(table_column)
+                    sem_col = SemanticTransformColumn(
+                        table_name=table_column.table_name,
+                        original_columns=[table_column.column_name],
+                        target_column=id_.key_name,
+                        prompt_text=f"Classify into categories",
+                        k=5,
+                        type=table_column.type
+                    )
+                    query.groupby_columns.append(sem_col)
+                    # Also add to target list if not already there
+                    if not any(isinstance(t, SemanticTransformColumn) and t.column_name == id_.key_name
+                               for t in query.target_list):
+                        query.target_list.insert(0, sem_col)
+                    continue
                 if '.' in id_.parts:
                     items = id_.parts.split('.')
                     if len(items) != 2:

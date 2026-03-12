@@ -4,11 +4,16 @@ from andb.errno.errors import InitializationStageError
 from andb.executor.operator.physical import select, insert, delete, semantic, update, utility
 from andb.executor.operator.physical.select import FileScan, TableScan, IndexScan, CoveredIndexScan, Filter
 from andb.executor.operator.physical.semantic import SemanticFilter
+from andb.executor.operator.physical import semantic_filter, semantic_join, semantic_agg
+from andb.sql.optimizer.semantic_cost_model import SemanticCostModel
 from andb.runtime import session_vars
 from andb.sql.parser.ast.join import JoinType
 from andb.storage.engines.heap.relation import RelationKinds
 from .base import BaseImplementation
 from .patterns import *
+
+# Global cost model instance
+_semantic_cost_model = SemanticCostModel()
 
 
 class UtilityImplementation(BaseImplementation):
@@ -341,18 +346,41 @@ class UpdateImplementation(BaseImplementation):
 class SemanticScanImplementation(BaseImplementation):
     @classmethod
     def match(cls, operator) -> bool:
-        # Check if any target in the target list is a PromptColumn
         return isinstance(operator, SemanticScanOperator)
+
+    @classmethod
+    def _select_semantic_filter(cls, condition, estimated_cardinality=100):
+        """Select the best semantic filter operator using the cost model."""
+        lambda_acc = session_vars.get_session_value('lambda_acc') if hasattr(session_vars, 'get_session_value') else 1.0
+        try:
+            lambda_acc = float(lambda_acc) if lambda_acc else 1.0
+        except (TypeError, ValueError):
+            lambda_acc = 1.0
+
+        best_op, _ = _semantic_cost_model.select_best_filter(
+            input_cardinality=estimated_cardinality,
+            lambda_acc=lambda_acc
+        )
+
+        if best_op == 'EmbeddingFilterScan':
+            return semantic_filter.EmbeddingFilterScan(condition)
+        elif best_op == 'HybridFilterScan':
+            return semantic_filter.HybridFilterScan(condition)
+        elif best_op == 'CodegenFilterScan':
+            return semantic_filter.CodegenFilterScan(condition)
+        else:
+            # Default: LLMFilterScan (wraps existing SemanticFilter)
+            return SemanticFilter(condition)
 
     @classmethod
     def on_implement(cls, old_operator: SemanticScanOperator):
         filter = None
         if old_operator.condition is not None:
             if isinstance(old_operator.condition, SemanticCondition):
-                filter = SemanticFilter(old_operator.condition)
+                filter = cls._select_semantic_filter(old_operator.condition)
             else:
                 filter = Filter(old_operator.condition)
-        
+
         return semantic.SemanticScan(
             target_columns=old_operator.table_columns,
             prompt_columns=old_operator.prompt_columns,
@@ -376,16 +404,42 @@ class SemanticTransformImplementation(BaseImplementation):
 class SemanticJoinImplementation(BaseImplementation):
     @classmethod
     def match(cls, operator) -> bool:
-        # Check if any target in the target list is a PromptColumn
         return isinstance(operator, SemanticJoinOperator)
 
     @classmethod
     def on_implement(cls, old_operator):
-        return semantic.SemanticJoin(
-            condition=old_operator.condition,
-            join_type=old_operator.join_type,
-            children_table_names=old_operator.children_table_names
+        # Use cost model to select best join operator
+        lambda_acc = session_vars.get_session_value('lambda_acc') if hasattr(session_vars, 'get_session_value') else 1.0
+        try:
+            lambda_acc = float(lambda_acc) if lambda_acc else 1.0
+        except (TypeError, ValueError):
+            lambda_acc = 1.0
+
+        best_op, _ = _semantic_cost_model.select_best_join(
+            outer_cardinality=100,
+            inner_cardinality=100,
+            lambda_acc=lambda_acc
         )
+
+        if best_op == 'IndexedNLSemanticJoin':
+            return semantic_join.IndexedNLSemanticJoin(
+                condition=old_operator.condition,
+                join_type=old_operator.join_type,
+                children_table_names=old_operator.children_table_names
+            )
+        elif best_op == 'HashSemanticJoin':
+            return semantic_join.HashSemanticJoin(
+                condition=old_operator.condition,
+                join_type=old_operator.join_type,
+                children_table_names=old_operator.children_table_names
+            )
+        else:
+            # Default: existing NestedLoopSemanticJoin
+            return semantic.SemanticJoin(
+                condition=old_operator.condition,
+                join_type=old_operator.join_type,
+                children_table_names=old_operator.children_table_names
+            )
 
 _all_implementations = [impl() for impl in BaseImplementation.__subclasses__()]
 

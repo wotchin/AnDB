@@ -57,7 +57,13 @@ class SQLLexer(sly.Lexer):
         SEM_GROUP,
         SEM_CLUSTER,
         SEM_MATCH,
-        ENUM
+        ENUM,
+
+        # S²QL tokens
+        MATCHES,
+        EXTRACT,
+        TRANSFORM,
+        CLASSIFYING,
     }
 
     CREATE = 'CREATE'
@@ -117,6 +123,10 @@ class SQLLexer(sly.Lexer):
     SEM_CLUSTER = 'SEM_CLUSTER'
     SEM_MATCH = 'SEM_MATCH'
     ENUM = 'ENUM'
+    MATCHES = 'MATCHES'
+    EXTRACT = 'EXTRACT'
+    TRANSFORM = 'TRANSFORM'
+    CLASSIFYING = 'CLASSIFYING'
 
     DOT = r'\.'
     COMMA = r','

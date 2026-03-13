@@ -63,34 +63,35 @@ class Filter(PhysicalOperator):
         def dfs(node: Condition):
             if node is None:
                 return False
-            if not isinstance(node.left, (TableColumn, FunctionColumn)):
-                # node.right can be int, float, TableColumn, Condition ...
-                return False
 
-            # construct mapper
-            node_left_columns = []
-            if isinstance(node.left, FunctionColumn):
-                for column in node.left.columns:
-                    if isinstance(column, TableColumn):
-                        node_left_columns.append(column)
-            elif isinstance(node.left, TableColumn):
-                node_left_columns.append(node.left)
-            else:
-                raise NotImplementedError('not supported this type of column.')
-
-            for column in node_left_columns:
-                if column not in self.column_condition:
-                    self.column_condition[column] = []
-                self.column_condition[column].append(node)
-
-            # check validity for all condition expression
-            left_validity = True
-            right_validity = True
+            # For AND/OR nodes, recurse into sub-conditions
             if isinstance(node.left, Condition):
-                left_validity = dfs(node.left)
+                dfs(node.left)
             if isinstance(node.right, Condition):
-                right_validity = dfs(node.right)
-            return left_validity and right_validity
+                dfs(node.right)
+
+            # Collect columns from leaf comparison nodes
+            if isinstance(node.left, (TableColumn, FunctionColumn)):
+                node_left_columns = []
+                if isinstance(node.left, FunctionColumn):
+                    for column in node.left.columns:
+                        if isinstance(column, TableColumn):
+                            node_left_columns.append(column)
+                elif isinstance(node.left, TableColumn):
+                    node_left_columns.append(node.left)
+
+                for column in node_left_columns:
+                    if column not in self.column_condition:
+                        self.column_condition[column] = []
+                    self.column_condition[column].append(node)
+
+            # Also check right side for column references (e.g., join conditions)
+            if isinstance(node.right, TableColumn):
+                if node.right not in self.column_condition:
+                    self.column_condition[node.right] = []
+                self.column_condition[node.right].append(node)
+
+            return True
 
         dfs(self.condition)
 
@@ -676,7 +677,61 @@ class Materialize(PhysicalOperator):
 
 
 class Limit(PhysicalOperator):
-    pass
+    def __init__(self, limit_count, offset_count=0):
+        super().__init__('Limit')
+        self.limit_count = limit_count
+        self.offset_count = offset_count
+
+    def get_args(self):
+        return (('limit', self.limit_count), ('offset', self.offset_count)) + super().get_args()
+
+    def open(self):
+        super().open()
+        assert len(self.children) == 1
+        self.children[0].open()
+        self.columns = self.children[0].columns
+
+    def next(self):
+        count = 0
+        skipped = 0
+        for child in self.children:
+            for tup in child.next():
+                if skipped < self.offset_count:
+                    skipped += 1
+                    continue
+                if count >= self.limit_count:
+                    return
+                yield tup
+                count += 1
+
+    def close(self):
+        self.children[0].close()
+        super().close()
+
+
+class Distinct(PhysicalOperator):
+    def __init__(self):
+        super().__init__('Distinct')
+        self._seen = set()
+
+    def open(self):
+        super().open()
+        assert len(self.children) == 1
+        self.children[0].open()
+        self.columns = self.children[0].columns
+
+    def next(self):
+        for child in self.children:
+            for tup in child.next():
+                key = tup
+                if key not in self._seen:
+                    self._seen.add(key)
+                    yield tup
+
+    def close(self):
+        self._seen.clear()
+        self.children[0].close()
+        super().close()
 
 
 class Aggregation(Materialize):

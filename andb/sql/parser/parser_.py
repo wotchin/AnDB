@@ -536,13 +536,24 @@ class SQLParser(sly.Parser):
     def defined_columns(self, p):
         return [p.defined_column]
 
-    @_('id id')
+    @_('id column_type')
     def defined_column(self, p):
-        return [p.id0, p.id1]
+        return [p.id, p.column_type]
 
-    @_('id id NOT NULL')
+    @_('id column_type NOT NULL')
     def defined_column(self, p):
-        return [p.id0, p.id1, True]
+        return [p.id, p.column_type, True]
+
+    # Column type can be a simple id or parameterized like varchar(20) or numeric(5,2)
+    @_('id LPAREN INTEGER RPAREN',
+       'id LPAREN INTEGER COMMA INTEGER RPAREN')
+    def column_type(self, p):
+        # Just use the base type name; we ignore precision/scale parameters
+        return p.id
+
+    @_('id')
+    def column_type(self, p):
+        return p.id
 
     @_('CREATE TABLE identifier LPAREN defined_columns RPAREN')
     def create(self, p):
@@ -568,9 +579,13 @@ class SQLParser(sly.Parser):
         return DropIndex(name=p.identifier)
 
     # Define parsing rule for 'Command'
-    @_('CHECKPOINT')
+    @_('CHECKPOINT',
+       'BEGIN',
+       'COMMIT',
+       'ROLLBACK',
+       'ABORT')
     def command(self, p):
-        return Command(command=p[0])
+        return Command(command=p[0].lower())
 
     # Add new rules for function calls
     @_('identifier LPAREN expr_list RPAREN')

@@ -234,6 +234,129 @@ class TextType(AndbBaseType):
         return b_length
 
 
+class NumericType(AndbBaseType):
+    """NUMERIC/DECIMAL type - stored as Python float internally."""
+    oid = 1009
+    type_name = 'numeric'
+    type_alias = 'decimal'
+    type_bytes = 8
+    type_char = cstructure.CTYPE_TYPE_FLOAT8
+    type_default = 0.0
+    hash_func = partial(hash_functions.hash_float, length=8)
+
+    @staticmethod
+    def cast_from_string(v):
+        return float(v)
+
+    @staticmethod
+    def cast_to_string(v):
+        # Remove trailing zeros for cleaner display
+        if isinstance(v, float):
+            if v == int(v):
+                return str(int(v))
+        return str(v)
+
+
+class SmallintType(AndbBaseType):
+    """SMALLINT type - 2 byte integer."""
+    oid = 1010
+    type_name = 'smallint'
+    type_bytes = 4  # stored as int4 internally for simplicity
+    type_char = cstructure.CTYPE_TYPE_INT4
+    type_default = 0
+    hash_func = partial(hash_functions.hash_int, length=4)
+
+    @staticmethod
+    def cast_from_string(v):
+        return int(v)
+
+    @classmethod
+    def to_bytes(cls, v):
+        v += 0xffffffff >> 1
+        return int.to_bytes(v, length=4, byteorder=BIG_END, signed=False)
+
+    @classmethod
+    def to_datum(cls, b):
+        v = int.from_bytes(b, byteorder=BIG_END, signed=False)
+        v -= 0xffffffff >> 1
+        return v
+
+
+class TimestampType(AndbBaseType):
+    """TIMESTAMP type - stored as text internally for simplicity."""
+    oid = 1011
+    type_name = 'timestamp'
+    type_alias = 'datetime'
+    type_bytes = VARIABLE_LENGTH
+    type_char = cstructure.CTYPE_TYPE_CHAR_ARRAY
+    type_default = ''
+    hash_func = hash_functions.hash_string
+
+    @classmethod
+    def to_bytes(cls, v):
+        if not isinstance(v, str):
+            v = str(v)
+        encoded_v = str.encode(v, encoding='utf8')
+        return (cstructure.pack(_VARIABLE_TYPE_CTYPE, len(encoded_v)) +
+                cstructure.pack(f'{len(encoded_v)}{cls.type_char}', encoded_v))
+
+    @classmethod
+    def to_datum(cls, b):
+        assert len(b) >= VARIABLE_TYPE_HEADER_LENGTH
+        b_length = cstructure.unpack_one(_VARIABLE_TYPE_CTYPE, b[:VARIABLE_TYPE_HEADER_LENGTH])
+        b_content = b[VARIABLE_TYPE_HEADER_LENGTH: VARIABLE_TYPE_HEADER_LENGTH + b_length]
+        return cstructure.unpack_one(f'{len(b_content)}{cls.type_char}', b_content).decode(encoding='utf8')
+
+    @staticmethod
+    def cast_from_string(v):
+        return v
+
+    @classmethod
+    def bytes_length(cls, b):
+        if b is None:
+            return NULL_LENGTH
+        assert len(b) >= VARIABLE_TYPE_HEADER_LENGTH
+        b_length = cstructure.unpack_one(_VARIABLE_TYPE_CTYPE, b[:VARIABLE_TYPE_HEADER_LENGTH])
+        return b_length
+
+
+class DateType(AndbBaseType):
+    """DATE type - stored as text internally for simplicity."""
+    oid = 1012
+    type_name = 'date'
+    type_bytes = VARIABLE_LENGTH
+    type_char = cstructure.CTYPE_TYPE_CHAR_ARRAY
+    type_default = ''
+    hash_func = hash_functions.hash_string
+
+    @classmethod
+    def to_bytes(cls, v):
+        if not isinstance(v, str):
+            v = str(v)
+        encoded_v = str.encode(v, encoding='utf8')
+        return (cstructure.pack(_VARIABLE_TYPE_CTYPE, len(encoded_v)) +
+                cstructure.pack(f'{len(encoded_v)}{cls.type_char}', encoded_v))
+
+    @classmethod
+    def to_datum(cls, b):
+        assert len(b) >= VARIABLE_TYPE_HEADER_LENGTH
+        b_length = cstructure.unpack_one(_VARIABLE_TYPE_CTYPE, b[:VARIABLE_TYPE_HEADER_LENGTH])
+        b_content = b[VARIABLE_TYPE_HEADER_LENGTH: VARIABLE_TYPE_HEADER_LENGTH + b_length]
+        return cstructure.unpack_one(f'{len(b_content)}{cls.type_char}', b_content).decode(encoding='utf8')
+
+    @staticmethod
+    def cast_from_string(v):
+        return v
+
+    @classmethod
+    def bytes_length(cls, b):
+        if b is None:
+            return NULL_LENGTH
+        assert len(b) >= VARIABLE_TYPE_HEADER_LENGTH
+        b_length = cstructure.unpack_one(_VARIABLE_TYPE_CTYPE, b[:VARIABLE_TYPE_HEADER_LENGTH])
+        return b_length
+
+
 class VectorType(AndbBaseType):
     oid = 1008
     type_name = 'vector'
@@ -304,10 +427,14 @@ class AndbTypeForm(CatalogForm):
 _BUILTIN_TYPES = (
     IntegerType, BigintType, RealType, DoubleType,
     BooleanType, CharType, VarcharType, TextType,
-    VectorType
+    VectorType, NumericType, SmallintType, TimestampType, DateType
 )
 
 _BUILTIN_TYPES_DICT = {i.type_name: i for i in _BUILTIN_TYPES}
+# Add all aliases to the dict
+for _t in _BUILTIN_TYPES:
+    if _t.type_alias:
+        _BUILTIN_TYPES_DICT[_t.type_alias] = _t
 
 
 class AndbTypeTable(CatalogTable):
@@ -330,6 +457,11 @@ class AndbTypeTable(CatalogTable):
                 self._lookup_cache[r.type_name] = r
                 if r.type_alias != '':
                     self._lookup_cache[r.type_alias] = r
+        # Strip type parameters like numeric(5,2) or varchar(20)
+        base_name = name.split('(')[0].strip().lower()
+        if base_name in self._lookup_cache:
+            r = self._lookup_cache[base_name]
+            return _BUILTIN_TYPES_DICT[r.type_name]
         r = self._lookup_cache[name]
         return _BUILTIN_TYPES_DICT[r.type_name]
 

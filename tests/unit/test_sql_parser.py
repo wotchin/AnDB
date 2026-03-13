@@ -111,4 +111,4 @@ def test_ddl():
 
 def test_checkpoint():
     assert_parsing("CHECKPOINT",
-                   "<Command command=CHECKPOINT>")
+                   "<Command command=checkpoint>")

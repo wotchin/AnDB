@@ -75,9 +75,11 @@ class ConditionTransformation(BaseTransformation):
             left_node = dfs(node.left)
             right_node = dfs(node.right)
 
-            # only convert constant
+            # only fold constants - both sides must be plain values (not Conditions or columns)
             if (not isinstance(left_node, AbstractColumn) and
-                    not isinstance(right_node, AbstractColumn)):
+                    not isinstance(right_node, AbstractColumn) and
+                    not isinstance(left_node, Condition) and
+                    not isinstance(right_node, Condition)):
                 return expression_eval(node.expr.value, node.left, node.right)
             else:
                 node.left = left_node
@@ -443,10 +445,13 @@ class SelectTransformation(BaseTransformation):
         cls.transform_order_clause(ast, query)
         cls.transform_group_clause(ast, query)
 
-        #TODO: distinct
-        #TODO: limit
-
         query.distinct = ast.distinct
+
+        # LIMIT and OFFSET
+        if ast.limit is not None:
+            query.limit = ast.limit.value
+        if ast.offset is not None:
+            query.offset = getattr(ast.offset, 'value', ast.offset)
 
         if QueryLogicalPlanTransformation.match(query):
             query = QueryLogicalPlanTransformation.on_transform(query)
@@ -533,9 +538,16 @@ class UpdateTransformation(BaseTransformation):
                                        column_name=column_name))
             if isinstance(value_expr, Constant):
                 values.append(value_expr.value)
+            elif isinstance(value_expr, Identifier):
+                # Reference to another column - store as TableColumn for runtime eval
+                values.append(value_expr)
             else:
-                raise NotImplementedError('not supported this syntax yet.')
-        condition = ConditionTransformation.on_transform(Condition(ast.where))
+                # Store the expression AST node for runtime evaluation
+                # (e.g., BinaryOperation for col = col + 1)
+                values.append(value_expr)
+        condition = None
+        if ast.where:
+            condition = ConditionTransformation.on_transform(Condition(ast.where))
 
         select = Select(targets=[Star()])
         select.from_table = ast.table

@@ -1,3 +1,5 @@
+import logging
+
 from andb.catalog.oid import INVALID_OID, OID_TEMP_TABLE
 from andb.catalog.syscache import CATALOG_ANDB_CLASS, CATALOG_ANDB_INDEX, CATALOG_ANDB_ATTRIBUTE
 from andb.errno.errors import InitializationStageError
@@ -6,6 +8,11 @@ from andb.executor.operator.physical.select import TableScan, IndexScan, Covered
 from andb.runtime import session_vars
 from andb.storage.engines.heap.relation import RelationKinds
 from .base import BaseImplementation
+from .cost_model import (
+    cost_table_scan, cost_index_scan, cost_covered_index_scan,
+    cost_nested_loop_join, cost_sort, cost_hash_aggregation,
+    CostEstimate
+)
 from .patterns import *
 
 
@@ -36,18 +43,18 @@ class ScanImplementation(BaseImplementation):
 
     @staticmethod
     def _extract_predicates(condition: Condition):
-        #TODO: process OR
         predicates = []
         if not condition:
             return predicates
         for node in condition.get_iterator():
+            if node.expr.value == 'or':
+                # When OR is present, we cannot use index scans reliably.
+                # Return empty predicates to force a table scan with filter.
+                return []
             if node.is_constant_comparison():
                 predicates.append(node)
             elif node.is_function_comparison():
                 predicates.append(node)
-            if node.expr.value == 'or':
-                raise NotImplementedError('not supported OR expression')
-            
         return predicates
 
     @staticmethod
@@ -65,16 +72,11 @@ class ScanImplementation(BaseImplementation):
     
     @staticmethod
     def _is_covered_index_matched(index_forms, table_attr_nums):
-        index_attr_nums = [form.attr_num for form in index_forms]
-        if len(index_attr_nums) != len(table_attr_nums):
-            return False
-        for i, index_attr_num in enumerate(index_attr_nums):
-            for j, table_attr_num in enumerate(table_attr_nums):
-                #TODO: now, we only support single column index
-                if table_attr_num == index_attr_num:
-                    # if follows leftmost prefix rule, all attributions must be the same order
-                    if i != j:
-                        return False
+        """Check if the index covers all target columns (for index-only scan)."""
+        index_attr_nums = set(form.attr_num for form in index_forms)
+        for attr_num in table_attr_nums:
+            if attr_num not in index_attr_nums:
+                return False
         return True
 
     @classmethod
@@ -115,31 +117,56 @@ class ScanImplementation(BaseImplementation):
             if cls._is_index_matched(all_indexes[index_oid], predicate_attr_nums, follow_leftmost_prefix_rule=True):
                 candidate_indexes.append(index_oid)
 
-        #TODO: use selectivity
+        # Cost-based scan selection with rule-based fallbacks
+        filter_ = Filter(scan_operator.condition)
+
         if len(candidate_indexes) == 0:
             return TableScan(relation_oid=scan_operator.table_oid, columns=scan_operator.table_columns,
-                             filter_=Filter(scan_operator.condition))
+                             filter_=filter_)
 
-        # rule: try to choose covered index scan first
+        # Rule 1: Try covered index scan first (index-only scan, no heap fetch)
         target_form_nums = []
         for column in scan_operator.table_columns:
             for table_form in table_forms:
                 if column.column_name == table_form.name:
                     target_form_nums.append(table_form.num)
         for index_oid in candidate_indexes:
-            # if they are both length, it means we got a covered index.
             if cls._is_covered_index_matched(all_indexes[index_oid], target_form_nums):
                 return CoveredIndexScan(relation_oid=index_oid, columns=scan_operator.table_columns,
-                                        filter_=Filter(scan_operator.condition))
+                                        filter_=filter_)
 
-        # rule: choose the shortest index
+        # Rule 2: Use cost model to decide between table scan and index scan
+        table_scan_cost = cost_table_scan(scan_operator.table_oid, scan_operator.condition)
+
+        best_index_oid = None
+        best_index_cost = None
+        for index_oid in candidate_indexes:
+            idx_cost = cost_index_scan(index_oid, scan_operator.table_oid, scan_operator.condition)
+            if best_index_cost is None or idx_cost < best_index_cost:
+                best_index_cost = idx_cost
+                best_index_oid = index_oid
+
+        # Rule 3: Prefer index scan if it's cheaper than table scan
+        if best_index_oid is not None and best_index_cost < table_scan_cost:
+            logging.debug(f"Cost-based: chose IndexScan (cost={best_index_cost.total_cost:.2f}) "
+                          f"over TableScan (cost={table_scan_cost.total_cost:.2f})")
+            return IndexScan(relation_oid=best_index_oid, columns=scan_operator.table_columns,
+                             filter_=filter_)
+
+        # Rule 4: Fallback - if only one candidate index exists, use it
+        # (heuristic: the optimizer found a matching index, prefer it)
+        if len(candidate_indexes) == 1:
+            return IndexScan(relation_oid=candidate_indexes[0], columns=scan_operator.table_columns,
+                             filter_=filter_)
+
+        # Rule 5: Among multiple candidate indexes, choose shortest (fewest columns)
         shortest_index_oid = candidate_indexes[0]
         for index_oid in candidate_indexes:
             if len(all_indexes[index_oid]) <= len(all_indexes[shortest_index_oid]):
                 shortest_index_oid = index_oid
 
         return IndexScan(relation_oid=shortest_index_oid, columns=scan_operator.table_columns,
-                         filter_=Filter(scan_operator.condition))
+                         filter_=filter_)
 
     @classmethod
     def match(cls, operator) -> bool:
@@ -187,7 +214,7 @@ class AggregationImplementation(BaseImplementation):
         else:
             agg_condition = None
         return select.HashAggregation(function_name=old_operator.aggregate_function.function_name,
-                                      aggregation_columns=old_operator.aggregate_function.table_columns,
+                                      aggregation_columns=old_operator.aggregate_function.columns,
                                       grouping_columns=old_operator.group_by_columns,
                                       agg_condition=agg_condition)
 
@@ -233,10 +260,25 @@ class QueryImplementation(BaseImplementation):
     @classmethod
     def on_implement(cls, old_operator: LogicalQuery):
         physical_query = select.PhysicalQuery(old_operator)
-        #TODO: non-SJP, estimation
         root_node = cls.implement_tree(physical_query.logical_query.children[0])
-        physical_query.add_child(root_node)
 
+        # Add DISTINCT operator if requested
+        if old_operator.distinct:
+            distinct_node = select.Distinct()
+            distinct_node.add_child(root_node)
+            root_node = distinct_node
+
+        # Add LIMIT/OFFSET operator if specified
+        if old_operator.limit is not None:
+            offset = getattr(old_operator, 'offset', None) or 0
+            limit_node = select.Limit(
+                limit_count=old_operator.limit,
+                offset_count=offset
+            )
+            limit_node.add_child(root_node)
+            root_node = limit_node
+
+        physical_query.add_child(root_node)
         return physical_query
 
 

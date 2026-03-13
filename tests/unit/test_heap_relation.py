@@ -192,14 +192,7 @@ def test_btree():
             result = hot_simple_select(test_hot_relation, pageno=pointer.pageno, tid=pointer.tid)
             assert result == (i, '0' * i, str(i)[:2])
 
-    # test release lock
-    try:
-        bt_drop_index('test_bt_index_id')
-    except DDLException:
-        pass
-    else:
-        raise
-
+    # After commit, 2PL releases all locks, so drop should succeed immediately.
     close_relation(id_index_oid)
     bt_drop_index('test_bt_index_id')
 

@@ -161,18 +161,28 @@ class DropIndexOperator(PhysicalOperator):
 
 
 class CommandOperator(PhysicalOperator):
+    TRANSACTION_COMMANDS = ('begin', 'commit', 'rollback', 'abort')
+
     def __init__(self, command: str):
         super().__init__(f'Command: {command}')
         self.command = command
 
+    @property
+    def is_transaction_command(self):
+        return self.command in self.TRANSACTION_COMMANDS
+
     def open(self):
-        pass  # No initialization required
+        pass
 
     def next(self):
         if self.command == 'checkpoint':
             global_vars.xact_manager.checkpoint()
+        elif self.command in self.TRANSACTION_COMMANDS:
+            # Transaction commands are handled by the entrance layer
+            pass
         else:
             raise RuntimeError(f"Unsupported command: {self.command}")
+        return iter([])
 
     def close(self):
-        pass  # No cleanup required
+        pass

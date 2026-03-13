@@ -1,15 +1,38 @@
-from andb.catalog.syscache import CATALOG_ANDB_INDEX
+from andb.catalog.syscache import CATALOG_ANDB_INDEX, CATALOG_ANDB_ATTRIBUTE
 from andb.errno.errors import InitializationStageError
 from andb.storage.engines.heap.bptree import TuplePointer
 from andb.storage.engines.heap.relation import bt_update, hot_simple_update, open_relation, close_relation, bt_delete, \
     bt_simple_insert
 from andb.storage.lock import rlock
 from andb.executor.operator.physical.select import Scan
+from andb.executor.operator.utils import expression_eval
 from andb.catalog.oid import INVALID_OID
+from andb.sql.parser.ast.operation import BinaryOperation
+from andb.sql.parser.ast.identifier import Identifier
+from andb.sql.parser.ast.misc import Constant
 
 from ..logical import Condition, TableColumn
 from .select import Filter
 from .base import PhysicalOperator
+
+
+def _eval_update_expr(expr, old_tuple, attr_name_to_num):
+    """Evaluate an expression in UPDATE SET context using the old row values."""
+    if isinstance(expr, Constant):
+        return expr.value
+    elif isinstance(expr, Identifier):
+        col_name = expr.parts.split('.')[-1]
+        if col_name in attr_name_to_num:
+            return old_tuple[attr_name_to_num[col_name]]
+        raise InitializationStageError(f'column {col_name} not found')
+    elif isinstance(expr, BinaryOperation):
+        left = _eval_update_expr(expr.args[0], old_tuple, attr_name_to_num)
+        right = _eval_update_expr(expr.args[1], old_tuple, attr_name_to_num)
+        return expression_eval(expr.op, left, right)
+    elif isinstance(expr, (int, float, str, bool, type(None))):
+        return expr
+    else:
+        raise InitializationStageError(f'unsupported expression type in UPDATE: {type(expr)}')
 
 
 class UpdatePhysicalOperator(PhysicalOperator):
@@ -29,11 +52,12 @@ class UpdatePhysicalOperator(PhysicalOperator):
         # can use index scan :)
         self.scan = scan_operator
         self.attr_num_value_pair = attr_num_value_pair
+        self._attr_name_to_num = None
 
     def _need_to_modify_key(self, index_attrs):
-        for table_attr in self.attr_num_value_pair:
+        for attr_num in self.attr_num_value_pair:
             for index_attr in index_attrs:
-                if table_attr.num == index_attr.attr_num:
+                if attr_num == index_attr.attr_num:
                     return True
         return False
 
@@ -46,6 +70,10 @@ class UpdatePhysicalOperator(PhysicalOperator):
         self.relation = open_relation(self.table_oid, rlock.ROW_EXCLUSIVE_LOCK)
         if not self.relation:
             raise InitializationStageError(f'cannot open relation {self.table_oid} for update.')
+
+        # Build name->num mapping for expression evaluation
+        table_attrs = CATALOG_ANDB_ATTRIBUTE.get_table_forms(self.table_oid)
+        self._attr_name_to_num = {attr.name: attr.num for attr in table_attrs}
 
         self.index_relations = {}  # e.g., {relation: [form0, form1, ...]}
         self.modify_index_relations = set()
@@ -65,12 +93,23 @@ class UpdatePhysicalOperator(PhysicalOperator):
         self.scan.open()
 
     def next(self):
+        # Materialize scan results first to avoid the Halloween problem:
+        # without materialization, newly inserted tuples from updates could be
+        # visited again by the scan, causing duplicate updates.
+        scan_results = []
         for tuple_ in self.scan.next():
             pageno, tid = self.scan.get_cursor()
+            scan_results.append((tuple_, pageno, tid))
+
+        for tuple_, pageno, tid in scan_results:
             # update both heap table and indexes
             new_tuple = list(tuple_)
             for attr_num, new_value in self.attr_num_value_pair.items():
-                new_tuple[attr_num] = new_value
+                # If value is an AST expression, evaluate it against the current row
+                if isinstance(new_value, (BinaryOperation, Identifier)):
+                    new_tuple[attr_num] = _eval_update_expr(new_value, tuple_, self._attr_name_to_num)
+                else:
+                    new_tuple[attr_num] = new_value
             new_pageno, new_tid = hot_simple_update(relation=self.relation, pageno=pageno, tid=tid,
                                                     python_tuple=new_tuple)
             new_tuple_pointer = TuplePointer(new_pageno, new_tid)

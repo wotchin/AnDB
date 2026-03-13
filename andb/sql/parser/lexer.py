@@ -45,6 +45,9 @@ class SQLLexer(sly.Lexer):
         FLOAT, INTEGER, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE,
         CAST,
 
+        # TRANSACTION
+        BEGIN, COMMIT, ROLLBACK, ABORT,
+
         # COMMANDS
         CHECKPOINT
     }
@@ -94,6 +97,10 @@ class SQLLexer(sly.Lexer):
     SET = 'SET'
     INTO = 'INTO'
     VALUES = 'VALUES'
+    BEGIN = r'\bBEGIN\b'
+    COMMIT = r'\bCOMMIT\b'
+    ROLLBACK = r'\bROLLBACK\b'
+    ABORT = r'\bABORT\b'
     CHECKPOINT = 'CHECKPOINT'
 
     DOT = r'\.'

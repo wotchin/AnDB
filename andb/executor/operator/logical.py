@@ -128,14 +128,18 @@ class Condition(LogicalOperator):
             elif len(items) == 1:
                 return TableColumn(table_name=None, column_name=node.parts)
             else:
-                raise
+                raise ValueError(f'invalid identifier: {node.parts}')
         elif isinstance(node, Function):
             columns = []
             for arg in node.args:
                 columns.append(Condition._convert(arg))
             return FunctionColumn(function_name=node.op, columns=columns)
+        elif isinstance(node, BinaryOperation):
+            # Recursively create a sub-Condition for nested expressions
+            # (e.g., left/right side of AND/OR)
+            return Condition(node)
         else:
-            raise
+            raise ValueError(f'unsupported node type in condition: {type(node)}')
 
     def add_child(self, child_operator):
         assert isinstance(child_operator, Condition)
@@ -152,6 +156,11 @@ class Condition(LogicalOperator):
         node_queue = [root_node]
         while len(node_queue) > 0:
             node = node_queue.pop(0)
+            # Traverse left/right sub-conditions (e.g., AND/OR children)
+            if isinstance(node.left, Condition):
+                node_queue.append(node.left)
+            if isinstance(node.right, Condition):
+                node_queue.append(node.right)
             for child in node.children:
                 if isinstance(child, Condition):
                     node_queue.append(child)

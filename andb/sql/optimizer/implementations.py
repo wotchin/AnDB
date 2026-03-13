@@ -43,18 +43,18 @@ class ScanImplementation(BaseImplementation):
 
     @staticmethod
     def _extract_predicates(condition: Condition):
-        #TODO: process OR
         predicates = []
         if not condition:
             return predicates
         for node in condition.get_iterator():
+            if node.expr.value == 'or':
+                # When OR is present, we cannot use index scans reliably.
+                # Return empty predicates to force a table scan with filter.
+                return []
             if node.is_constant_comparison():
                 predicates.append(node)
             elif node.is_function_comparison():
                 predicates.append(node)
-            if node.expr.value == 'or':
-                raise NotImplementedError('not supported OR expression')
-            
         return predicates
 
     @staticmethod
@@ -72,16 +72,11 @@ class ScanImplementation(BaseImplementation):
     
     @staticmethod
     def _is_covered_index_matched(index_forms, table_attr_nums):
-        index_attr_nums = [form.attr_num for form in index_forms]
-        if len(index_attr_nums) != len(table_attr_nums):
-            return False
-        for i, index_attr_num in enumerate(index_attr_nums):
-            for j, table_attr_num in enumerate(table_attr_nums):
-                #TODO: now, we only support single column index
-                if table_attr_num == index_attr_num:
-                    # if follows leftmost prefix rule, all attributions must be the same order
-                    if i != j:
-                        return False
+        """Check if the index covers all target columns (for index-only scan)."""
+        index_attr_nums = set(form.attr_num for form in index_forms)
+        for attr_num in table_attr_nums:
+            if attr_num not in index_attr_nums:
+                return False
         return True
 
     @classmethod
@@ -219,7 +214,7 @@ class AggregationImplementation(BaseImplementation):
         else:
             agg_condition = None
         return select.HashAggregation(function_name=old_operator.aggregate_function.function_name,
-                                      aggregation_columns=old_operator.aggregate_function.table_columns,
+                                      aggregation_columns=old_operator.aggregate_function.columns,
                                       grouping_columns=old_operator.group_by_columns,
                                       agg_condition=agg_condition)
 

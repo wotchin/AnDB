@@ -12,7 +12,8 @@ import struct
 import threading
 import random
 
-from andb.entrance import execute_simple_query
+from andb.entrance import execute_simple_query, _get_explicit_xid
+from andb.constants.macros import INVALID_XID
 from andb.executor.portal import ExecuteResultSet, ExecutionResult
 from andb.net.protocol import (
     parse_startup_message,
@@ -174,6 +175,13 @@ class ClientConnection:
                                  f'Unsupported message type: {chr(msg_type)}')
                 self.sock.sendall(build_ready_for_query(self.transaction_status))
 
+    def _update_transaction_status(self):
+        """Update transaction status based on whether we're in an explicit transaction."""
+        if _get_explicit_xid() != INVALID_XID:
+            self.transaction_status = TRANSACTION_IN_BLOCK
+        else:
+            self.transaction_status = TRANSACTION_IDLE
+
     def _handle_simple_query(self, payload):
         """Handle a simple query message ('Q')."""
         query_string = parse_query_message(payload)
@@ -187,15 +195,29 @@ class ClientConnection:
 
         try:
             result = execute_simple_query(query_string)
-            self._send_query_result(result, query_string)
+            self._update_transaction_status()
+            if isinstance(result, list):
+                # Multi-statement query: send each result separately
+                for sub_query, sub_result in result:
+                    self._send_query_result(sub_result, sub_query)
+            else:
+                self._send_query_result(result, query_string)
         except RollbackError as e:
+            self._update_transaction_status()
+            if self.transaction_status == TRANSACTION_IN_BLOCK:
+                self.transaction_status = TRANSACTION_FAILED
             self._send_error('ERROR', '42000', str(e))
         except FatalError as e:
+            self._update_transaction_status()
             self._send_error('FATAL', '58000', str(e))
         except NotImplementedError as e:
+            self._update_transaction_status()
             self._send_error('ERROR', '0A000', str(e))
         except Exception as e:
             logger.error(f"Query execution error: {e}", exc_info=True)
+            self._update_transaction_status()
+            if self.transaction_status == TRANSACTION_IN_BLOCK:
+                self.transaction_status = TRANSACTION_FAILED
             self._send_error('ERROR', 'XX000', f'Internal error: {e}')
 
         self.sock.sendall(build_ready_for_query(self.transaction_status))
@@ -203,7 +225,8 @@ class ClientConnection:
     def _send_query_result(self, result, query_string):
         """Send query results back to the client."""
         if result is None:
-            self.sock.sendall(build_command_complete('SELECT 0'))
+            cmd_tag = self._make_command_tag(query_string, result)
+            self.sock.sendall(build_command_complete(cmd_tag))
             return
 
         if isinstance(result, ExecuteResultSet):
@@ -242,11 +265,14 @@ class ClientConnection:
                 row_count = len(result.tuples)
             return f'SELECT {row_count}'
         elif query_upper.startswith('INSERT'):
-            return f'INSERT 0 {result.effect_rows}'
+            effect_rows = result.effect_rows if result else 0
+            return f'INSERT 0 {effect_rows}'
         elif query_upper.startswith('UPDATE'):
-            return f'UPDATE {result.effect_rows}'
+            effect_rows = result.effect_rows if result else 0
+            return f'UPDATE {effect_rows}'
         elif query_upper.startswith('DELETE'):
-            return f'DELETE {result.effect_rows}'
+            effect_rows = result.effect_rows if result else 0
+            return f'DELETE {effect_rows}'
         elif query_upper.startswith('CREATE TABLE'):
             return 'CREATE TABLE'
         elif query_upper.startswith('CREATE INDEX'):
@@ -260,6 +286,14 @@ class ClientConnection:
             if isinstance(result, ExecuteResultSet):
                 row_count = len(result.tuples)
             return f'EXPLAIN {row_count}'
+        elif query_upper.startswith('BEGIN'):
+            return 'BEGIN'
+        elif query_upper.startswith('COMMIT'):
+            return 'COMMIT'
+        elif query_upper.startswith('ROLLBACK') or query_upper.startswith('ABORT'):
+            return 'ROLLBACK'
+        elif query_upper.startswith('CHECKPOINT'):
+            return 'CHECKPOINT'
         else:
             return 'OK'
 

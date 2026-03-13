@@ -4,6 +4,7 @@ from unittest.mock import patch, MagicMock
 import shutil
 import time
 
+from andb.common.file_operation import _FD_SLRU
 from andb.constants.filename import WAL_DIR, UNDO_DIR
 from andb.storage.engines.heap.redo import WALManager, WALRecord, WALAction, WALPage
 from andb.storage.engines.heap.undo import UndoManager, UndoRecord, UndoOperation
@@ -20,6 +21,15 @@ class TestRedoUndo(unittest.TestCase):
 
     def setUp(self):
         """Set up test environment before each test."""
+        # Close and clear any cached file descriptors from prior tests
+        for key in list(_FD_SLRU.cache.keys()):
+            fd = _FD_SLRU.pop(key)
+            if fd:
+                try:
+                    fd.close()
+                except Exception:
+                    pass
+
         for dir_path in [WAL_DIR, UNDO_DIR]:
             if os.path.exists(dir_path):
                 shutil.rmtree(dir_path, ignore_errors=True)

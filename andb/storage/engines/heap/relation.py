@@ -209,8 +209,9 @@ def open_relation(oid, lock_mode=rlock.ACCESS_SHARE_LOCK):
 def close_relation(oid, lock_mode=rlock.ACCESS_SHARE_LOCK):
     relation = __relcache[oid]
     if lock_mode != rlock.NO_LOCK:
-        if not rlock.lock_release(relation.oid, lock_mode):
-            raise RollbackError('cannot release lock')
+        # Lock may have already been released by lock_release_all() during
+        # transaction commit/abort (2PL shrinking phase). That's expected.
+        rlock.lock_release(relation.oid, lock_mode)
     relation.refcount -= 1
     if relation.refcount == 0:
         relation.opened = False

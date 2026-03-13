@@ -188,6 +188,7 @@ class LogicalQuery(LogicalOperator):
         self.condition = None
         self.alias = {}
         self.limit = None
+        self.offset = None
         self.distinct = False
 
         self._seen_table_columns = set()

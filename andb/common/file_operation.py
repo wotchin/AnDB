@@ -110,8 +110,10 @@ def file_extend(fd: FileDescriptor, size=1024):
 
 
 def directio_file_open(filepath, flags, mode=FILE_MODE):
-    if unix_like_env:
-        flags |= os.O_DIRECT
+    # Note: O_DIRECT requires page-aligned memory buffers for all I/O operations.
+    # Python's built-in bytes/bytearray objects are not guaranteed to be aligned,
+    # so O_DIRECT will cause EINVAL errors on Linux. Since we already use fsync()
+    # for durability, O_DIRECT is not required. We use regular buffered I/O instead.
     return file_open(filepath, flags, mode)
 
 

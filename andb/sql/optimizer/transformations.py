@@ -443,10 +443,13 @@ class SelectTransformation(BaseTransformation):
         cls.transform_order_clause(ast, query)
         cls.transform_group_clause(ast, query)
 
-        #TODO: distinct
-        #TODO: limit
-
         query.distinct = ast.distinct
+
+        # LIMIT and OFFSET
+        if ast.limit is not None:
+            query.limit = ast.limit.value
+        if ast.offset is not None:
+            query.offset = getattr(ast.offset, 'value', ast.offset)
 
         if QueryLogicalPlanTransformation.match(query):
             query = QueryLogicalPlanTransformation.on_transform(query)

@@ -351,10 +351,13 @@ class WALManager:
 
             i = 0
             while i < len(wal_page.records):
+                remaining_bytes = len(wal_page.records) - i
+                if remaining_bytes < WALRecord.Header.size():
+                    # Not enough bytes left for a record header - this is padding
+                    break
                 record_size = WALRecord.parse_record_size(wal_page.records[i: i + WALRecord.Header.size()])
                 if record_size == 0:
                     # reach padding empty bytes
-                    assert len(wal_page.records) - i <= WALRecord.Header.size()
                     break
                 record = WALRecord.unpack(bytes(wal_page.records[i: i + record_size]))
                 if record._header.action == WALAction.TO_BE_CONTINUED:

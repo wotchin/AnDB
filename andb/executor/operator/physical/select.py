@@ -676,7 +676,61 @@ class Materialize(PhysicalOperator):
 
 
 class Limit(PhysicalOperator):
-    pass
+    def __init__(self, limit_count, offset_count=0):
+        super().__init__('Limit')
+        self.limit_count = limit_count
+        self.offset_count = offset_count
+
+    def get_args(self):
+        return (('limit', self.limit_count), ('offset', self.offset_count)) + super().get_args()
+
+    def open(self):
+        super().open()
+        assert len(self.children) == 1
+        self.children[0].open()
+        self.columns = self.children[0].columns
+
+    def next(self):
+        count = 0
+        skipped = 0
+        for child in self.children:
+            for tup in child.next():
+                if skipped < self.offset_count:
+                    skipped += 1
+                    continue
+                if count >= self.limit_count:
+                    return
+                yield tup
+                count += 1
+
+    def close(self):
+        self.children[0].close()
+        super().close()
+
+
+class Distinct(PhysicalOperator):
+    def __init__(self):
+        super().__init__('Distinct')
+        self._seen = set()
+
+    def open(self):
+        super().open()
+        assert len(self.children) == 1
+        self.children[0].open()
+        self.columns = self.children[0].columns
+
+    def next(self):
+        for child in self.children:
+            for tup in child.next():
+                key = tup
+                if key not in self._seen:
+                    self._seen.add(key)
+                    yield tup
+
+    def close(self):
+        self._seen.clear()
+        self.children[0].close()
+        super().close()
 
 
 class Aggregation(Materialize):

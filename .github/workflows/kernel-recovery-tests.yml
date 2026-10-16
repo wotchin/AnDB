@@ -1,0 +1,40 @@
+name: Kernel recovery regression
+
+on:
+  push:
+    branches: ['fix/kernel-recovery-acid-20261016']
+  pull_request:
+    branches: ['kernel-wip']
+
+permissions:
+  contents: read
+
+jobs:
+  kernel-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Archive exact tested source
+        run: git archive --format=tar.gz HEAD > /tmp/kernel-source.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kernel-source
+          path: /tmp/kernel-source.tar.gz
+          retention-days: 7
+      - name: Install test dependencies
+        run: python -m pip install -r requirements.txt -r requirements-test.txt pytest-timeout
+      - name: Run kernel tests
+        run: python -m pytest tests/unit -ra --timeout=120 --junitxml=/tmp/kernel-tests.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kernel-test-results
+          path: /tmp/kernel-tests.xml
+          if-no-files-found: ignore
+          retention-days: 14

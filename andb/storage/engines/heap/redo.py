@@ -1,17 +1,22 @@
+"""Physical WAL positions are byte offsets, including page headers and padding.
+
+A record's end_lsn is the *exclusive* end of its last fragment (and padding).
+Only complete logical records are exposed to recovery. Existing WAL framing is
+retained; the new page-image actions carry their own versioned payload.
+"""
 import os
+import re
+import threading
 
 from andb.common.cstructure import CStructure, Integer4Field, Integer8Field
-from andb.common.file_operation import directio_file_open, file_close, file_tell, file_extend, file_write, file_read, \
-    file_lseek
 from andb.constants.filename import WAL_DIR
 from andb.constants.values import WAL_SEGMENT_SIZE, WAL_PAGE_SIZE
 from andb.errno.errors import WALError
 from andb.runtime.global_vars import wal_buffer_size
-from andb.storage.lock.lwlock import LWLockName, lwlock_release, lwlock_acquire
 
 
 class WALAction:
-    TO_BE_CONTINUED = 0  # follow by previous page
+    TO_BE_CONTINUED = 0
     CHECKPOINT = 1
     BEGIN = 2
     COMMIT = 3
@@ -23,6 +28,18 @@ class WALAction:
     BTREE_INSERT = 9
     BTREE_DELETE = 10
     BTREE_UPDATE = 11
+    PAGE_UPDATE = 12
+    COMPENSATION = 13
+
+
+def sync_directory(path):
+    """Make newly created/replaced filenames durable on POSIX."""
+    if os.name == 'posix':
+        fd = os.open(path, os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
 
 
 class WALRecord:
@@ -36,30 +53,33 @@ class WALRecord:
         action = Integer4Field(unsigned=True)
 
     def __init__(self, xid, oid, pageno, tid, action, data):
-        assert isinstance(data, bytes)
-
+        if not isinstance(data, bytes):
+            raise TypeError('WAL data must be bytes')
         self._header = self.Header()
         self._header.total_size = self._header.size() + len(data)
-        self._header.xid = xid
-        self._header.oid = oid
-        self._header.pageno = pageno
-        self._header.tid = tid
+        self._header.xid, self._header.oid = xid, oid
+        self._header.pageno, self._header.tid = pageno, tid
         self._header.action = action
-        self.data = data
-
-        # there is some padding bytes follows the tuple due to align
         self._header.padding_size = 0
+        self.data = data
+        self.start_lsn = None
+        self.end_lsn = None
 
     def pack(self):
         return self._header.pack() + self.data
 
     @classmethod
     def unpack(cls, data):
+        if len(data) < cls.header_size():
+            raise WALError('Truncated WAL record header')
         header = cls.Header()
         header.unpack(data[:header.size()])
-        real_data = data[header.size():]
-        assert len(data) == header.total_size  # validate
-        return cls(xid=header.xid, oid=header.oid, pageno=header.pageno, tid=header.tid, action=header.action, data=real_data)
+        if len(data) != header.total_size or header.total_size < header.size():
+            raise WALError('Invalid WAL record length')
+        record = cls(header.xid, header.oid, header.pageno, header.tid,
+                     header.action, data[header.size():])
+        record._header.padding_size = header.padding_size
+        return record
 
     @classmethod
     def header_size(cls):
@@ -67,11 +87,10 @@ class WALRecord:
 
     @classmethod
     def parse_record_size(cls, data):
-        assert len(data) >= cls.header_size()
         header = cls.Header()
         header.unpack(data[:cls.header_size()])
         return header.total_size
-        
+
     @property
     def total_size(self):
         return self._header.total_size
@@ -100,7 +119,7 @@ class WALPage:
 
     def __init__(self, start_lsn, written_size):
         self.header = self.Header()
-        self.header.lsn = start_lsn  # address of the page
+        self.header.lsn = start_lsn
         self.header.last_page_written_size = written_size
         self.records = bytearray()
 
@@ -109,272 +128,273 @@ class WALPage:
         return len(self.records)
 
     def is_full(self):
-        assert self.records_size + self.header.size() <= WAL_PAGE_SIZE
-        # If remaining space of the page cannot contain a record header,
-        # we also think the page is full.
-        current_size = self.records_size + self.header.size()
-        return (WAL_PAGE_SIZE - WALRecord.Header.size()) <= current_size <= WAL_PAGE_SIZE
+        return len(self.pack()) == WAL_PAGE_SIZE
 
-    def calc_remaining_size(self, record: WALRecord):
-        record_size = record._header.total_size
-        later_records_size = record_size + self.records_size
-        remaining = (later_records_size + self.header.size()) - WAL_PAGE_SIZE
-        return remaining if remaining > 0 else 0
+    def calc_remaining_size(self, record):
+        return max(0, self.header.size() + self.records_size + record.total_size - WAL_PAGE_SIZE)
 
-    def append_record(self, record: WALRecord):
-        """If failed, return False."""
-        assert not self.is_full()
-
-        remaining = self.calc_remaining_size(record)
-        if remaining > 0:
+    def append_record(self, record):
+        if self.is_full() or self.calc_remaining_size(record):
             return False
-
-        self.records += record.pack()
-
-        if self.header.size() + self.records_size + WALRecord.Header.size() >= WAL_PAGE_SIZE:
-            # padding with blank bytes
-            padding_size = WAL_PAGE_SIZE - (self.header.size() + self.records_size)
-            self.records += bytes(padding_size)
-            record._header.padding_size = padding_size  # mark
+        remaining = WAL_PAGE_SIZE - self.header.size() - self.records_size - record.total_size
+        record._header.padding_size = remaining if remaining <= WALRecord.header_size() else 0
+        # Set padding BEFORE serializing the header; preserve it on unpack.
+        self.records.extend(record.pack())
+        self.records.extend(bytes(record._header.padding_size))
         return True
 
     def pack(self):
-        assert self.header.size() + self.records_size <= WAL_PAGE_SIZE
         return self.header.pack() + bytes(self.records)
 
     @classmethod
     def unpack(cls, data):
+        if len(data) < cls.Header.size() or len(data) > WAL_PAGE_SIZE:
+            raise WALError('Invalid WAL page length')
         header = cls.Header()
         header.unpack(data[:header.size()])
-        record_data = data[header.size():]
-        o = cls(start_lsn=header.lsn, written_size=header.last_page_written_size)
-        # parse record data
-        i = 0
-        while i < len(record_data):
-            record_header_data = record_data[i: i + WALRecord.Header.size()]
-            if len(record_header_data) < WALRecord.Header.size():
-                # It is not enough to parse a record. In this case,
-                # the page is filled with blank bytes to align.
-                # The routine shouldn't run here as we check padding_size ahead.
-                assert False
-            record_size = WALRecord.parse_record_size(record_header_data)
-            if record_size == 0:
-                # Empty bytes will be parsed that record_size is zero, which means
-                # we parsed all valid records.
-                # A certain scenario is extended empty bytes for segment file.
+        page = cls(header.lsn, header.last_page_written_size)
+        offset = header.size()
+        while offset < len(data):
+            tail = data[offset:]
+            if not any(tail):
+                if len(data) == WAL_PAGE_SIZE:
+                    page.records.extend(tail)
                 break
-            record = WALRecord.unpack(record_data[i: i + record_size])
-            o.append_record(record)
-            i += record._header.total_size
-            # if the record has a non-zero padding_size, it is the last one of page.
-            if record._header.padding_size > 0:
-                break
-        return o
+            if len(tail) < WALRecord.header_size():
+                raise WALError('Truncated WAL page record')
+            size = WALRecord.parse_record_size(tail)
+            if size < WALRecord.header_size() or size > len(tail):
+                raise WALError('Invalid WAL page record size')
+            record = WALRecord.unpack(tail[:size])
+            padding = record._header.padding_size
+            if offset + size + padding > len(data) or any(tail[size:size + padding]):
+                raise WALError('Invalid WAL padding')
+            page.records.extend(tail[:size + padding])
+            offset += size + padding
+        return page
 
 
 def lsn_to_filename(lsn):
-    """LSN is a 64bit-length integer, but WAL files organize by segments.
-    In order to directly locate which file the corresponding log content
-    is in according to the LSN, we can generate the corresponding WAL file name
-    according to the LSN according to a conversion algorithm.
-    """
     return '%016X' % (lsn // WAL_SEGMENT_SIZE)
 
 
 class WALManager:
+    MAX_RECORD_SIZE = 64 * 1024 * 1024
+
     def __init__(self):
-        self.write_lsn = 0
-        self.flush_lsn = 0
-
-        self.wal_buffer = []  # contains WALPage
-
-        self.current_wal_fd = None
+        self.write_lsn = self.flush_lsn = 0
+        self.wal_buffer = []
+        self.current_wal_fd = None  # kept for compatibility with callers
+        self._lock = threading.RLock()
+        self.failed = False
 
     def max_lsn(self):
         return self.write_lsn
 
-    def write_record(self, record: WALRecord):
-        """
-        Write a record to the WAL buffer.
-        If the record is too large for the current page:
-        1. Split it into two records
-        2. Write the first part with TO_BE_CONTINUED flag
-        3. Create a new page for the remaining part
-        """
-        lwlock_acquire(LWLockName.WAL_WRITE)
-
-        # Create new WAL page if buffer is empty
-        if len(self.wal_buffer) == 0:
-            wal_page = WALPage(self.max_lsn(), 0)
-            self.write_lsn += WALPage.Header.size()
-            self.wal_buffer.append(wal_page)
-
-        # Find first non-full WAL page
-        wal_page = None
-        i = 0
-        while i < len(self.wal_buffer):
-            p = self.wal_buffer[i]
-            if not p.is_full():
-                wal_page = p
-                break
-            i += 1
-
-        if i != len(self.wal_buffer):
-            assert not wal_page.is_full()
-
-        # Create new page if all pages are full
-        if wal_page is None:
-            wal_page = WALPage(self.max_lsn(), 0)
-            assert len(wal_page.pack()) == WALPage.Header.size()
-            self.write_lsn += WALPage.Header.size()
-            self.wal_buffer.append(wal_page)
-
-        # Handle record splitting if it doesn't fit in current page
-        if not wal_page.append_record(record):
-            remaining = wal_page.calc_remaining_size(record)
-            if remaining >= (WAL_PAGE_SIZE - WALPage.Header.size() - WALRecord.Header.size()):
-                #TODO: release locks if ...
-                lwlock_release(LWLockName.WAL_WRITE)
-                # xxx: this is a critical section!! Rollback above allocation?
-                raise WALError('Not supported huge WAL record.')
-
-            # Split record into two parts
-            written_size = record._header.total_size - WALRecord.Header.size() - remaining
-            written_record = WALRecord(record._header.xid, record._header.oid, record._header.pageno, record._header.tid, WALAction.TO_BE_CONTINUED, record.data[:written_size])
-            remaining_record = WALRecord(record._header.xid, record._header.oid, record._header.pageno, record._header.tid, record._header.action, record.data[written_size:])
-            
-            success = wal_page.append_record(written_record)
-            assert success
-            assert WAL_PAGE_SIZE == len(wal_page.pack())
-            # we already increased the size of header
-            self.write_lsn += written_record._header.total_size
-
-            wal_page = WALPage(self.max_lsn(), written_size)
-            assert len(wal_page.pack()) == WALPage.Header.size()
-            self.write_lsn += WALPage.Header.size()
-            self.wal_buffer.append(wal_page)
-            wal_page.append_record(remaining_record)
-            record = remaining_record
-
-        self.write_lsn += record._header.total_size
-        self.write_lsn += record._header.padding_size  # if has
-
-        # Flush buffer on commit/abort or when buffer is full
-        if (record._header.action == WALAction.COMMIT or
-                record._header.action == WALAction.ABORT or
-                len(self.wal_buffer) >= wal_buffer_size):
-            self.wal_buffer_flush()
-
-        lwlock_release(LWLockName.WAL_WRITE)
+    def write_record(self, record):
+        if record.action not in range(WALAction.CHECKPOINT, WALAction.COMPENSATION + 1):
+            raise WALError('Invalid public WAL action')
+        record.pack()  # Validate all fields before changing buffer state.
+        if len(record.data) > self.MAX_RECORD_SIZE:
+            raise WALError('WAL record exceeds maximum supported size')
+        with self._lock:
+            if self.failed:
+                raise WALError('WAL I/O failed; restart/recovery is required')
+            remaining = record.data
+            start = None
+            while True:
+                if not self.wal_buffer or self.wal_buffer[-1].is_full():
+                    if self.write_lsn % WAL_PAGE_SIZE:
+                        raise WALError('Unaligned new WAL page')
+                    self.wal_buffer.append(WALPage(self.write_lsn, 0))
+                    self.write_lsn += WALPage.Header.size()
+                page = self.wal_buffer[-1]
+                if start is None:
+                    start = self.write_lsn
+                capacity = WAL_PAGE_SIZE - len(page.pack()) - WALRecord.header_size()
+                count = min(len(remaining), capacity)
+                final = count == len(remaining)
+                fragment = WALRecord(record.xid, record.relation_oid, *record.location,
+                                     record.action if final else WALAction.TO_BE_CONTINUED,
+                                     remaining[:count])
+                if not page.append_record(fragment):
+                    raise WALError('WAL append invariant violated')
+                self.write_lsn += fragment.total_size + fragment._header.padding_size
+                remaining = remaining[count:]
+                if final:
+                    break
+            record.start_lsn, record.end_lsn = start, self.write_lsn
+            if record.action in (WALAction.COMMIT, WALAction.ABORT) or len(self.wal_buffer) >= wal_buffer_size:
+                self.wal_buffer_flush()
+            return record.end_lsn
 
     def wal_buffer_flush(self):
-        i = 0
-        while i < len(self.wal_buffer):
-            wal_page: WALPage = self.wal_buffer[i]
-            filename = lsn_to_filename(wal_page.header.lsn)
-            if self.current_wal_fd is None:
-                self.current_wal_fd = directio_file_open(
-                    os.path.join(WAL_DIR, filename),
-                    os.O_RDWR | os.O_CREAT
-                )
-            elif filename != os.path.basename(self.current_wal_fd.filepath):
-                file_close(self.current_wal_fd)
-                self.current_wal_fd = directio_file_open(
-                    os.path.join(WAL_DIR, filename),
-                    os.O_RDWR | os.O_CREAT
-                )
-                # pre-allocate
-                file_extend(self.current_wal_fd, size=WAL_SEGMENT_SIZE)
-
-            flush_location = self.flush_lsn % WAL_SEGMENT_SIZE
-            write_location = self.write_lsn % WAL_SEGMENT_SIZE
-            if write_location < flush_location:
-                # this is because they are in the different segments
-                write_location += WAL_PAGE_SIZE  # adjustment
-
-            # determine if write_location and flush_location in a same page
-            n = flush_location // WAL_PAGE_SIZE
-            in_a_same_page = n * WAL_PAGE_SIZE <= flush_location <= write_location < (n + 1) * WAL_PAGE_SIZE
-            if in_a_same_page:
-                data = wal_page.pack()[ - (write_location % WAL_PAGE_SIZE - flush_location % WAL_PAGE_SIZE):]
-                assert len(data) == write_location % WAL_PAGE_SIZE - flush_location % WAL_PAGE_SIZE
-            else:
-                assert wal_page.is_full()
-                assert len(wal_page.pack()) == WAL_PAGE_SIZE
-                data = wal_page.pack()[flush_location % WAL_PAGE_SIZE:]
-
-            file_write(self.current_wal_fd, data, sync=True)
-            self.flush_lsn += len(data)  # don't forget it!
-            assert wal_page.header.lsn <= self.write_lsn
-
-            # evict worthless page
-            if wal_page.is_full():
-                self.wal_buffer.pop(i)
-                assert wal_page.header.lsn <= self.flush_lsn
-                assert i == 0
-                i -= 1
-
-            i += 1
+        with self._lock:
+            if self.failed:
+                raise WALError('WAL I/O failed; restart/recovery is required')
+            if self.flush_lsn == self.write_lsn:
+                return
+            os.makedirs(WAL_DIR, exist_ok=True)
+            target = self.write_lsn
+            try:
+                for page in self.wal_buffer:
+                    packed = page.pack()
+                    offset = max(0, self.flush_lsn - page.header.lsn)
+                    if offset >= len(packed):
+                        continue
+                    path = os.path.join(WAL_DIR, lsn_to_filename(page.header.lsn))
+                    created = not os.path.exists(path)
+                    # Never share a cursor with the recovery reader or FD cache.
+                    with open(path, 'r+b' if not created else 'w+b', buffering=0) as stream:
+                        stream.seek(page.header.lsn % WAL_SEGMENT_SIZE + offset)
+                        pending = memoryview(packed)[offset:]
+                        while pending:
+                            n = stream.write(pending)
+                            if not n:
+                                raise OSError('Short WAL write')
+                            pending = pending[n:]
+                        os.fsync(stream.fileno())
+                    if created:
+                        sync_directory(WAL_DIR)
+                # A flush is acknowledged only after ALL affected segments fsync.
+                self.flush_lsn = target
+                self.wal_buffer[:] = [p for p in self.wal_buffer if not p.is_full()]
+            except BaseException:
+                self.failed = True
+                raise
 
     @staticmethod
-    def replay(lsn):
-        prev_filename = None
-        wal_fd = None
+    def _segments():
+        if not os.path.isdir(WAL_DIR):
+            return []
+        files = sorted(f for f in os.listdir(WAL_DIR) if re.fullmatch(r'[0-9A-Fa-f]{16}', f))
+        for number, name in enumerate(files):
+            if int(name, 16) != number:
+                raise WALError('WAL segment missing; refusing incomplete recovery')
+        return files
 
-        current_lsn = lsn
-        hold_incomplete_record = None
-        while True:
-            filename = os.path.join(WAL_DIR, lsn_to_filename(current_lsn))
-            if not os.path.exists(filename):
-                break
-            # close previous fd before opening new one
-            if filename != prev_filename:
-                if wal_fd is not None:
-                    file_close(wal_fd)
-                prev_filename = filename
+    @classmethod
+    def replay(cls, lsn):
+        """Yield complete records with authoritative start_lsn/end_lsn.
 
-            wal_fd = directio_file_open(
-                filename,
-                os.O_RDWR | os.O_CREAT
-            )
-            lsn_segment = current_lsn % WAL_SEGMENT_SIZE
-            if lsn_segment % WAL_PAGE_SIZE != 0:
-                # align to page size
-                lsn_segment -= lsn_segment % WAL_PAGE_SIZE
+        A physically incomplete final record is an uncommitted tail. Malformed
+        complete frames, holes, or mismatched continuations fail closed.
+        """
+        files = cls._segments()
+        fragments = bytearray()
+        pending_identity = None
+        logical_start = None
+        for index, name in enumerate(files):
+            with open(os.path.join(WAL_DIR, name), 'rb') as stream:
+                size = os.fstat(stream.fileno()).st_size
+                if size > WAL_SEGMENT_SIZE:
+                    raise WALError('Oversized WAL segment')
+                if index < len(files) - 1 and size != WAL_SEGMENT_SIZE:
+                    raise WALError('Truncated non-final WAL segment')
+                for page_offset in range(0, size, WAL_PAGE_SIZE):
+                    data = stream.read(WAL_PAGE_SIZE)
+                    base = int(name, 16) * WAL_SEGMENT_SIZE + page_offset
+                    final_page = index == len(files) - 1 and page_offset + len(data) == size
+                    if not any(data):
+                        # Old writers preallocated zero-filled segment tails.
+                        if index != len(files) - 1 or any(stream.read()):
+                            raise WALError('Hole in WAL')
+                        return
+                    if len(data) < WALPage.Header.size():
+                        if final_page:
+                            return
+                        raise WALError('Truncated WAL page header')
+                    header = WALPage.Header()
+                    header.unpack(data[:header.size()])
+                    if header.lsn != base:
+                        raise WALError('WAL page address mismatch')
+                    offset = header.size()
+                    while offset < len(data):
+                        tail = data[offset:]
+                        if not any(tail):
+                            # At most one record-header worth of page padding.
+                            if len(tail) > WALRecord.header_size():
+                                if index != len(files) - 1 or any(stream.read()):
+                                    raise WALError('Hole in WAL page')
+                                return
+                            break
+                        if len(tail) < WALRecord.header_size():
+                            if final_page:
+                                return
+                            raise WALError('Truncated WAL record header')
+                        record_size = WALRecord.parse_record_size(tail)
+                        if record_size < WALRecord.header_size() or record_size > WAL_PAGE_SIZE - WALPage.Header.size():
+                            raise WALError('Invalid WAL frame size')
+                        if record_size > len(tail):
+                            if final_page:
+                                return
+                            raise WALError('Truncated WAL frame')
+                        record = WALRecord.unpack(tail[:record_size])
+                        if record.action not in range(WALAction.COMPENSATION + 1):
+                            raise WALError('Unknown WAL action')
+                        padding = record._header.padding_size
+                        rest = WAL_PAGE_SIZE - offset - record_size
+                        # Compatibility with old pages whose padding flag was not serialized.
+                        if not padding and rest <= WALRecord.header_size() and len(data) == WAL_PAGE_SIZE:
+                            padding = rest
+                        if padding > WALRecord.header_size() or (padding and padding != rest):
+                            raise WALError('Invalid WAL padding length')
+                        if record_size + padding > len(tail):
+                            if final_page:
+                                return
+                            raise WALError('Truncated WAL padding')
+                        if any(tail[record_size:record_size + padding]):
+                            raise WALError('Nonzero WAL padding')
+                        identity = (record.xid, record.relation_oid, record.location)
+                        if pending_identity is not None and identity != pending_identity:
+                            raise WALError('Mismatched WAL continuation')
+                        if logical_start is None:
+                            logical_start = base + offset
+                        fragments.extend(record.data)
+                        if len(fragments) > cls.MAX_RECORD_SIZE:
+                            raise WALError('Oversized logical WAL record')
+                        end = base + offset + record_size + padding
+                        if record.action == WALAction.TO_BE_CONTINUED:
+                            pending_identity = identity
+                            if end % WAL_PAGE_SIZE:
+                                raise WALError('Continuation must end at a page boundary')
+                        else:
+                            result = WALRecord(record.xid, record.relation_oid, *record.location,
+                                               record.action, bytes(fragments))
+                            result.start_lsn, result.end_lsn = logical_start, end
+                            if result.start_lsn >= lsn:
+                                yield result
+                            fragments.clear()
+                            pending_identity = logical_start = None
+                        offset += record_size + padding
 
-            file_lseek(wal_fd, lsn_segment)
-            page_bytes = file_read(wal_fd, WAL_PAGE_SIZE)
-            # break if the remaining bytes is empty
-            if len(page_bytes) == 0:
-                break
-            wal_page = WALPage.unpack(page_bytes)
-
-            i = 0
-            while i < len(wal_page.records):
-                remaining_bytes = len(wal_page.records) - i
-                if remaining_bytes < WALRecord.Header.size():
-                    # Not enough bytes left for a record header - this is padding
-                    break
-                record_size = WALRecord.parse_record_size(wal_page.records[i: i + WALRecord.Header.size()])
-                if record_size == 0:
-                    # reach padding empty bytes
-                    break
-                record = WALRecord.unpack(bytes(wal_page.records[i: i + record_size]))
-                if record._header.action == WALAction.TO_BE_CONTINUED:
-                    hold_incomplete_record = record
-                else:
-                    if hold_incomplete_record is not None:
-                        # concat incomplete record with current record
-                        data = hold_incomplete_record.data + record.data
-                        hold_incomplete_record = None
-                        pageno, tid = record.location
-                        record = WALRecord(xid=record.xid, oid=record.relation_oid, pageno=pageno, tid=tid,
-                                            action=record.action, data=data)
-                    # skip gotten record
-                    if i + record_size > current_lsn % WAL_PAGE_SIZE:
-                        yield record
-                i += record_size
-
-            # we have skipped some LSN in the first page, so we should clear this flag now
-            current_lsn -= current_lsn % WAL_PAGE_SIZE
-            current_lsn += WAL_PAGE_SIZE
+    def restore(self):
+        """Discard an incomplete/preallocated tail and resume at the valid end."""
+        with self._lock:
+            end = 0
+            for record in self.replay(0):
+                end = record.end_lsn
+            files = self._segments()
+            for name in files:
+                base = int(name, 16) * WAL_SEGMENT_SIZE
+                path = os.path.join(WAL_DIR, name)
+                if base >= end:
+                    os.unlink(path)
+                elif base + os.path.getsize(path) > end:
+                    with open(path, 'r+b') as stream:
+                        stream.truncate(end - base)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+            if files:
+                sync_directory(WAL_DIR)
+            self.wal_buffer.clear()
+            self.write_lsn = self.flush_lsn = end
+            self.failed = False
+            if end % WAL_PAGE_SIZE:
+                page_start = end - end % WAL_PAGE_SIZE
+                path = os.path.join(WAL_DIR, lsn_to_filename(page_start))
+                with open(path, 'rb') as stream:
+                    stream.seek(page_start % WAL_SEGMENT_SIZE)
+                    page = WALPage.unpack(stream.read(end - page_start))
+                self.wal_buffer.append(page)
+            return end

@@ -32,7 +32,7 @@ class CSNManager:
 
     def __init__(self):
         self._lock = threading.Lock()
-        self._current_csn = FIRST_VALID_CSN
+        self._current_csn = FIRST_VALID_CSN - 1
         # Maps XID -> CSN for recently committed/aborted transactions.
         # In a real system this would be a bounded CLOG/CSN log on disk.
         self._xid_csn_map = {}
@@ -45,8 +45,8 @@ class CSNManager:
     def assign_csn(self, xid):
         """Assign and return the next CSN for a committing transaction."""
         with self._lock:
-            csn = self._current_csn
             self._current_csn += 1
+            csn = self._current_csn
             self._xid_csn_map[xid] = csn
             return csn
 
@@ -82,12 +82,10 @@ class CSNManager:
     def cleanup_old_entries(self, oldest_active_xid):
         """Remove entries for XIDs older than the oldest active transaction.
         In production, this would be tied to VACUUM."""
-        with self._lock:
-            to_remove = [xid for xid in self._xid_csn_map
-                         if xid < oldest_active_xid
-                         and self._xid_csn_map[xid] != CSN_IN_PROGRESS]
-            for xid in to_remove:
-                del self._xid_csn_map[xid]
+        # Without tuple freezing or a durable CSN lookup, deleting a committed
+        # mapping makes old rows appear uncommitted. Retain it until VACUUM exists.
+        return
+
 
 
 class Snapshot:
@@ -134,6 +132,8 @@ class Snapshot:
     def _xid_is_visible(self, xid, csn_manager):
         """Check if changes made by `xid` are visible under this snapshot."""
         # Own changes are always visible
+        if xid == INVALID_XID:
+            return False
         if xid == self.owner_xid:
             return True
 

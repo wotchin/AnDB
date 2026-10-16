@@ -18,13 +18,14 @@ def test_andb_class():
     table2 = AndbClassTable()
     table2.load()
     assert table2.rows == table.rows
-    assert table.allocate_oid() == 5
+    assert table.allocate_oid() == OID_RELATION_START + 1
     table.insert(AndbClassForm(oid=5, name='aaa', kind=RelationKinds.BTREE_INDEX))
     table.save()
     table2.load()
     assert table2.rows == table.rows
 
-    assert table.allocate_oid() == 6
+    assert table2.allocate_oid() == OID_RELATION_START + 2
+    # A second catalog object/reload must not reuse a previously reserved ID.
 
 
 def test_andb_class_form():

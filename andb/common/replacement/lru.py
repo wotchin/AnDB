@@ -65,7 +65,7 @@ class LRUCache(BaseCache):
                 raise BufferOverflow('All buffers are pinned, no room to put.')
             self._remove(node)
             # add to evicted list
-            self.evicted.append(node)
+            self.evicted.append(node.value)
             del self.cache[node.key]
 
     def pop(self, key):

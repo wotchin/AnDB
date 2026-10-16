@@ -1,3 +1,4 @@
+from andb.storage.engines.heap.bptree import TuplePointer
 from andb.catalog.syscache import CATALOG_ANDB_INDEX
 from andb.errno.errors import InitializationStageError
 from andb.storage.engines.heap.bptree import TuplePointer
@@ -56,7 +57,7 @@ class DeletePhysicalOperator(PhysicalOperator):
             for index_relation in self.index_relations:
                 index_forms = self.index_relations[index_relation]
                 key = [tuple_[form.attr_num] for form in index_forms]
-                bt_delete(index_relation, key)
+                bt_delete(index_relation, key, TuplePointer(pageno, tid))
             yield
 
     def close(self):

@@ -117,12 +117,9 @@ class UpdatePhysicalOperator(PhysicalOperator):
                 index_forms = self.index_relations[index_relation]
 
                 key = [tuple_[form.attr_num] for form in index_forms]
-                if index_relation not in self.modify_index_relations:
-                    bt_update(index_relation, key, new_tuple_pointer)
-                else:
-                    bt_delete(index_relation, key)
-                    new_key = [new_tuple[form.attr_num] for form in index_forms]
-                    bt_simple_insert(index_relation, new_key, new_tuple_pointer)
+                bt_delete(index_relation, key, TuplePointer(pageno, tid))
+                new_key = [new_tuple[form.attr_num] for form in index_forms]
+                bt_simple_insert(index_relation, new_key, new_tuple_pointer)
             yield
 
     def close(self):

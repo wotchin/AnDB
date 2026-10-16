@@ -97,8 +97,14 @@ class CatalogTable:
         self.rows = pickle.loads(data)
 
     def save(self):
+        # Atomic replacement protects this catalog file, not an entire multi-file
+        # DDL transaction. Transactional DDL remains explicitly unsupported.
+        from andb.storage.engines.heap.redo import sync_directory
         filename = os.path.join(CATALOG_DIR, self.__tablename__)
-        f = open(filename, 'w+b')
-        f.write(pickle.dumps(self.rows))
-        os.fsync(f.fileno())
-        f.close()
+        temporary = filename + '.tmp'
+        with open(temporary, 'wb') as stream:
+            stream.write(pickle.dumps(self.rows))
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, filename)
+        sync_directory(CATALOG_DIR)

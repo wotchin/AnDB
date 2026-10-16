@@ -11,7 +11,8 @@ class TestCSNManager(unittest.TestCase):
         self.csn_mgr = CSNManager()
 
     def test_initial_csn(self):
-        self.assertEqual(self.csn_mgr.get_current_csn(), FIRST_VALID_CSN)
+        self.assertEqual(self.csn_mgr.get_current_csn(), FIRST_VALID_CSN - 1)
+        # No commit has happened; current means last assigned, not next to assign.
 
     def test_assign_csn_increments(self):
         csn1 = self.csn_mgr.assign_csn(xid=10)

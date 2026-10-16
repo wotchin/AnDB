@@ -1,401 +1,345 @@
-import logging
+"""Crash-safe page-image transactions with strict two-phase relation locking.
+
+Recovery scans retained WAL from zero. The existing checkpoint format has no
+transaction/dirty-page table, so its pointer is advisory, not a safe redo start.
+Full-page before images and redo-only compensation records make interrupted
+rollback restartable; volatile UndoManager files are not the recovery authority.
+"""
 import os
+import threading
 import time
 
 from andb.catalog.oid import INVALID_OID
 from andb.constants.macros import INVALID_XID, FIRST_XID, MAX_XID, XID_SIZE
 from andb.constants.strings import BIG_END
-from andb.errno.errors import UndoError
-from andb.runtime import global_vars, session_vars
-from andb.storage.engines.heap.bptree import TuplePointer
-from andb.storage.engines.heap.page import INVALID_ITEM_ID
-from andb.storage.engines.heap.redo import WALManager, WALRecord, WALAction, WAL_SEGMENT_SIZE
 from andb.constants.filename import CHECKPOINT_FILE, WAL_DIR
-from andb.storage.engines.heap.relation import BufferedBPTree, bt_delete, bt_simple_insert, open_relation, close_relation
-from andb.storage.engines.heap.undo import UndoManager, UndoOperation
-from andb.storage.lock import slock
+from andb.errno.errors import WALError, RollbackError
+from andb.runtime import global_vars
+from andb.storage.engines.heap.journal import encode_images, decode_images
+from andb.storage.engines.heap.redo import WALManager, WALRecord, WALAction, sync_directory
+from andb.storage.engines.heap.undo import UndoManager
 from andb.storage.lock.rlock import lock_release_all
-from andb.storage.utils import easy_tuple_deserialize
 from andb.storage.xact.csn import CSNManager, SnapshotManager
 
-STATUS_ACTIVE = 0
-STATUS_COMMITTED = 1
-STATUS_ABORTED = 2
+STATUS_ACTIVE, STATUS_COMMITTED, STATUS_ABORTED = range(3)
+ABORT_COMPLETE = b'undo-complete-v1'
+
 
 def xid_to_bytes(xid):
     return int.to_bytes(xid, XID_SIZE, BIG_END, signed=False)
+
 
 def bytes_to_xid(bytes_):
     assert len(bytes_) == XID_SIZE
     return int.from_bytes(bytes_, byteorder=BIG_END, signed=False)
 
+
 class TransactionManager:
     def __init__(self):
         self.wal_manager = WALManager()
-        self.undo_manager = UndoManager()
-        self._xid_lock = slock.spinlock_create()
+        self.undo_manager = UndoManager()  # retained for the standalone undo API
+        self.storage_lock = threading.RLock()
+        self._xid_lock = threading.RLock()
+        self._local = threading.local()
         self._current_xid = FIRST_XID
         self.active_transactions = {}
-
-        # CSN-based MVCC
         self.csn_manager = CSNManager()
         self.snapshot_manager = SnapshotManager(self.csn_manager)
+        self.failed = False
+        self.recovering = False
+
+    def _healthy(self):
+        if self.failed or self.wal_manager.failed:
+            raise WALError('Storage is in failed state; restart and recover before further queries')
+
+    def in_transaction(self):
+        transaction = self.active_transactions.get(self.get_xid())
+        return transaction is not None and transaction['owner'] == threading.get_ident()
 
     def begin_transaction(self, xid):
-        if xid in self.active_transactions:
-            return
-        self.set_xid(xid)
-        self.undo_manager.begin_transaction(xid)
-        wal_record = WALRecord(xid=xid, oid=INVALID_OID, pageno=0, tid=0, action=WALAction.BEGIN, data=b'')
-        self.wal_manager.write_record(wal_record)
+        with self.storage_lock:
+            self._healthy()
+            if xid in self.active_transactions:
+                if self.active_transactions[xid]['owner'] != threading.get_ident():
+                    raise RollbackError('Transaction ID is already owned by another session')
+                return
+            if self.in_transaction():
+                raise RollbackError('A transaction is already active in this session')
+            self.wal_manager.write_record(WALRecord(xid, INVALID_OID, 0, 0, WALAction.BEGIN, b''))
+            self.set_xid(xid)
+            self.snapshot_manager.register_transaction(xid)
+            self.active_transactions[xid] = {
+                'status': STATUS_ACTIVE, 'owner': threading.get_ident(),
+                'start_time': time.time(), 'last_lsn': self.max_lsn(),
+                'snapshot': self.snapshot_manager.take_snapshot(owner_xid=xid),
+                'changes': [],
+            }
 
-        # Register with snapshot manager and take a snapshot
-        self.snapshot_manager.register_transaction(xid)
-        snapshot = self.snapshot_manager.take_snapshot(owner_xid=xid)
-
-        self.active_transactions[xid] = {
-            'status': STATUS_ACTIVE,
-            'start_time': time.time(),
-            'last_lsn': self.wal_manager.max_lsn(),
-            'snapshot': snapshot,
-        }
+    def _finish(self, xid, committed):
+        if committed:
+            self.csn_manager.assign_csn(xid)
+        else:
+            self.csn_manager.set_xid_aborted(xid)
+        self.snapshot_manager.unregister_transaction(xid)
+        self.active_transactions.pop(xid, None)
+        lock_release_all()
+        self.set_xid(INVALID_XID)
 
     def commit_transaction(self, xid):
-        """
-        Commit a transaction and ensure all changes are persisted.
-        The order of operations is critical:
-        1. Flush undo logs to disk
-        2. Ensure all dirty pages are written (redo logs)
-        3. Write commit record to WAL
-        4. Assign CSN (makes changes visible to new snapshots)
-        5. Release all locks (shrinking phase of 2PL)
-        """
-        if xid not in self.active_transactions:
-            return
-
-        transaction = self.active_transactions[xid]
-        assert transaction['status'] == STATUS_ACTIVE
-        transaction['status'] = STATUS_COMMITTED
-
-        # Step 1: Flush undo logs
-        self.undo_manager.flush(xid)
-
-        # Step 2: Ensure all dirty pages are written
-        global_vars.buffer_manager.sync()
-
-        # Step 3: Write commit record to WAL
-        wal_record = WALRecord(xid=xid, oid=INVALID_OID, pageno=0, tid=0, action=WALAction.COMMIT, data=b'')
-        self.wal_manager.write_record(wal_record)
-
-        # Step 4: Commit undo transaction
-        self.undo_manager.commit_transaction(xid)
-        transaction['last_lsn'] = self.wal_manager.max_lsn()
-
-        # Step 5: Assign CSN and unregister from snapshot manager
-        self.csn_manager.assign_csn(xid)
-        self.snapshot_manager.unregister_transaction(xid)
-
-        # Step 6: Release all locks (2PL shrinking phase)
-        lock_release_all()
-
-        del self.active_transactions[xid]
-        self.set_xid(INVALID_XID)
+        with self.storage_lock:
+            self._healthy()
+            if xid not in self.active_transactions:
+                return
+            if self.active_transactions[xid]['owner'] != threading.get_ident():
+                raise RollbackError('Cannot commit another session transaction')
+            # No-force: WAL (including inverse images) and COMMIT are durable before
+            # acknowledgement. Data pages may be flushed independently afterwards.
+            try:
+                self.wal_manager.write_record(WALRecord(xid, INVALID_OID, 0, 0, WALAction.COMMIT, b''))
+            except Exception:
+                self.failed = True  # outcome can be uncertain; never "undo" a durable COMMIT
+                raise
+            self._finish(xid, True)
 
     def abort_transaction(self, xid):
-        if xid not in self.active_transactions:
+        with self.storage_lock:
+            self._healthy()
+            if xid not in self.active_transactions:
+                return
+            if self.active_transactions[xid]['owner'] != threading.get_ident():
+                raise RollbackError('Cannot abort another session transaction')
+            try:
+                self.perform_undo(xid, self.max_lsn())
+                # ABORT means undo finished, not merely that undo was requested.
+                self.wal_manager.write_record(WALRecord(xid, INVALID_OID, 0, 0, WALAction.ABORT, ABORT_COMPLETE))
+            except Exception:
+                self.failed = True
+                raise
+            self._finish(xid, False)
+
+    def record_page_changes(self, relation, pages, root=None):
+        """Log private page copies, then publish them under the writeback guard."""
+        with self.storage_lock:
+            self._healthy()
+            if not self.in_transaction():
+                raise RollbackError('Page changes require an active transaction')
+            record = WALRecord(self.get_xid(), relation.oid, 0, 0, WALAction.PAGE_UPDATE,
+                               encode_images(relation.is_heap, pages, root))
+            try:
+                self.wal_manager.write_record(record)
+                self.active_transactions[record.xid]['changes'].append(record)
+                self._apply_images(record, relation)
+            except Exception:
+                # An appended record whose publication failed requires recovery;
+                # allowing subsequent writes could invert the wrong page version.
+                self.failed = True
+                raise
+            return record.end_lsn
+
+    def _apply_images(self, record, relation=None):
+        from andb.storage.engines.heap.relation import open_relation, close_relation
+        from andb.storage.engines.heap.page import SlotPage
+        from andb.storage.engines.heap.bptree import create_node
+        from andb.storage.lock.rlock import NO_LOCK
+        heap, pages, root, _ = decode_images(record.data)
+        opened = relation is None
+        if opened:
+            relation = open_relation(record.relation_oid, NO_LOCK)
+        if relation is None:
+            # Non-transactional DDL can remove a relation. New OIDs are never reused.
             return
+        try:
+            if relation.is_heap != heap:
+                raise WALError('WAL relation kind mismatch; possible legacy OID reuse')
+            bm = global_vars.buffer_manager
+            # We deliberately repeat history from full images, not trust an
+            # unchecksummed/torn on-disk pageLSN. All retained records are scanned.
+            for pageno, _, after in pages:
+                page = SlotPage.unpack(after) if heap else create_node(after)
+                if heap:
+                    page.header.lsn = record.end_lsn
+                else:
+                    if page.get_pageno() != pageno:
+                        raise WALError('Index page image address mismatch')
+                    page.lsn = record.end_lsn
+                bp = bm.create_buffer_page(relation, pageno, page)
+                bp.mark_dirty()
+                bm.put_page(bp)
+            if root is not None:
+                bm.set_index_root(relation, root[1])
+        finally:
+            if opened:
+                close_relation(relation.oid, NO_LOCK)
 
-        transaction = self.active_transactions[xid]
-        assert transaction['status'] == STATUS_ACTIVE
-        transaction['status'] = STATUS_ABORTED
+    def _compensate(self, record):
+        from andb.storage.engines.heap.page import SlotPage
+        from andb.storage.engines.heap.bptree import LeafNode
+        heap, pages, root, _ = decode_images(record.data)
+        inverse = []
+        for pageno, before, after in pages:
+            if before is None:
+                if heap:
+                    before = SlotPage.allocate(0).pack()
+                else:
+                    page = LeafNode()
+                    page.set_pageno(pageno)
+                    before = page.pack()
+            inverse.append((pageno, after, before))
+        inverse_root = None if root is None else (root[1], root[0])
+        clr = WALRecord(record.xid, record.relation_oid, 0, 0, WALAction.COMPENSATION,
+                        encode_images(heap, inverse, inverse_root, undo_of=record.end_lsn))
+        self.wal_manager.write_record(clr)
+        self._apply_images(clr)
+        return clr
 
-        # Write abort record to WAL
-        wal_record = WALRecord(xid=xid, oid=INVALID_OID, pageno=0, tid=0, action=WALAction.ABORT, data=xid_to_bytes(xid))
-        self.wal_manager.write_record(wal_record)
-        transaction['last_lsn'] = self.wal_manager.max_lsn()
-
-        # Flush undo logs
-        self.undo_manager.flush(xid)
-        # Perform undo operations
-        self.perform_undo(xid, transaction['last_lsn'])
-        # Abort undo transaction
-        self.undo_manager.abort_transaction(xid)
-
-        # Mark as aborted in CSN and unregister
-        self.csn_manager.set_xid_aborted(xid)
-        self.snapshot_manager.unregister_transaction(xid)
-
-        # Release all locks (2PL shrinking phase)
-        lock_release_all()
-
-        del self.active_transactions[xid]
-        self.set_xid(INVALID_XID)
+    def perform_undo(self, xid, lsn=None):
+        for record in reversed(self.active_transactions[xid]['changes']):
+            self._compensate(record)
+        self.active_transactions[xid]['changes'].clear()
 
     def get_snapshot(self, xid):
-        """Get the snapshot for a transaction.
-        For REPEATABLE READ, this returns the snapshot taken at begin time.
-        """
-        if xid in self.active_transactions:
-            return self.active_transactions[xid]['snapshot']
-        return None
+        return self.active_transactions.get(xid, {}).get('snapshot')
 
     def allocate_xid(self):
-        slock.spinlock_aquire(self._xid_lock)
-        self._current_xid += 1
-        xid = self._current_xid
-        #TODO: we don't need to wraparound xid now
-        assert xid <= MAX_XID
-        slock.spinlock_release(self._xid_lock)
-        return xid
+        with self._xid_lock:
+            self._healthy()
+            if self._current_xid >= MAX_XID:
+                raise RollbackError('Transaction ID space exhausted')
+            self._current_xid += 1
+            return self._current_xid
 
     def max_lsn(self):
         return self.wal_manager.max_lsn()
 
     def recovery(self):
+        """Analysis, repeat history, then restartable reverse-LSN loser undo.
+
+        Legacy logical WAL can be replayed for committed heap operations, but an
+        unresolved legacy transaction is refused: its durable inverse may be
+        missing, and the old ABORT was written before undo completed.
         """
-        Recovery process using ARIES-style algorithm:
-        1. Analysis pass: scan WAL from last checkpoint to find active transactions
-        2. Redo pass: replay all WAL records from checkpoint (for idempotency)
-        3. Undo pass: undo all uncommitted transactions
-
-        Bug fixes over original:
-        - Properly handle empty WAL directory
-        - Track max XID seen during recovery to avoid XID reuse
-        - Guard against missing relation during redo (may have been dropped)
-        - Properly restore WAL/undo manager state after recovery
-        """
-        if not os.path.exists(WAL_DIR):
-            flush_lsn = 0
-        else:
-            wal_files = os.listdir(WAL_DIR)
-            if not wal_files:
-                flush_lsn = 0
-            else:
-                # remove checkpoint file from the list
-                wal_files = [f for f in wal_files if f != CHECKPOINT_FILE]
-                if not wal_files:
-                    flush_lsn = 0
-                else:
-                    wal_files.sort()
-                    last_wal_file = wal_files[-1]
-                    last_segment_number = int(last_wal_file, 16)
-                    last_segment_path = os.path.join(WAL_DIR, last_wal_file)
-                    last_segment_size = os.stat(last_segment_path).st_size
-                    flush_lsn = (last_segment_number * WAL_SEGMENT_SIZE) + last_segment_size
-
-        self.wal_manager.flush_lsn = flush_lsn
-        self.wal_manager.write_lsn = flush_lsn
-
-        # Read the last checkpoint position
-        checkpoint_lsn = self.read_checkpoint_lsn()
-
-        # ===== Analysis Pass =====
-        # Scan WAL from checkpoint to determine:
-        # - Which transactions were active at crash time
-        # - The max XID to restore the XID allocator
-        analysis_lsn = checkpoint_lsn
-        transactions = set()
-        max_xid_seen = self._current_xid
-
-        for redo_record in self.wal_manager.replay(lsn=checkpoint_lsn):
-            analysis_lsn += redo_record.total_size
-            if redo_record.xid > max_xid_seen:
-                max_xid_seen = redo_record.xid
-
-            if redo_record.action == WALAction.CHECKPOINT:
-                # Update to latest checkpoint position; clear prior transactions
-                checkpoint_lsn = analysis_lsn
-                transactions.clear()
-            elif redo_record.action == WALAction.BEGIN:
-                transactions.add(redo_record.xid)
-            elif redo_record.action == WALAction.COMMIT:
-                transactions.discard(redo_record.xid)
-            elif redo_record.action == WALAction.ABORT:
-                transactions.discard(redo_record.xid)
-
-        # Restore XID allocator to avoid reusing XIDs
-        self._current_xid = max_xid_seen
-
-        # ===== Redo Pass =====
-        # Replay all WAL records from the last checkpoint.
-        # Each record is applied only if the page LSN < record LSN (idempotent).
-        replay_lsn = checkpoint_lsn
-        for redo_record in self.wal_manager.replay(lsn=checkpoint_lsn):
-            replay_lsn += redo_record.total_size
+        with self.storage_lock:
+            self.recovering = True
             try:
-                self.apply_redo(redo_record, replay_lsn)
-            except Exception as e:
-                logging.error(f"RECOVERY: failed to apply redo record "
-                              f"(action={redo_record.action}, xid={redo_record.xid}): {e}")
+                records = list(self.wal_manager.replay(0))
+                self.wal_manager.restore()  # removes only incomplete tail, not valid history
+                states, changes, compensated = {}, [], set()
+                max_oid = 0
+                for record in records:
+                    self._current_xid = max(self._current_xid, record.xid)
+                    max_oid = max(max_oid, record.relation_oid)
+                    if record.action == WALAction.BEGIN:
+                        states[record.xid] = 'active'
+                        self.csn_manager.set_xid_in_progress(record.xid)
+                    elif record.action == WALAction.COMMIT:
+                        states[record.xid] = 'committed'
+                        self.csn_manager.assign_csn(record.xid)
+                    elif record.action == WALAction.ABORT:
+                        states[record.xid] = 'aborted' if record.data == ABORT_COMPLETE else 'legacy-abort'
+                        self.csn_manager.set_xid_aborted(record.xid)
+                    elif record.action == WALAction.PAGE_UPDATE:
+                        changes.append(record)
+                    elif record.action == WALAction.COMPENSATION:
+                        _, _, _, undo_of = decode_images(record.data)
+                        compensated.add((record.xid, undo_of))
+                # Persist an OID allocation high-water mark before any new DDL.
+                from andb.catalog.syscache import CATALOG_ANDB_CLASS
+                CATALOG_ANDB_CLASS.reserve_oid(max_oid)
+                for record in records:
+                    if record.action in (WALAction.PAGE_UPDATE, WALAction.COMPENSATION):
+                        self._apply_images(record)
+                    elif record.action in (WALAction.HEAP_INSERT, WALAction.HEAP_DELETE,
+                                           WALAction.HEAP_UPDATE, WALAction.HEAP_BATCH_DELETE,
+                                           WALAction.BTREE_INSERT, WALAction.BTREE_DELETE, WALAction.BTREE_UPDATE):
+                        if states.get(record.xid) != 'committed':
+                            raise WALError('Unresolved legacy WAL transaction: use the original engine/backup to export committed data')
+                        self.apply_redo(record, record.end_lsn)
+                losers = {xid for xid, state in states.items() if state == 'active'}
+                if any(state == 'legacy-abort' for state in states.values()):
+                    raise WALError('Legacy ABORT is not proof of completed undo; recovery refused rather than return inconsistent data')
+                for record in reversed(changes):
+                    if record.xid in losers and (record.xid, record.end_lsn) not in compensated:
+                        self._compensate(record)
+                for xid in sorted(losers):
+                    self.wal_manager.write_record(WALRecord(xid, INVALID_OID, 0, 0, WALAction.ABORT, ABORT_COMPLETE))
+                    self.csn_manager.set_xid_aborted(xid)
+                global_vars.buffer_manager.sync()
+            except Exception:
+                self.failed = True
+                raise  # fail closed: never serve partially recovered data
+            finally:
+                self.recovering = False
 
-        # ===== Undo Pass =====
-        # Undo all uncommitted transactions found during analysis.
-        for xid in transactions:
-            try:
-                self.perform_undo(xid, replay_lsn)
-            except Exception as e:
-                logging.error(f"RECOVERY: failed to undo xid={xid}: {e}")
-            # Mark as aborted in CSN
-            self.csn_manager.set_xid_aborted(xid)
-
-    def apply_redo(self, redo_record, replay_lsn):
-        """
-        Apply redo log to the database.
-        Each operation checks page LSN for idempotency.
-        """
-        action = redo_record.action
-        data = redo_record.data
-
-        if action in (WALAction.BEGIN, WALAction.COMMIT, WALAction.ABORT, WALAction.CHECKPOINT):
+    def apply_redo(self, record, replay_lsn):
+        """Compatibility path for committed legacy heap WAL; images are preferred."""
+        from andb.storage.engines.heap.relation import open_relation, close_relation
+        from andb.storage.lock.rlock import NO_LOCK
+        from andb.storage.engines.heap.page import INVALID_ITEM_ID
+        from andb.storage.utils import easy_tuple_deserialize
+        if record.action in (WALAction.BEGIN, WALAction.COMMIT, WALAction.ABORT, WALAction.CHECKPOINT):
             return
-
-        relation = open_relation(redo_record.relation_oid)
+        if record.action in (WALAction.PAGE_UPDATE, WALAction.COMPENSATION):
+            return self._apply_images(record)
+        relation = open_relation(record.relation_oid, NO_LOCK)
         if relation is None:
-            # Relation may have been dropped; skip this record
-            logging.warning(f"RECOVERY: relation {redo_record.relation_oid} not found, skipping redo")
             return
-
         try:
-            if action == WALAction.HEAP_INSERT:
-                pageno, tid = redo_record.location
-                page = global_vars.buffer_manager.get_page(relation, pageno).page
-                if page.header.lsn < replay_lsn:
-                    new_tid = page.insert(replay_lsn, data)
-                    page.header.lsn = replay_lsn
-                    if new_tid != tid:
-                        logging.warning(
-                            f"RECOVERY: HEAP_INSERT tid mismatch: expected {tid}, got {new_tid}")
-            elif action == WALAction.HEAP_DELETE:
-                pageno, tid = redo_record.location
-                page = global_vars.buffer_manager.get_page(relation, pageno).page
-                if page.header.lsn < replay_lsn:
-                    page.delete(replay_lsn, tid)
-                    page.header.lsn = replay_lsn
-            elif action == WALAction.HEAP_UPDATE:
-                pageno, tid = redo_record.location
-                page = global_vars.buffer_manager.get_page(relation, pageno).page
-                if page.header.lsn < replay_lsn:
-                    page.update(replay_lsn, tid, data)
-                    page.header.lsn = replay_lsn
-            elif action == WALAction.BTREE_INSERT:
-                key_data, tuple_pointer_data = easy_tuple_deserialize(data)
-                tuple_pointer = TuplePointer()
-                tuple_pointer.unpack(tuple_pointer_data)
-                tree = BufferedBPTree(relation)
-                tree.insert(replay_lsn, key_data, tuple_pointer)
-            elif action == WALAction.BTREE_DELETE:
-                key_data, tuple_pointer_data = easy_tuple_deserialize(data)
-                tuple_pointer = TuplePointer()
-                tuple_pointer.unpack(tuple_pointer_data)
-                tree = BufferedBPTree(relation)
-                tree.delete_value(replay_lsn, key_data, tuple_pointer)
-            elif action == WALAction.BTREE_UPDATE:
-                key_data, tuple_pointer_data = easy_tuple_deserialize(data)
-                tuple_pointer = TuplePointer()
-                tuple_pointer.unpack(tuple_pointer_data)
-                tree = BufferedBPTree(relation)
-                tree.update(replay_lsn, key_data, tuple_pointer)
+            if record.action in (WALAction.BTREE_INSERT, WALAction.BTREE_DELETE, WALAction.BTREE_UPDATE):
+                raise WALError('Legacy logical index WAL is not reliably idempotent; export/rebuild before upgrading')
+            pageno, tid = record.location
+            bp = global_vars.buffer_manager.get_page(relation, pageno)
+            page = bp.page
+            if page.header.lsn >= replay_lsn:
+                return
+            if record.action == WALAction.HEAP_INSERT:
+                if page.insert(replay_lsn, record.data) != tid:
+                    raise WALError('Legacy heap redo TID mismatch')
+            elif record.action == WALAction.HEAP_DELETE:
+                if not page.delete(replay_lsn, tid):
+                    raise WALError('Legacy heap redo delete mismatch')
+            elif record.action == WALAction.HEAP_UPDATE:
+                if page.update(replay_lsn, tid, record.data) == INVALID_ITEM_ID:
+                    raise WALError('Legacy heap redo update failed')
+            elif record.action == WALAction.HEAP_BATCH_DELETE:
+                for tid in easy_tuple_deserialize(record.data):
+                    if not page.delete(replay_lsn, tid):
+                        raise WALError('Legacy batch delete mismatch')
             else:
-                logging.warning(f"RECOVERY: unknown WAL action {action}")
+                raise WALError('Unknown legacy WAL action')
+            page.header.lsn = replay_lsn
+            bp.mark_dirty()
         finally:
-            close_relation(relation.oid)
-
-    def perform_undo(self, xid, lsn):
-        """
-        Undo operations for a given transaction ID.
-        Records are already reversed (last operation first).
-        """
-        for undo_record in self.undo_manager.parse_record(xid):
-            if undo_record.operation == UndoOperation.HEAP_INSERT:
-                pageno, tid = undo_record.location
-                page = global_vars.buffer_manager.get_page(undo_record.relation, pageno).page
-                success = page.delete_inplace(lsn, tid)
-                if not success:
-                    logging.error(f'UNDO: failed to delete item {tid} in page {pageno}, items are {page.item_ids}')
-                global_vars.buffer_manager.mark_dirty(undo_record.relation, pageno)
-            elif undo_record.operation == UndoOperation.HEAP_DELETE:
-                pageno, tid = undo_record.location
-                page = global_vars.buffer_manager.get_page(undo_record.relation, pageno).page
-                new_tid = page.insert(lsn, undo_record.data)
-                if new_tid == INVALID_ITEM_ID:
-                    logging.error(f'UNDO: failed to insert item to page {pageno}')
-                    raise UndoError(f'UNDO: failed to insert item to page {pageno}')
-                global_vars.buffer_manager.mark_dirty(undo_record.relation, pageno)
-            elif undo_record.operation == UndoOperation.HEAP_UPDATE:
-                pageno, tid = undo_record.location
-                page = global_vars.buffer_manager.get_page(undo_record.relation, pageno).page
-                item_id = page.update(lsn, tid, undo_record.data)
-                if item_id == INVALID_ITEM_ID:
-                    logging.error(f'UNDO: failed to find item {tid} in page {pageno}')
-                    raise UndoError(f'UNDO: failed to find item {tid} in page {pageno}')
-                global_vars.buffer_manager.mark_dirty(undo_record.relation, pageno)
-            elif undo_record.operation == UndoOperation.BTREE_INSERT:
-                key_data, tuple_pointer = undo_record.location
-                tree = BufferedBPTree(undo_record.relation)
-                undo_lsn = self.max_lsn()
-                tree.delete_value(undo_lsn, key_data, tuple_pointer)
-            elif undo_record.operation == UndoOperation.BTREE_UPDATE:
-                key_data, old_tuple_pointer = undo_record.location
-                tree = BufferedBPTree(undo_record.relation)
-                undo_lsn = self.max_lsn()
-                tree.update(undo_lsn, key_data, old_tuple_pointer)
-            elif undo_record.operation == UndoOperation.BTREE_DELETE:
-                key_data, old_tuple_pointer = undo_record.location
-                tree = BufferedBPTree(undo_record.relation)
-                undo_lsn = self.max_lsn()
-                tree.insert(undo_lsn, key_data, old_tuple_pointer)
-            elif undo_record.operation in (UndoOperation.BEGIN, UndoOperation.COMMIT, UndoOperation.ABORT):
-                pass
-            else:
-                raise NotImplementedError(f"Undo operation {undo_record.operation} is not implemented")
+            close_relation(relation.oid, NO_LOCK)
 
     def checkpoint(self):
-        """
-        Create a checkpoint in the WAL and flush dirty pages to disk.
-        """
-        # 1. Ensure all dirty pages are written to disk
-        global_vars.buffer_manager.sync()
-
-        # 2. Write checkpoint record to WAL
-        checkpoint_lsn = self.max_lsn()
-        self.wal_manager.write_record(
-            WALRecord(
-                xid=INVALID_XID,
-                oid=INVALID_OID,
-                pageno=0,
-                tid=0,
-                action=WALAction.CHECKPOINT,
-                data=b''
-            )
-        )
-
-        # 3. Flush WAL buffer
-        self.wal_manager.wal_buffer_flush()
-
-        # 4. Persist checkpoint position
-        self.write_checkpoint_lsn(checkpoint_lsn)
+        with self.storage_lock:
+            self._healthy()
+            global_vars.buffer_manager.sync()
+            lsn = self.max_lsn()
+            self.wal_manager.write_record(WALRecord(INVALID_XID, INVALID_OID, 0, 0, WALAction.CHECKPOINT, b''))
+            self.wal_manager.wal_buffer_flush()
+            self.write_checkpoint_lsn(lsn)
 
     def set_xid(self, xid):
-        session_vars.session_xid = xid
+        self._local.xid = xid
 
     def get_xid(self):
-        return session_vars.session_xid
+        return getattr(self._local, 'xid', INVALID_XID)
 
     def write_checkpoint_lsn(self, lsn):
-        """Persist checkpoint LSN to disk."""
-        checkpoint_file = os.path.join(WAL_DIR, CHECKPOINT_FILE)
-        with open(checkpoint_file, 'wb') as f:
-            f.write(int.to_bytes(lsn, 8, 'big'))
-            f.flush()
-            os.fsync(f.fileno())
+        path = os.path.join(WAL_DIR, CHECKPOINT_FILE)
+        tmp = path + '.tmp'
+        with open(tmp, 'wb') as stream:
+            stream.write(lsn.to_bytes(8, 'big'))
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(tmp, path)
+        sync_directory(WAL_DIR)
 
     def read_checkpoint_lsn(self):
-        """Read persisted checkpoint LSN from disk. Returns 0 if no checkpoint file exists."""
-        checkpoint_file = os.path.join(WAL_DIR, CHECKPOINT_FILE)
-        if not os.path.exists(checkpoint_file):
+        try:
+            with open(os.path.join(WAL_DIR, CHECKPOINT_FILE), 'rb') as stream:
+                data = stream.read()
+        except FileNotFoundError:
             return 0
-        with open(checkpoint_file, 'rb') as f:
-            data = f.read(8)
-            if len(data) < 8:
-                return 0
-            return int.from_bytes(data, 'big')
+        return int.from_bytes(data, 'big') if len(data) == 8 else 0

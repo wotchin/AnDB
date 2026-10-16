@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 
 from andb.catalog.class_ import RelationKinds
 from andb.catalog.oid import OID_DATABASE_ANDB, INVALID_OID
@@ -14,7 +15,7 @@ from andb.constants.strings import BIG_END
 from andb.constants.values import MAX_TABLE_COLUMNS, PAGE_SIZE
 from andb.errno.errors import RollbackError, DDLException
 from andb.runtime import global_vars
-from andb.storage.engines.heap.page import INVALID_BYTES
+from andb.storage.engines.heap.page import SlotPage, INVALID_BYTES
 from andb.storage.engines.heap.page import INVALID_ITEM_ID
 from andb.storage.engines.heap.bptree import BPlusTree, TuplePointer, create_node
 from andb.storage.engines.heap.redo import WALAction, WALRecord
@@ -24,35 +25,60 @@ from andb.storage.utils import easy_tuple_serialize
 
 
 class BufferedBPTree(BPlusTree):
+    """Private node copies per operation; publish all split pages in one WAL record."""
     def __init__(self, relation):
-        file_lseek(relation.fd, offset=0)
-        header_size = BPlusTree.Header.size()
-        root_pageno = self.deserialize_header(file_read(relation.fd, header_size)).root_pageno
-        assert root_pageno >= 0
-        buffer_page = global_vars.buffer_manager.get_page(relation, root_pageno)
-        global_vars.buffer_manager.pin_page(buffer_page)
-
-        super().__init__(root_node=buffer_page.page)
         self.relation = relation
-        self.dirty_pageno = []
+        self.nodes = {}
+        self.before = {}
+        self.changed = set()
+        self.original_root = global_vars.buffer_manager.get_index_root(relation)
+        super().__init__(root_node=self.load_page(self.original_root))
 
     def load_page(self, pageno):
-        node = global_vars.buffer_manager.get_page(self.relation, pageno).page
-        assert node.get_pageno() == pageno
-        return node
+        if pageno not in self.nodes:
+            raw = global_vars.buffer_manager.get_page(self.relation, pageno).data
+            self.before[pageno] = raw
+            self.nodes[pageno] = create_node(raw)
+        return self.nodes[pageno]
+
+    def mark_dirty(self, node):
+        super().mark_dirty(node)
+        self.changed.add(node.get_pageno())
+
+    def _allocate_pageno(self):
+        return global_vars.buffer_manager.allocate_index_pageno(self.relation)
 
     def _allocate_node(self, is_leaf):
         node = super()._allocate_node(is_leaf)
-        buffer_page = global_vars.buffer_manager.create_buffer_page(self.relation, node.get_pageno(), node)
-        buffer_page.mark_dirty()  # new node must be dirty
+        self.nodes[node.get_pageno()] = node
+        self.before[node.get_pageno()] = None
         return node
 
-    def _need_to_split(self, node):
-        #TODO: user-defined load factor
-        return super()._need_to_split(node)
+    def save_changes(self):
+        if not self.changed:
+            return
+        pages = [(n, self.before[n], self.nodes[n].pack()) for n in sorted(self.changed)]
+        root = (self.original_root, self.root.get_pageno())
+        global_vars.xact_manager.record_page_changes(self.relation, pages, root)
 
 
 __relcache = {}
+__relcache_lock = threading.RLock()
+
+
+def _transaction_active():
+    mgr = global_vars.xact_manager
+    return mgr is not None and mgr.in_transaction()
+
+
+def _relation_lock(relation, write=False):
+    # There are no physical xmin/xmax versions yet. Use honest strict 2PL,
+    # rather than allowing dirty reads behind an unused snapshot helper.
+    mode = rlock.ACCESS_EXCLUSIVE_LOCK if write else rlock.ACCESS_SHARE_LOCK
+    if rlock.lock_acquire(relation.oid, mode, dont_wait=False, wait_seconds=5) == rlock.LOCK_NOT_AVAILABLE:
+        raise RollbackError('Could not acquire relation lock; retry the transaction')
+
+
 
 
 class Relation:
@@ -77,13 +103,9 @@ class Relation:
 
     def last_pageno(self):
         assert self.is_heap
-        # if disk-based page is already full, buffer pool will
-        # allocated a new page in memory. In that case, we marked allocated page to
-        # `self._last_pageno` so return it directly is enough.
-        if self._last_pageno:
-            return self._last_pageno
-        # pageno starts from 0
-        return filesize_to_pageno(file_size(self.fd))
+        disk = filesize_to_pageno(file_size(self.fd))
+        cached = global_vars.buffer_manager.heap_highwater.get(self, 0)
+        return max(disk, cached, self._last_pageno or 0)
 
     def increase_last_pageno(self):
         self._last_pageno = self.last_pageno() + 1
@@ -182,40 +204,41 @@ class TupleData:
 
 
 def open_relation(oid, lock_mode=rlock.ACCESS_SHARE_LOCK):
-    if oid in __relcache:
+    # Lock before entering the relcache mutex: a blocked writer must not prevent
+    # a current reader from closing its relation and committing.
+    actual_mode = lock_mode
+    if lock_mode in (rlock.ROW_EXCLUSIVE_LOCK, rlock.SHARE_ROW_EXCLUSIVE_LOCK):
+        actual_mode = rlock.ACCESS_EXCLUSIVE_LOCK
+    if actual_mode != rlock.NO_LOCK:
+        if rlock.lock_acquire(oid, actual_mode, dont_wait=False, wait_seconds=5) == rlock.LOCK_NOT_AVAILABLE:
+            raise RollbackError('Could not acquire relation lock; retry the transaction')
+    with __relcache_lock:
+        if oid not in __relcache:
+            results = CATALOG_ANDB_CLASS.search(lambda r: r.oid == oid)
+            if len(results) != 1:
+                if actual_mode != rlock.NO_LOCK and not _transaction_active():
+                    rlock.lock_release(oid, actual_mode)
+                return None
+            meta = results[0]
+            relation = Relation(oid, meta.database_oid, meta.name)
+            relation.attrs = CATALOG_ANDB_ATTRIBUTE.search(lambda r: r.class_oid == oid)
+            relation.kind = meta.kind
+            __relcache[oid] = relation
         relation = __relcache[oid]
-    else:
-        results = CATALOG_ANDB_CLASS.search(lambda r: r.oid == oid)
-        if len(results) != 1:
-            return None
-
-        class_meta = results[0]
-        relation = Relation(
-            oid=oid, database_oid=class_meta.database_oid, name=class_meta.name
-        )
-        relation.attrs = CATALOG_ANDB_ATTRIBUTE.search(lambda r: r.class_oid == oid)
-        relation.kind = class_meta.kind
-        __relcache[oid] = relation
-
-    # try to get lock
-    if lock_mode != rlock.NO_LOCK:
-        if rlock.lock_acquire(oid, lock_mode, False, 0) == rlock.LOCK_NOT_AVAILABLE:
-            return None
-
-    relation.refcount += 1
-    return relation
+        relation.refcount += 1
+        return relation
 
 
 def close_relation(oid, lock_mode=rlock.ACCESS_SHARE_LOCK):
-    relation = __relcache[oid]
-    if lock_mode != rlock.NO_LOCK:
-        # Lock may have already been released by lock_release_all() during
-        # transaction commit/abort (2PL shrinking phase). That's expected.
-        rlock.lock_release(relation.oid, lock_mode)
-    relation.refcount -= 1
-    if relation.refcount == 0:
-        relation.opened = False
-        del __relcache[oid]
+    with __relcache_lock:
+        relation = __relcache[oid]
+        relation.refcount -= 1
+        if not _transaction_active() and lock_mode != rlock.NO_LOCK:
+            actual_mode = rlock.ACCESS_EXCLUSIVE_LOCK if lock_mode in (
+                rlock.ROW_EXCLUSIVE_LOCK, rlock.SHARE_ROW_EXCLUSIVE_LOCK) else lock_mode
+            rlock.lock_release(oid, actual_mode)
+        if relation.refcount == 0:
+            del __relcache[oid]
 
 
 def hot_create_table(table_name, fields, database_oid=OID_DATABASE_ANDB):
@@ -260,111 +283,63 @@ def hot_drop_table(table_name, database_oid=OID_DATABASE_ANDB):
 
 
 def hot_simple_insert(relation: Relation, python_tuple, lsn=None):
-    # no redo and undo log here, only update cached page
-    #TODO: find from fsm first
-    pageno = relation.last_pageno()
-    buffer_page = global_vars.buffer_manager.get_page(relation, pageno)
-    xid = global_vars.xact_manager.get_xid()
-    wip_lsn = 0  # work in progress LSN
-    tuple_bytes = TupleData(python_tuple).to_bytes(relation.attrs)
-    tid = buffer_page.page.insert(wip_lsn, tuple_bytes)
-    if tid == INVALID_ITEM_ID:
-        # maybe the page is full, get next pageno
-        buffer_page = global_vars.buffer_manager.get_page(relation, pageno + 1)
-        tid = buffer_page.page.insert(wip_lsn, tuple_bytes)
-        if tid == INVALID_ITEM_ID:
-            # still be error? raise the error
-            raise RollbackError('cannot insert the tuple')
-    buffer_page.mark_dirty()
-    
-    # write logs
-    undo_record = UndoRecord(xid,
-                             UndoOperation.HEAP_INSERT,
-                             relation, (pageno, tid),
-                             b'')
-    redo_record = WALRecord(
-        xid, relation.oid, pageno, tid, WALAction.HEAP_INSERT, tuple_bytes
-    )
-    global_vars.xact_manager.undo_manager.write_record(undo_record)
-    global_vars.xact_manager.wal_manager.write_record(redo_record)
-
-    # update page header LSN
-    if lsn is None:
-        lsn = global_vars.xact_manager.max_lsn()
-    buffer_page.page.header.lsn = lsn
-
-    return buffer_page.pageno, tid
+    _relation_lock(relation, write=True)
+    mgr, bm = global_vars.xact_manager, global_vars.buffer_manager
+    # Validate before any mutation; an oversized tuple must not leave a tombstone.
+    data = TupleData(python_tuple).to_bytes(relation.attrs)
+    if not SlotPage.allocate(0).can_put_item(data):
+        raise RollbackError('Tuple is too large for a heap page')
+    with mgr.storage_lock:
+        pageno = relation.last_pageno()
+        while True:
+            before = bm.get_page(relation, pageno).data
+            page = SlotPage.unpack(before)
+            tid = page.insert(0, data)
+            if tid != INVALID_ITEM_ID:
+                break
+            pageno += 1
+        mgr.record_page_changes(relation, [(pageno, before, page.pack())])
+        return pageno, tid
 
 
 def hot_simple_update(relation: Relation, pageno, tid, python_tuple):
-    # use a same LSN
-    lsn = global_vars.xact_manager.max_lsn()
-    if hot_simple_delete(relation, pageno, tid, lsn=lsn):
-        return hot_simple_insert(relation, python_tuple, lsn=lsn)
+    _relation_lock(relation, write=True)
+    data = TupleData(python_tuple).to_bytes(relation.attrs)
+    if not SlotPage.allocate(0).can_put_item(data):
+        raise RollbackError('Tuple is too large for a heap page')
+    # The transaction lock prevents observation between these two logged steps;
+    # an intervening crash undoes both, in reverse order.
+    if hot_simple_delete(relation, pageno, tid):
+        return hot_simple_insert(relation, python_tuple)
 
 
 def hot_simple_delete(relation: Relation, pageno, tid, lsn=None):
-    #TODO: update fsm? or only reorganize?
-    buffer_page = global_vars.buffer_manager.get_page(relation, pageno)
-    xid = global_vars.xact_manager.get_xid()
-    old_tuple_bytes = buffer_page.page.select(tid)
-    if old_tuple_bytes == INVALID_BYTES:
-        return False
+    return hot_batch_delete(relation, pageno, [tid])
 
-    wip_lsn = 0  # work in progress LSN
-    success = buffer_page.page.delete_inplace(wip_lsn, tid)
-    if success:
-        buffer_page.mark_dirty()
-        # write logs
-        undo_record = UndoRecord(xid,
-                                UndoOperation.HEAP_DELETE,
-                                relation, (pageno, tid),
-                                old_tuple_bytes)
-        redo_record = WALRecord(
-            xid, relation.oid, pageno, tid, WALAction.HEAP_DELETE, b''
-        )
-        global_vars.xact_manager.undo_manager.write_record(undo_record)
-        global_vars.xact_manager.wal_manager.write_record(redo_record)
-
-        # update page header LSN
-        if lsn is None:
-            lsn = global_vars.xact_manager.max_lsn()
-        buffer_page.page.header.lsn = lsn
-    return success
 
 def hot_batch_delete(relation: Relation, pageno, tid_list):
-    # using mark-and-vacuum to delete
-    buffer_page = global_vars.buffer_manager.get_page(relation, pageno)
-    xid = global_vars.xact_manager.get_xid()
-    array_of_old_tuple_bytes = [buffer_page.page.select(tid) for tid in tid_list]
-    if any(old_tuple_bytes == INVALID_BYTES for old_tuple_bytes in array_of_old_tuple_bytes):
-        return False
-
-    wip_lsn = 0  # work in progress LSN
-    for tid in tid_list:
-        success = buffer_page.page.delete(wip_lsn, tid)
-        if not success:
+    _relation_lock(relation, write=True)
+    tids = list(tid_list)
+    if not tids:
+        return True
+    if len(set(tids)) != len(tids):
+        raise RollbackError('Duplicate tuple IDs in batch delete')
+    mgr = global_vars.xact_manager
+    with mgr.storage_lock:
+        before = global_vars.buffer_manager.get_page(relation, pageno).data
+        page = SlotPage.unpack(before)
+        if any(page.select(tid) == INVALID_BYTES for tid in tids):
             return False
-    if success:
-        buffer_page.mark_dirty()
-        # write logs
-        undo_record = UndoRecord(xid,
-                                UndoOperation.HEAP_BATCH_DELETE,
-                                relation, (pageno, tid_list),
-                                easy_tuple_serialize(array_of_old_tuple_bytes))
-        redo_record = WALRecord(
-            xid, relation.oid, pageno, 0, WALAction.HEAP_BATCH_DELETE, easy_tuple_serialize(tid_list)
-        )
-        global_vars.xact_manager.undo_manager.write_record(undo_record)
-        global_vars.xact_manager.wal_manager.write_record(redo_record)
-
-        # update page header LSN
-        lsn = global_vars.xact_manager.max_lsn()
-        buffer_page.page.header.lsn = lsn
-    return success
+        for tid in tids:
+            if not page.delete(0, tid):
+                raise RollbackError('Could not mark tuple deleted')
+        # Never renumber live tuple IDs; index pointers and scan cursors stay valid.
+        mgr.record_page_changes(relation, [(pageno, before, page.pack())])
+    return True
 
 
 def hot_simple_select(relation: Relation, pageno, tid):
+    _relation_lock(relation)
     buffer_page = global_vars.buffer_manager.get_page(relation, pageno)
     data = buffer_page.page.select(tid)
     if data == INVALID_BYTES:
@@ -372,6 +347,7 @@ def hot_simple_select(relation: Relation, pageno, tid):
     return TupleData.from_bytes(data, relation.attrs).python_tuple
 
 def hot_simple_select_all(relation: Relation):
+    _relation_lock(relation)
     for pageno in range(relation.last_pageno() + 1):
         buffer_page = global_vars.buffer_manager.get_page(relation, pageno)
         for tid in range(buffer_page.page.item_count):
@@ -463,64 +439,44 @@ def _bt_data_to_key_tuple(data, index_attr_form_array):
 
 
 def bt_simple_insert(relation: Relation, key, tuple_pointer):
-    tree = BufferedBPTree(relation)
-    xid = global_vars.xact_manager.get_xid()
-    attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
-    key_data = _bt_key_tuple_to_data(key, attrs)
-
-    global_vars.xact_manager.wal_manager.write_record(
-        WALRecord(xid, relation.oid, 0, 0, WALAction.BTREE_INSERT, easy_tuple_serialize((key_data, tuple_pointer.to_bytes()))))
-    # for delete (the reverse of insert), we need to know the key and the specific value
-    global_vars.xact_manager.undo_manager.write_record(
-        UndoRecord(xid, UndoOperation.BTREE_INSERT, relation, (key_data, tuple_pointer),
-                    b''))
-
-    lsn = global_vars.xact_manager.max_lsn()
-    tree.insert(lsn, key_data, tuple_pointer)
-
-
+    _relation_lock(relation, write=True)
+    with global_vars.xact_manager.storage_lock:
+        tree = BufferedBPTree(relation)
+        attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
+        key_data = _bt_key_tuple_to_data(key, attrs)
+        if tuple_pointer in tree.search(key_data):
+            return  # logical duplicate of the same physical tuple is not a new row
+        tree.insert(0, key_data, tuple_pointer)
+        tree.save_changes()
 
 
 def bt_update(relation: Relation, key, tuple_pointer):
-    tree = BufferedBPTree(relation)
-    xid = global_vars.xact_manager.get_xid()
-    attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
-    key_data = _bt_key_tuple_to_data(key, attrs)
-    global_vars.xact_manager.wal_manager.write_record(
-        WALRecord(xid, relation.oid, 0, 0, WALAction.BTREE_UPDATE, 
-                  easy_tuple_serialize((key_data, tuple_pointer.to_bytes()))))
-    # for update, we need to know the key and value, and let
-    # the location be the tuple of key and value
-    # the old value is a list of tuple pointer
-    old_tuple_pointer = tree.search(key_data)
-    global_vars.xact_manager.undo_manager.write_record(
-        UndoRecord(xid, UndoOperation.BTREE_UPDATE, relation, (key_data, old_tuple_pointer),
-                    b''))
-
-    lsn = global_vars.xact_manager.max_lsn()
-    tree.delete(lsn, key_data)
-    tree.insert(lsn, key_data, tuple_pointer)
+    """Replace all pointers for a key (legacy public API, not SQL row update)."""
+    _relation_lock(relation, write=True)
+    with global_vars.xact_manager.storage_lock:
+        tree = BufferedBPTree(relation)
+        attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
+        key_data = _bt_key_tuple_to_data(key, attrs)
+        tree.delete(0, key_data)
+        tree.insert(0, key_data, tuple_pointer)
+        tree.save_changes()
 
 
-def bt_delete(relation: Relation, key):
-    tree = BufferedBPTree(relation)
-    xid = global_vars.xact_manager.get_xid()
-    attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
-    key_data = _bt_key_tuple_to_data(key, attrs)
-    global_vars.xact_manager.wal_manager.write_record(
-        WALRecord(xid, relation.oid, 0, 0, WALAction.BTREE_DELETE, key_data))
-    # for insert (the reverse of delete), we need to know the key and values
-    old_tuple_pointer = tree.search(key_data)
-    global_vars.xact_manager.undo_manager.write_record(
-        UndoRecord(xid, UndoOperation.BTREE_DELETE, relation, (key_data, old_tuple_pointer),
-                    b''))
-
-    lsn = global_vars.xact_manager.max_lsn()
-
-    tree.delete(lsn, key_data)
+def bt_delete(relation: Relation, key, tuple_pointer=None):
+    _relation_lock(relation, write=True)
+    with global_vars.xact_manager.storage_lock:
+        tree = BufferedBPTree(relation)
+        attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
+        key_data = _bt_key_tuple_to_data(key, attrs)
+        if tuple_pointer is None:
+            tree.delete(0, key_data)
+        elif tuple_pointer in tree.search(key_data):
+            tree.delete_value(0, key_data, tuple_pointer)
+        tree.save_changes()
 
 
 def bt_search(relation: Relation, key):
+    _relation_lock(relation)
     """Allow leftmost prefix rule"""
     tree = BufferedBPTree(relation)
     attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
@@ -531,6 +487,7 @@ def bt_search(relation: Relation, key):
 
 
 def bt_search_range(relation: Relation, start_key, end_key):
+    _relation_lock(relation)
     """Allow leftmost prefix rule"""
     tree = BufferedBPTree(relation)
     attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
@@ -544,6 +501,7 @@ def bt_search_range(relation: Relation, start_key, end_key):
 
 
 def bt_scan_all_keys(relation: Relation):
+    _relation_lock(relation)
     tree = BufferedBPTree(relation)
     attrs = CATALOG_ANDB_INDEX.get_attr_form_array(relation.oid)
     for key_data in tree.all_keys():

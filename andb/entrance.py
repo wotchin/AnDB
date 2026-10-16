@@ -6,9 +6,7 @@ from andb.sql.parser import andb_query_parse, get_ast_type, CmdType
 from andb.sql.optimizer import andb_query_plan
 from andb.executor.portal import ExecutionPortal
 from andb.executor.operator.physical.utility import CommandOperator
-from andb.executor.operator.logical import UtilityOperator
 from andb.runtime import global_vars
-from andb.constants.macros import DUMMY_XID
 from andb.errno.errors import RollbackError, FatalError
 
 
@@ -30,14 +28,13 @@ def _set_explicit_xid(xid):
 
 
 def _is_transaction_command(plan_tree):
-    """Check if the plan tree is a transaction command (BEGIN/COMMIT/ROLLBACK)."""
-    if isinstance(plan_tree, UtilityOperator) and isinstance(plan_tree.physical_operator, CommandOperator):
-        return plan_tree.physical_operator.is_transaction_command
-    return False
+    """The planner returns a physical CommandOperator, not its logical wrapper."""
+    physical = getattr(plan_tree, 'physical_operator', plan_tree)
+    return isinstance(physical, CommandOperator) and physical.is_transaction_command
 
 
 def _get_transaction_command(plan_tree):
-    return plan_tree.physical_operator.command
+    return getattr(plan_tree, 'physical_operator', plan_tree).command
 
 
 def _execute_single_query(query):
@@ -46,9 +43,25 @@ def _execute_single_query(query):
     if not query:
         return None
 
-    ast = andb_query_parse(query)
-    plan_tree = andb_query_plan(ast)
-    cmd_type = get_ast_type(ast)
+    global_vars.xact_manager._healthy()
+    try:
+        ast = andb_query_parse(query)
+        plan_tree = andb_query_plan(ast)
+        cmd_type = get_ast_type(ast)
+    except Exception:
+        xid = _get_explicit_xid()
+        if xid != INVALID_XID:
+            global_vars.xact_manager.abort_transaction(xid)
+            _thread_local.failed_transaction = True
+        raise
+    # Keep an explicit failed transaction block until ROLLBACK (or COMMIT,
+    # which ends it as a rollback). Do not silently autocommit later statements.
+    if getattr(_thread_local, 'failed_transaction', False):
+        if _is_transaction_command(plan_tree) and _get_transaction_command(plan_tree) in ('commit', 'rollback', 'abort'):
+            _thread_local.failed_transaction = False
+            _set_explicit_xid(INVALID_XID)
+            return ExecutionPortal(query, cmd_type, plan_tree).results()
+        raise RollbackError('Current transaction is aborted; issue ROLLBACK')
 
     # Handle transaction control commands
     if _is_transaction_command(plan_tree):
@@ -93,14 +106,14 @@ def _execute_single_query(query):
 
     if in_explicit_txn:
         xid = explicit_xid
-    elif cmd_type in (CmdType.CMD_INSERT, CmdType.CMD_DELETE, CmdType.CMD_UPDATE):
-        xid = global_vars.xact_manager.allocate_xid()
-        if xid == INVALID_XID:
-            tell_session(0, 'cannot get xid')
-            return None
-        global_vars.xact_manager.begin_transaction(xid)
+        if cmd_type == CmdType.CMD_UTILITY and not isinstance(plan_tree, CommandOperator):
+            # CREATE/DROP affect multiple immediate-persistence catalogs. Refuse
+            # them in an explicit transaction instead of promising false rollback.
+            global_vars.xact_manager.abort_transaction(xid)
+            _thread_local.failed_transaction = True
+            raise RollbackError('Transactional DDL is not supported')
     else:
-        xid = DUMMY_XID
+        xid = global_vars.xact_manager.allocate_xid()
         global_vars.xact_manager.begin_transaction(xid)
 
     try:
@@ -111,7 +124,7 @@ def _execute_single_query(query):
     except RollbackError as e:
         if in_explicit_txn:
             global_vars.xact_manager.abort_transaction(xid)
-            _set_explicit_xid(INVALID_XID)
+            _thread_local.failed_transaction = True
         else:
             global_vars.xact_manager.abort_transaction(xid)
         tell_session(e.errno, e.msg)
@@ -121,7 +134,7 @@ def _execute_single_query(query):
     except Exception as e:
         if in_explicit_txn:
             global_vars.xact_manager.abort_transaction(xid)
-            _set_explicit_xid(INVALID_XID)
+            _thread_local.failed_transaction = True
         else:
             global_vars.xact_manager.abort_transaction(xid)
         raise e
@@ -150,3 +163,14 @@ def execute_simple_query(query_string):
         result = _execute_single_query(query)
         results.append((query, result))
     return results
+
+
+def cleanup_session_transaction():
+    """Called on the connection's own thread, including EOF and protocol errors."""
+    manager = global_vars.xact_manager
+    try:
+        if manager.in_transaction():
+            manager.abort_transaction(manager.get_xid())
+    finally:
+        _set_explicit_xid(INVALID_XID)
+        _thread_local.failed_transaction = False

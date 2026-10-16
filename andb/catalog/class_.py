@@ -1,4 +1,9 @@
+import os
+import threading
+
 from andb.catalog.oid import OID_RELATION_START
+from andb.common.file_operation import sync_directory
+from andb.constants.filename import CATALOG_DIR
 from ._base import CatalogTable, CatalogForm
 from .oid import OID_RELATION_END, OID_DATABASE_ANDB, INVALID_OID, OID_SYSTEM_TABLE_CLASS, OID_SYSTEM_TABLE_END, OID_SYSTEM_TABLE_START, OID_TEMP_TABLE, OID_MEMORY_TABLE_START, OID_MEMORY_TABLE_END, OID_SYSTEM_TABLE_FUNCTIONS
 from .database import _ANDB_DATABASE
@@ -41,12 +46,40 @@ class AndbClassTable(CatalogTable):
         super().__init__()
         # system tables and memory tables are not stored in rows
         # because they are not stored in disk.
+        self._oid_lock = threading.RLock()
         self.system_tables = []
         self.memory_tables = []
 
 
     def init(self):
         pass
+
+    def reserve_oid(self, candidate):
+        """Persist allocation high-water: dropped relation OIDs must never be reused.
+
+        Reusing an OID makes old retained WAL target an unrelated new table.
+        Recovery also raises this mark using all retained WAL relation IDs.
+        """
+        with self._oid_lock:
+            path = os.path.join(CATALOG_DIR, 'oid.highwater')
+            try:
+                with open(path, 'rb') as stream:
+                    raw = stream.read()
+                if len(raw) != 8:
+                    raise DDLException('Invalid persistent OID high-water mark')
+                old = int.from_bytes(raw, 'big')
+            except FileNotFoundError:
+                old = OID_RELATION_START - 1
+            high = max(old, candidate, max((r.oid for r in self.rows), default=0))
+            if high > old:
+                tmp = path + '.tmp'
+                with open(tmp, 'wb') as stream:
+                    stream.write(high.to_bytes(8, 'big'))
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(tmp, path)
+                sync_directory(CATALOG_DIR)
+            return high
 
     def allocate_oid(self, kind=RelationKinds.HEAP_TABLE):
         assert kind is not RelationKinds.SYSTEM_TABLE, "system table oid is fixed."
@@ -62,14 +95,12 @@ class AndbClassTable(CatalogTable):
                 raise DDLException('No more memory table oid can be allocated.')
             return oid
         elif kind in (RelationKinds.HEAP_TABLE, RelationKinds.BTREE_INDEX):
-            if len(self.rows) == 0:
-                return OID_RELATION_START
-            # heap table oid is allocated from OID_RELATION_START to OID_RELATION_END
-            # consecutively.
-            oid = self.rows[-1].oid + 1
-            if oid > OID_RELATION_END:
-                raise DDLException('No more relation oid can be allocated.')
-            return oid
+            with self._oid_lock:
+                oid = self.reserve_oid(0) + 1
+                if oid > OID_RELATION_END:
+                    raise DDLException('No more relation oid can be allocated.')
+                self.reserve_oid(oid)
+                return oid
         else:
             raise ValueError(f'Invalid relation kind: {kind}')
 

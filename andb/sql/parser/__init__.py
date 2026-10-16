@@ -1,4 +1,5 @@
 from enum import Enum
+import threading
 
 from andb.sql.parser.ast import drop
 
@@ -9,6 +10,7 @@ from .ast.utility import Command
 
 andb_lexer = SQLLexer()
 andb_parser = SQLParser()
+_parse_lock = threading.Lock()
 
 
 class CmdType(Enum):
@@ -22,7 +24,9 @@ class CmdType(Enum):
 
 
 def andb_query_parse(query):
-    return andb_parser.parse(andb_lexer.tokenize(query))
+    # SLY lexer/parser instances hold per-parse mutable state.
+    with _parse_lock:
+        return andb_parser.parse(andb_lexer.tokenize(query))
 
 
 def get_ast_type(ast_):

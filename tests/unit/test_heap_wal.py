@@ -8,22 +8,24 @@ def test_wal():
     assert (lsn_to_filename(WAL_SEGMENT_SIZE * 2 + 1)) == '0000000000000002'
 
 
-def a_test_wal_manager():
+def test_wal_manager(tmp_path, monkeypatch):
+    # This long regression was previously invisible to pytest discovery.
+    monkeypatch.chdir(tmp_path)
     manager = WALManager()
     iterations = 50000  # 50000
 
     test2_lsn = 0
     for i in range(iterations):
-        record = WALRecord(i, action=WALAction.HEAP_INSERT, data=(str(i) * 100).encode())
+        record = WALRecord(i, oid=0, pageno=0, tid=0, action=WALAction.HEAP_INSERT, data=(str(i) * 100).encode())
         manager.write_record(record)
         if i % 5 == 0:
-            commit_record = WALRecord(xid=i, action=WALAction.COMMIT, data=b'')
+            commit_record = WALRecord(xid=i, oid=0, pageno=0, tid=0, action=WALAction.COMMIT, data=b'')
             manager.write_record(commit_record)
             assert manager.flush_lsn == manager.write_lsn
             if i == 0:
                 test2_lsn = manager.flush_lsn
 
-    commit_record = WALRecord(xid=100, action=WALAction.COMMIT, data=b'')
+    commit_record = WALRecord(xid=100, oid=0, pageno=0, tid=0, action=WALAction.COMMIT, data=b'')
     manager.write_record(commit_record)
     assert manager.flush_lsn == manager.write_lsn
 

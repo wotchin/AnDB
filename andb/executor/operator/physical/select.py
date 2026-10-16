@@ -216,8 +216,9 @@ class Scan(PhysicalOperator):
     def open(self):
         super().open()
 
-        self.relation = open_relation(self.relation_oid, self.lock)
+        # Match DML lock order: heap before index, avoiding reader/writer inversion.
         self.base_table_relation = open_relation(self.base_table_oid, self.lock)
+        self.relation = open_relation(self.relation_oid, self.lock)
         if not self.relation:
             raise InitializationStageError(f'cannot open relation {self.relation_oid}.')
 
@@ -302,7 +303,7 @@ class IndexScan(Scan):
         for i, form in enumerate(self.index_forms):
             assert form.index_num == i
             assert self.table_attr_forms[i].num == form.attr_num
-            self.index_columns.append(TableColumn(self.base_table_relation.name, self.table_attr_forms[form.attr_num].name))
+            self.index_columns.append(TableColumn(self.base_table_relation.name, self.table_attr_forms[i].name))
 
     def close(self):
         super().close()

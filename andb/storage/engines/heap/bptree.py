@@ -1,4 +1,5 @@
 import abc
+from bisect import bisect_right
 
 from andb.common.cstructure import CStructure, Integer4Field
 from andb.storage.engines.heap.page import SlotPage, INVALID_ITEM_ID, INVALID_BYTES, PAGE_SIZE, PageHeader
@@ -129,8 +130,8 @@ class InternalNode(BPlusNode):
         used_size = 0
         child_field_size = 4
         for k in self.keys:
-            used_size += len(k) + child_field_size
-        return used_size
+            used_size += len(k) + child_field_size + 4
+        return used_size + (8 if self.children else 0)
 
     def load_factor(self):
         total_size = self.total_available_size()
@@ -201,7 +202,7 @@ class LeafNode(BPlusNode):
         used_size = 0
         value_length_field_size = 4
         for i, k in enumerate(self.keys):
-            used_size += len(k) + value_length_field_size
+            used_size += len(k) + value_length_field_size + 4
             used_size += len(self.key_value_pairs[i]) * TuplePointer.size()
         return used_size
 
@@ -269,6 +270,9 @@ class BPlusTree:
         if key in node.keys:
             index = node.keys.index(key)
             node.key_value_pairs[index].remove(value)
+            if not node.key_value_pairs[index]:
+                node.key_value_pairs.pop(index)
+                node.keys.pop(index)
             self.mark_dirty(node)
 
     def search(self, key):
@@ -309,6 +313,8 @@ class BPlusTree:
             for key in node.keys:
                 yield key
             node = node.next_leaf
+            if node and node.state == BPlusNode.STATE_UNLOADED:
+                node = self.load_page(node.get_pageno())
 
     def load_page(self, pageno):
         raise NotImplementedError
@@ -335,7 +341,7 @@ class BPlusTree:
                 current_node = self.load_page(current_node.get_pageno())
             if not isinstance(current_node, InternalNode):
                 break
-            index = self._find_index(current_node, key)
+            index = bisect_right(current_node.keys, key)
             current_node = current_node.children[index]
         # Maybe, the key is just in a gap between two nodes.
         # if that, we should get the next leaf node.
@@ -347,37 +353,40 @@ class BPlusTree:
         return current_node
 
     def _split(self, lsn, node):
+        # Internal splits promote (and remove) the median separator; leaf splits
+        # copy it. Treating an internal node as a leaf corrupts height >= 3 trees.
+        parent = None if node.get_pageno() == self.root.get_pageno() else self._find_parent(node)
         mid = len(node.keys) // 2
-        new_node = self._allocate_node(is_leaf=True)
-        new_node.lsn = lsn
-        new_node.keys = node.keys[mid:]
-        new_node.key_value_pairs = node.key_value_pairs[mid:]
-        new_node.high_key = node.high_key
-
-        node.keys = node.keys[:mid]
-        node.key_value_pairs = node.key_value_pairs[:mid]
-        node.high_key = new_node.keys[0]  # Update the high key of the left node
+        new_node = self._allocate_node(is_leaf=isinstance(node, LeafNode))
+        node.lsn = new_node.lsn = lsn
+        if isinstance(node, LeafNode):
+            new_node.keys = node.keys[mid:]
+            new_node.key_value_pairs = node.key_value_pairs[mid:]
+            separator = new_node.keys[0]
+            node.keys = node.keys[:mid]
+            node.key_value_pairs = node.key_value_pairs[:mid]
+            new_node.next_leaf, node.next_leaf = node.next_leaf, new_node
+            node.high_key = separator
+        else:
+            separator = node.keys[mid]
+            new_node.keys, node.keys = node.keys[mid + 1:], node.keys[:mid]
+            new_node.children, node.children = node.children[mid + 1:], node.children[:mid + 1]
         self.mark_dirty(node)
-
-        if node.next_leaf is not None:
-            new_node.next_leaf = node.next_leaf
-        node.next_leaf = new_node
-        if node is self.root:
+        self.mark_dirty(new_node)
+        if parent is None:
             parent = self._allocate_node(is_leaf=False)
-            parent.lsn = lsn
-            parent.keys.append(new_node.keys[0])
-            parent.children.append(node)
-            parent.children.append(new_node)
+            parent.keys = [separator]
+            parent.children = [node, new_node]
             self.root = parent
         else:
-            parent = self._find_parent(node)
-            index = self._find_index(parent, node.keys[0])
-            parent.keys.insert(index, new_node.keys[0])
+            index = next(i for i, child in enumerate(parent.children)
+                         if child.get_pageno() == node.get_pageno())
+            parent.keys.insert(index, separator)
             parent.children.insert(index + 1, new_node)
-            self.mark_dirty(parent)
-
-            if self._need_to_split(parent):
-                self._split(lsn, parent)
+        parent.lsn = lsn
+        self.mark_dirty(parent)
+        if self._need_to_split(parent):
+            self._split(lsn, parent)
 
     def _need_to_split(self, node):
         """This method is just for demonstrating. We should override it according
@@ -386,11 +395,16 @@ class BPlusTree:
         return node.load_factor() > max_load_factor
 
     def _find_parent(self, node):
-        current_node = self.root
-        while True:
-            if node in current_node.children:
-                return current_node
-            current_node = current_node.children[self._find_index(current_node, node.keys[0])]
+        stack = [self.root]
+        while stack:
+            candidate = stack.pop()
+            if candidate.state == BPlusNode.STATE_UNLOADED:
+                candidate = self.load_page(candidate.get_pageno())
+            if isinstance(candidate, InternalNode):
+                if any(child.get_pageno() == node.get_pageno() for child in candidate.children):
+                    return candidate
+                stack.extend(candidate.children)
+        raise ValueError('B+tree parent not found')
 
     @staticmethod
     def _find_index(node, key):

@@ -1,224 +1,262 @@
-import logging
-from andb.common.file_operation import file_size, file_write, file_read, file_lseek
+"""Buffer cache with coherent serialization and WAL-before-data writeback."""
+import os
+import threading
+from contextlib import nullcontext
+
+from andb.common.file_operation import file_size, file_pwrite, file_pread
 from andb.common.replacement.lru import LRUCache
 from andb.common.utils import get_the_nearest_two_power_number, pageno_to_filesize
 from andb.constants.values import PAGE_SIZE
 from andb.runtime import global_vars
 from andb.storage.engines.heap.page import SlotPage
 from andb.storage.engines.heap.bptree import BPlusTree, create_node
-from andb.storage.engines.heap.relation import RelationKinds
-from andb.storage.lock.lwlock import LWLockName, lwlock_acquire, lwlock_release
+from andb.catalog.class_ import RelationKinds
 
-SIXTEEN_MB = 1024 * 1024 * 16
+SIXTEEN_MB = 16 * 1024 * 1024
 
 
 def get_next_allocation_size(v, upper=SIXTEEN_MB):
-    sz = get_the_nearest_two_power_number(v) << 1
-    if sz > upper:
-        return upper
-    return sz
+    return min(get_the_nearest_two_power_number(v) << 1, upper)
 
 
 class BufferPage:
     def __init__(self, relation, pageno):
-        self.relation = relation
-        self._page_data = None
-        self._page = None
-        self.pageno = pageno
+        self.relation, self.pageno = relation, pageno
+        self._page_data = self._page = None
         self._dirty = False
 
     def set_page(self, page):
         self._page = page
+        self._page_data = None
 
     def set_data(self, data):
         self._page_data = data
+        self._page = None
 
     @property
     def page(self):
-        if not self._page:
+        if self._page is None:
             self._page = SlotPage.unpack(self._page_data)
         return self._page
 
     @property
     def data(self):
-        if not self._page_data:
-            self._page_data = self._page.pack()
-        return self._page_data
+        # A live mutable page is authoritative; cached bytes may be obsolete.
+        return self._page.pack() if self._page is not None else self._page_data
 
     def mark_dirty(self):
         self._dirty = True
+        if self._page is not None:
+            self._page_data = None
 
     def erase_dirty(self):
         self._dirty = False
+        if self.relation.kind == RelationKinds.BTREE_INDEX and self._page is not None:
+            self._page.dirty = False
 
     @property
     def dirty(self):
-        if self.relation.kind == RelationKinds.BTREE_INDEX:
-            return self.page.dirty
-        return self._dirty
+        return self._dirty or (self.relation.kind == RelationKinds.BTREE_INDEX and self.page.dirty)
 
     def __repr__(self):
-        return f"BufferPage(relation={self.relation}, pageno={self.pageno}, dirty={self.dirty}, page={self.page})"
+        return f'BufferPage(relation={self.relation}, pageno={self.pageno}, dirty={self.dirty})'
 
 
 def heap_read_page(relation, pageno):
-    filesize = file_size(relation.fd)
-    if pageno_to_filesize(pageno) >= filesize:
+    if pageno * PAGE_SIZE >= file_size(relation.fd):
         return None
-    offset = pageno * PAGE_SIZE
-    file_lseek(relation.fd, offset)
-    data = file_read(relation.fd, PAGE_SIZE)
-    buffer_page = BufferPage(relation, pageno)
-    buffer_page.set_data(data)
-    return buffer_page
+    data = file_pread(relation.fd, PAGE_SIZE, pageno * PAGE_SIZE)
+    if len(data) != PAGE_SIZE:
+        raise ValueError('Truncated heap page')
+    page = BufferPage(relation, pageno)
+    page.set_data(data)
+    return page
 
 
 def heap_allocate_page(relation, pageno):
-    # because pageno starts from 0, if this is the first allocation,
-    # don't need to increase
-    if pageno > 0:
-        relation.increase_last_pageno()
-    page = SlotPage.allocate(lsn=global_vars.xact_manager.max_lsn())
-    buffer_page = BufferPage(relation, pageno)
-    buffer_page.set_page(page)
-    buffer_page.mark_dirty()
-    return buffer_page
+    relation._last_pageno = max(relation._last_pageno or 0, pageno)
+    page = BufferPage(relation, pageno)
+    # Allocation is not a logged modification; don't skip redo with a future LSN.
+    page.set_page(SlotPage.allocate(0))
+    page.mark_dirty()
+    return page
 
 
 def heap_write_page(buffer_page):
-    pageno = buffer_page.pageno
-    #TODO: allocate page space ahead in disk using the following code, but
-    # currently we cannot because insert action depends on the last pageno, we
-    # doesn't implement a fsm mechanism yet.
-
-    # fz = file_size(buffer_page.relation.fd)
-    # if fz <= (PAGE_SIZE * pageno):
-    #     file_extend(buffer_page.relation.fd, get_next_allocation_size(fz))
-    file_lseek(buffer_page.relation.fd, pageno_to_filesize(pageno))
-    # not sync
-    file_write(buffer_page.relation.fd, buffer_page.data)
+    file_pwrite(buffer_page.relation.fd, buffer_page.data, pageno_to_filesize(buffer_page.pageno), sync=True)
 
 
 def bt_read_page(relation, pageno):
-    header_size = BPlusTree.Header.size()
-    filesize = file_size(relation.fd) - header_size
-    if pageno_to_filesize(pageno) >= filesize:
+    offset = BPlusTree.Header.size() + pageno * PAGE_SIZE
+    if offset >= file_size(relation.fd):
         return None
-    offset = pageno * PAGE_SIZE + header_size
-    file_lseek(relation.fd, offset)
-    data = file_read(relation.fd, PAGE_SIZE)
-    buffer_page = BufferPage(relation, pageno)
-    node = create_node(data)
-    # BTree's node is page
-    buffer_page.set_page(node)
-    return buffer_page
+    data = file_pread(relation.fd, PAGE_SIZE, offset)
+    if len(data) != PAGE_SIZE:
+        raise ValueError('Truncated index page')
+    page = BufferPage(relation, pageno)
+    page.set_page(create_node(data))
+    return page
 
 
 def bt_allocate_page(relation, pageno):
-    assert False, 'should not run here'
+    raise ValueError(f'Index page {pageno} does not exist')
 
 
 def bt_write_page(buffer_page):
-    pageno = buffer_page.pageno
-    header_size = BPlusTree.Header.size()
-    file_lseek(buffer_page.relation.fd, pageno_to_filesize(pageno) + header_size)
-    # not sync
-    file_write(buffer_page.relation.fd, buffer_page.data)
+    offset = BPlusTree.Header.size() + buffer_page.pageno * PAGE_SIZE
+    file_pwrite(buffer_page.relation.fd, buffer_page.data, offset, sync=True)
 
 
 _registry = {
-    RelationKinds.HEAP_TABLE: {
-        'read': heap_read_page,
-        'allocate': heap_allocate_page,
-        'write': heap_write_page
-    },
-    RelationKinds.BTREE_INDEX: {
-        'read': bt_read_page,
-        'allocate': bt_allocate_page,
-        'write': bt_write_page
-    }
+    RelationKinds.HEAP_TABLE: {'read': heap_read_page, 'allocate': heap_allocate_page, 'write': heap_write_page},
+    RelationKinds.BTREE_INDEX: {'read': bt_read_page, 'allocate': bt_allocate_page, 'write': bt_write_page},
 }
 
 
 class BufferManager:
     def __init__(self):
         self.cache = LRUCache(capacity=global_vars.buffer_pool_size)
+        self._lock = threading.RLock()
+        self.index_roots = {}  # relation -> (root pageno, dirty)
+        self.index_highwater = {}
+        self.heap_highwater = {}
 
-    def get_page(self, relation, pageno) -> BufferPage:
-        key = (relation, pageno)
-        page = self.cache.get(key)
-        if page is None:
-            page = self._read_page_from_disk(relation, pageno)
-            self.cache.put(key, page)
-        return page
+    def get_page(self, relation, pageno):
+        with self._lock:
+            key = (relation, pageno)
+            page = self.cache.get(key)
+            if page is None:
+                # A dirty evicted page is still newer than the disk copy.
+                for candidate in list(self.cache.evicted):
+                    if (candidate.relation, candidate.pageno) == key:
+                        self.cache.evicted.remove(candidate)
+                        page = candidate
+                        break
+                if page is None:
+                    page = self._read_page_from_disk(relation, pageno)
+                self.cache.put(key, page)
+            if relation.kind == RelationKinds.HEAP_TABLE:
+                self.heap_highwater[relation] = max(pageno, self.heap_highwater.get(relation, 0))
+            return page
 
     def put_page(self, buffer_page):
-        assert isinstance(buffer_page, BufferPage)
-        key = (buffer_page.relation, buffer_page.pageno)
-        return self.cache.put(key, buffer_page)
-    
+        with self._lock:
+            key = (buffer_page.relation, buffer_page.pageno)
+            self.cache.evicted[:] = [p for p in self.cache.evicted if (p.relation, p.pageno) != key]
+            self.cache.put(key, buffer_page)
+            if buffer_page.relation.kind == RelationKinds.BTREE_INDEX:
+                self.index_highwater[buffer_page.relation] = max(buffer_page.pageno + 1,
+                    self.index_highwater.get(buffer_page.relation, 0),
+                    max(0, (file_size(buffer_page.relation.fd) - BPlusTree.Header.size()) // PAGE_SIZE))
+            if buffer_page.relation.kind == RelationKinds.HEAP_TABLE:
+                self.heap_highwater[buffer_page.relation] = max(buffer_page.pageno,
+                                                              self.heap_highwater.get(buffer_page.relation, 0))
+
     def mark_dirty(self, relation, pageno):
-        buffer_page = self.get_page(relation, pageno)
-        buffer_page.mark_dirty()
+        self.get_page(relation, pageno).mark_dirty()
 
     @staticmethod
     def create_buffer_page(relation, pageno, page):
-        assert not isinstance(page, BufferPage), 'purge page only'
-        buffer_page = BufferPage(relation=relation, pageno=pageno)
-        buffer_page.set_page(page)
-        return buffer_page
+        result = BufferPage(relation, pageno)
+        result.set_page(page)
+        return result
+
+    def get_index_root(self, relation):
+        with self._lock:
+            if relation not in self.index_roots:
+                raw = file_pread(relation.fd, BPlusTree.Header.size(), 0)
+                self.index_roots[relation] = (BPlusTree.deserialize_header(raw).root_pageno, False)
+            return self.index_roots[relation][0]
+
+    def set_index_root(self, relation, pageno):
+        self.index_roots[relation] = (pageno, True)
+
+    def allocate_index_pageno(self, relation):
+        """Reserve a unique index page number, including pages not yet on disk.
+
+        On first use, initialize the next-free high-water from the file page
+        count and both resident and evicted buffer pages. Looking only at file
+        size can reuse a number already assigned to an unflushed split page.
+        Advance the high-water under _lock before returning. This reserves an
+        address only; it neither creates a page nor journals/publishes a split.
+        Reservations are not rolled back, so aborted allocations may leave gaps.
+        """
+        with self._lock:
+            if relation not in self.index_highwater:
+                disk_pages = max(0, (file_size(relation.fd) - BPlusTree.Header.size()) // PAGE_SIZE)
+                cached = [p.pageno + 1 for p in list(self.cache.items()) + self.cache.evicted if p.relation == relation]
+                self.index_highwater[relation] = max([disk_pages] + cached)
+            number = self.index_highwater[relation]
+            self.index_highwater[relation] += 1
+            return number
 
     def evict_relation(self, relation):
-        lwlock_acquire(LWLockName.BUFFER_UPDATE)
-        keys = list(self.cache.keys())
-        for key in keys:
-            r, p = key
-            if r == relation:
-                self.cache.pop(key)
-        lwlock_release(LWLockName.BUFFER_UPDATE)
+        with self._lock:
+            for key in list(self.cache.keys()):
+                if key[0] == relation:
+                    self.cache.pop(key)
+            self.cache.evicted[:] = [p for p in self.cache.evicted if p.relation != relation]
+            self.index_roots.pop(relation, None)
+            self.index_highwater.pop(relation, None)
+            self.heap_highwater.pop(relation, None)
 
-    def pin_page(self, buffer_page):
-        key = (buffer_page.relation, buffer_page.pageno)
-        self.cache.pin(key)
+    def pin_page(self, page):
+        with self._lock:
+            self.cache.pin((page.relation, page.pageno))
 
-    def unpin_page(self, buffer_page):
-        key = (buffer_page.relation, buffer_page.pageno)
-        self.cache.unpin(key)
+    def unpin_page(self, page):
+        with self._lock:
+            self.cache.unpin((page.relation, page.pageno))
+
+    def _guard(self):
+        return getattr(global_vars.xact_manager, 'storage_lock', nullcontext())
+
+    def _flush_pages(self, pages):
+        try:
+            if any(p.dirty for p in pages):
+                global_vars.xact_manager.wal_manager.wal_buffer_flush()
+            for page in pages:
+                if page.dirty:
+                    self._write_page_to_disk(page)
+                    page.erase_dirty()  # only after a successful durable write
+        except Exception:
+            global_vars.xact_manager.failed = True
+            raise
 
     def sync(self):
-        lwlock_acquire(LWLockName.BUFFER_UPDATE)
-        try:
-            for buffer_page in self.cache.items():
-                if buffer_page.dirty:
-                    logging.info(f"writing dirty page: {buffer_page}")
-                    print(f"writing dirty page: {buffer_page}")
-                    self._write_page_to_disk(buffer_page)
-                    buffer_page.erase_dirty()
-            self.sync_evicted_pages()
-        finally:
-            lwlock_release(LWLockName.BUFFER_UPDATE)
-
-    def reset(self):
-        #TODO: sync ahead?
-        self.cache.clear()
+        with self._guard(), self._lock:
+            self._flush_pages(list(self.cache.evicted) + list(self.cache.items()))
+            self.cache.evicted.clear()
+            # Publish root pointers only after their referenced pages are durable.
+            for relation, (root, dirty) in list(self.index_roots.items()):
+                if dirty:
+                    global_vars.xact_manager.wal_manager.wal_buffer_flush()
+                    header = BPlusTree.Header()
+                    header.root_pageno = root
+                    try:
+                        file_pwrite(relation.fd, header.pack(), 0, sync=True)
+                    except Exception:
+                        global_vars.xact_manager.failed = True
+                        raise
+                    self.index_roots[relation] = (root, False)
 
     def sync_evicted_pages(self):
-        evicted = self.cache.get_evicted_list()
-        for buffer_page in evicted:
-            if buffer_page.dirty:
-                self._write_page_to_disk(buffer_page)
-                buffer_page.erase_dirty()
-        evicted.clear()
+        with self._guard(), self._lock:
+            self._flush_pages(list(self.cache.evicted))
+            self.cache.evicted.clear()
+
+    def reset(self):
+        with self._lock:
+            self.cache.clear()
+            self.index_roots.clear()
+            self.index_highwater.clear()
+            self.heap_highwater.clear()
 
     @staticmethod
     def _read_page_from_disk(relation, pageno):
-        kind = relation.kind
-        buffer_page = _registry[kind]['read'](relation, pageno)
-        if buffer_page:
-            return buffer_page
-        return _registry[kind]['allocate'](relation, pageno)
+        reader = _registry[relation.kind]
+        return reader['read'](relation, pageno) or reader['allocate'](relation, pageno)
 
     @staticmethod
-    def _write_page_to_disk(buffer_page: BufferPage):
-        kind = buffer_page.relation.kind
-        return _registry[kind]['write'](buffer_page)
+    def _write_page_to_disk(page):
+        return _registry[page.relation.kind]['write'](page)

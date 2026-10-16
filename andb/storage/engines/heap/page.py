@@ -223,7 +223,7 @@ class SlotPage:
         # === the following will be a critical section if it is in concurrency scenario ===
         #TODO: spin lock
         self.item_ids = new_item_ids
-        self.items = new_data
+        self.items = bytearray(new_data)
         self.header.lsn = lsn
         self.header.checksum = 0  #TODO: unset
         self.header.upper = new_upper
@@ -331,7 +331,7 @@ class SlotPage:
         # === the following will be a critical section if it is in concurrency scenario ===
         #TODO: spin lock
         self.item_ids = new_item_ids
-        self.items = new_data
+        self.items = bytearray(new_data)
         self.header.lsn = lsn
         self.header.checksum = 0  #TODO: unset
         self.header.upper = new_upper
@@ -341,7 +341,7 @@ class SlotPage:
     def reset(self, lsn: int):
         """Reset the page likes delete all items."""
         self.item_ids.clear()
-        self.items = bytes()
+        self.items = bytearray()
 
         self.header.lsn = lsn
         self.header.lower = self.header.size() + self.item_ids_size()
@@ -378,7 +378,7 @@ class SlotPage:
             item_id.set_uint4(id_uint4)
             page.item_ids.append(item_id)
         # parse item data
-        page.items = data[page.header.upper:]
+        page.items = bytearray(data[page.header.upper:])
         return page
 
     @staticmethod

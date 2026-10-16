@@ -12,7 +12,7 @@ import struct
 import threading
 import random
 
-from andb.entrance import execute_simple_query, _get_explicit_xid
+from andb.entrance import execute_simple_query, _get_explicit_xid, cleanup_session_transaction
 from andb.constants.macros import INVALID_XID
 from andb.executor.portal import ExecuteResultSet, ExecutionResult
 from andb.net.protocol import (
@@ -106,6 +106,11 @@ class ClientConnection:
         except Exception as e:
             logger.error(f"Unexpected error handling {self.addr}: {e}", exc_info=True)
         finally:
+            try:
+                cleanup_session_transaction()
+            except Exception:
+                # A storage I/O failure leaves the engine fail-stopped for recovery.
+                logger.exception('Could not roll back disconnected session')
             self._close()
 
     def _do_startup(self):
@@ -305,6 +310,10 @@ class ClientConnection:
         """Close the connection."""
         if not self._closed:
             self._closed = True
+            try:
+                self.sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
             try:
                 self.sock.close()
             except Exception:

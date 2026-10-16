@@ -5,8 +5,14 @@ from functools import wraps
 
 from andb.constants.values import MAX_OPEN_FILES
 from andb.common.replacement.lru import LRUCache
-from andb.runtime.global_vars import unix_like_env
 
+# One process-local lock protects the FD cache AND descriptor lifetime during I/O.
+# Locking only file_open/file_close is insufficient: cache lookup/reopen/eviction
+# must not close a descriptor between _resolve() and the actual read/write/fsync.
+# RLock permits nested helpers (file_extend -> file_write -> file_tell) and the
+# direct FileDescriptor.close/reopen methods to share the same protection.
+# This does not lock a sequence of separate calls: use file_pread/file_pwrite for
+# concurrent offset-based I/O instead of file_lseek followed by file_read/write.
 _file_lock = threading.RLock()
 
 
@@ -36,13 +42,17 @@ class FileDescriptor:
         fd_no = os.open(self.filepath, self.flags, self.mode)
         return os.fdopen(fd_no, 'wb+', 0)
 
+    @_synchronized
     def close(self):
+        """Close under the I/O lock, including direct calls outside the FD cache."""
         if self.file_object.closed:
             return
         os.fsync(self.file_object.fileno())
         self.file_object.close()
 
+    @_synchronized
     def reopen(self):
+        """Reopen an evicted/closed handle without racing another lifecycle call."""
         if not self.file_object.closed:
             return
         self.file_object = self._open()
@@ -66,7 +76,12 @@ _FD_SLRU = SLRU()
 
 @_synchronized
 def file_open(filepath, flags, mode=FILE_MODE):
-    """We use a simple LRU cache to avoid file descriptor leaks."""
+    """Return the shared cached handle, atomically opening/reopening if needed.
+
+    The decorator covers lookup, insertion and eviction together. Otherwise two
+    threads could open the same path twice, or one could close a descriptor that
+    another thread is resolving for I/O. The same lock protects the I/O helpers.
+    """
     filepath = os.path.abspath(filepath)
     fd = _FD_SLRU.get(filepath)
     if fd:
@@ -86,6 +101,14 @@ def file_close(fd: FileDescriptor):
 
 
 def _resolve(fd):
+    """Resolve a possibly stale handle while the caller holds _file_lock.
+
+    A caller can retain a FileDescriptor after LRU eviction has closed it. Prefer
+    the currently cached handle for its absolute path: another caller may have
+    reopened that path since eviction. On a miss, reopen and reinsert the old
+    handle, closing any newly evicted entries. Keep the lock through the actual
+    I/O as well, so this live handle cannot be closed between resolution and use.
+    """
     cached = _FD_SLRU.get(fd.filepath)
     if cached is not None:
         return cached
@@ -101,6 +124,8 @@ def _resolve(fd):
 def file_write(fd: FileDescriptor, data: bytes, sync=False):
     fd = _resolve(fd)
     old_position = file_tell(fd)
+    # Raw writes can consume only a prefix. A sliced memoryview shares the input
+    # buffer, so retrying short writes does not copy each remaining bytes suffix.
     remaining = memoryview(data)
     n = 0
     while remaining:
@@ -169,12 +194,22 @@ def file_touch(filepath, startup_size=0):
     if startup_size > 0:
         file_extend(fd, size=startup_size)
     file_close(fd)
+    sync_directory(os.path.dirname(os.path.abspath(filepath)))
+
+
+def sync_directory(path):
+    """Persist created/replaced directory entries after their files are fsynced.
+
+    Shared by catalog replacement, file creation and WAL segment management.
+    Directory fsync is POSIX-specific; preserve the existing no-op elsewhere.
+    The temporary descriptor is private, not part of the shared FD cache.
+    """
     if os.name == 'posix':
-        directory = os.open(os.path.dirname(os.path.abspath(filepath)), os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
+        fd = os.open(path, os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
         try:
-            os.fsync(directory)
+            os.fsync(fd)
         finally:
-            os.close(directory)
+            os.close(fd)
 
 
 @_synchronized
@@ -194,6 +229,7 @@ def file_pread(fd: FileDescriptor, n, offset):
 def file_pwrite(fd: FileDescriptor, data, offset, sync=False):
     fd = _resolve(fd)
     if hasattr(os, 'pwrite'):
+        # As in file_write, retry short writes with zero-copy views of the suffix.
         remaining, written = memoryview(data), 0
         while remaining:
             n = os.pwrite(fd.file_object.fileno(), remaining, offset + written)

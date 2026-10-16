@@ -10,15 +10,21 @@ import threading
 import time
 
 from andb.catalog.oid import INVALID_OID
+from andb.catalog.syscache import CATALOG_ANDB_CLASS
+from andb.common.file_operation import sync_directory
 from andb.constants.macros import INVALID_XID, FIRST_XID, MAX_XID, XID_SIZE
 from andb.constants.strings import BIG_END
 from andb.constants.filename import CHECKPOINT_FILE, WAL_DIR
 from andb.errno.errors import WALError, RollbackError
 from andb.runtime import global_vars
 from andb.storage.engines.heap.journal import encode_images, decode_images
-from andb.storage.engines.heap.redo import WALManager, WALRecord, WALAction, sync_directory
+from andb.storage.engines.heap.bptree import LeafNode, create_node
+from andb.storage.engines.heap.page import SlotPage, INVALID_ITEM_ID
+from andb.storage.engines.heap.redo import WALManager, WALRecord, WALAction
+from andb.storage.engines.heap.relation import open_relation, close_relation
 from andb.storage.engines.heap.undo import UndoManager
-from andb.storage.lock.rlock import lock_release_all
+from andb.storage.lock.rlock import NO_LOCK, lock_release_all
+from andb.storage.utils import easy_tuple_deserialize
 from andb.storage.xact.csn import CSNManager, SnapshotManager
 
 STATUS_ACTIVE, STATUS_COMMITTED, STATUS_ABORTED = range(3)
@@ -137,10 +143,6 @@ class TransactionManager:
             return record.end_lsn
 
     def _apply_images(self, record, relation=None):
-        from andb.storage.engines.heap.relation import open_relation, close_relation
-        from andb.storage.engines.heap.page import SlotPage
-        from andb.storage.engines.heap.bptree import create_node
-        from andb.storage.lock.rlock import NO_LOCK
         heap, pages, root, _ = decode_images(record.data)
         opened = relation is None
         if opened:
@@ -172,8 +174,6 @@ class TransactionManager:
                 close_relation(relation.oid, NO_LOCK)
 
     def _compensate(self, record):
-        from andb.storage.engines.heap.page import SlotPage
-        from andb.storage.engines.heap.bptree import LeafNode
         heap, pages, root, _ = decode_images(record.data)
         inverse = []
         for pageno, before, after in pages:
@@ -243,7 +243,6 @@ class TransactionManager:
                         _, _, _, undo_of = decode_images(record.data)
                         compensated.add((record.xid, undo_of))
                 # Persist an OID allocation high-water mark before any new DDL.
-                from andb.catalog.syscache import CATALOG_ANDB_CLASS
                 CATALOG_ANDB_CLASS.reserve_oid(max_oid)
                 for record in records:
                     if record.action in (WALAction.PAGE_UPDATE, WALAction.COMPENSATION):
@@ -272,10 +271,6 @@ class TransactionManager:
 
     def apply_redo(self, record, replay_lsn):
         """Compatibility path for committed legacy heap WAL; images are preferred."""
-        from andb.storage.engines.heap.relation import open_relation, close_relation
-        from andb.storage.lock.rlock import NO_LOCK
-        from andb.storage.engines.heap.page import INVALID_ITEM_ID
-        from andb.storage.utils import easy_tuple_deserialize
         if record.action in (WALAction.BEGIN, WALAction.COMMIT, WALAction.ABORT, WALAction.CHECKPOINT):
             return
         if record.action in (WALAction.PAGE_UPDATE, WALAction.COMPENSATION):

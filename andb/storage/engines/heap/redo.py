@@ -9,6 +9,7 @@ import re
 import threading
 
 from andb.common.cstructure import CStructure, Integer4Field, Integer8Field
+from andb.common.file_operation import sync_directory
 from andb.constants.filename import WAL_DIR
 from andb.constants.values import WAL_SEGMENT_SIZE, WAL_PAGE_SIZE
 from andb.errno.errors import WALError
@@ -28,18 +29,15 @@ class WALAction:
     BTREE_INSERT = 9
     BTREE_DELETE = 10
     BTREE_UPDATE = 11
+    # Normal heap/index DML publishes one or more changed page images. A single
+    # record contains before+after bytes and optional old/new B+tree roots, so
+    # recovery can redo a WAL-only commit or undo a loser even after page eviction.
     PAGE_UPDATE = 12
+    # Rollback (including crash recovery) logs its inverse images before applying
+    # them. A CLR is redo-only: undo_of identifies the original PAGE_UPDATE. If
+    # undo crashes, recovery replays the CLR instead of compensating that change
+    # again. ABORT is written only after all required compensation is complete.
     COMPENSATION = 13
-
-
-def sync_directory(path):
-    """Make newly created/replaced filenames durable on POSIX."""
-    if os.name == 'posix':
-        fd = os.open(path, os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
-        try:
-            os.fsync(fd)
-        finally:
-            os.close(fd)
 
 
 class WALRecord:
@@ -275,10 +273,22 @@ class WALManager:
 
     @classmethod
     def replay(cls, lsn):
-        """Yield complete records with authoritative start_lsn/end_lsn.
+        """Yield complete logical records with physical start_lsn/end_lsn.
 
-        A physically incomplete final record is an uncommitted tail. Malformed
-        complete frames, holes, or mismatched continuations fail closed.
+        1. Enumerate contiguous segments from zero and validate their sizes.
+        2. Read pages in physical order; check page addresses, frame sizes and
+           padding. Reject interior holes/corruption rather than skip records.
+        3. Assemble TO_BE_CONTINUED fragments across pages/segments, requiring
+           the same transaction, relation and tuple identity for every fragment.
+        4. On the final fragment, attach physical offsets (including framing and
+           padding), and yield only records whose start_lsn is at least lsn.
+        5. Ignore an incomplete final tail or final zero-filled preallocation.
+           restore() separately removes that tail before the next append.
+
+        Even for nonzero lsn, scan from zero to validate preceding framing and
+        assemble a record that straddles the requested position. lsn filters
+        complete logical starts; it is not a raw seek into a fragment. This
+        reader never applies pages or decides which transactions committed.
         """
         files = cls._segments()
         fragments = bytearray()

@@ -3,6 +3,7 @@ import pickle
 from abc import ABC, abstractmethod
 
 from andb.catalog.oid import INVALID_OID
+from andb.common.file_operation import sync_directory
 from andb.constants.filename import CATALOG_DIR
 
 
@@ -99,7 +100,6 @@ class CatalogTable:
     def save(self):
         # Atomic replacement protects this catalog file, not an entire multi-file
         # DDL transaction. Transactional DDL remains explicitly unsupported.
-        from andb.storage.engines.heap.redo import sync_directory
         filename = os.path.join(CATALOG_DIR, self.__tablename__)
         temporary = filename + '.tmp'
         with open(temporary, 'wb') as stream:

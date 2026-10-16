@@ -2,6 +2,8 @@ import os
 import threading
 
 from andb.catalog.oid import OID_RELATION_START
+from andb.common.file_operation import sync_directory
+from andb.constants.filename import CATALOG_DIR
 from ._base import CatalogTable, CatalogForm
 from .oid import OID_RELATION_END, OID_DATABASE_ANDB, INVALID_OID, OID_SYSTEM_TABLE_CLASS, OID_SYSTEM_TABLE_END, OID_SYSTEM_TABLE_START, OID_TEMP_TABLE, OID_MEMORY_TABLE_START, OID_MEMORY_TABLE_END, OID_SYSTEM_TABLE_FUNCTIONS
 from .database import _ANDB_DATABASE
@@ -58,8 +60,6 @@ class AndbClassTable(CatalogTable):
         Reusing an OID makes old retained WAL target an unrelated new table.
         Recovery also raises this mark using all retained WAL relation IDs.
         """
-        from andb.constants.filename import CATALOG_DIR
-        from andb.storage.engines.heap.redo import sync_directory
         with self._oid_lock:
             path = os.path.join(CATALOG_DIR, 'oid.highwater')
             try:

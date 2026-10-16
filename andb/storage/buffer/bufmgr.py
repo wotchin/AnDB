@@ -172,6 +172,15 @@ class BufferManager:
         self.index_roots[relation] = (pageno, True)
 
     def allocate_index_pageno(self, relation):
+        """Reserve a unique index page number, including pages not yet on disk.
+
+        On first use, initialize the next-free high-water from the file page
+        count and both resident and evicted buffer pages. Looking only at file
+        size can reuse a number already assigned to an unflushed split page.
+        Advance the high-water under _lock before returning. This reserves an
+        address only; it neither creates a page nor journals/publishes a split.
+        Reservations are not rolled back, so aborted allocations may leave gaps.
+        """
         with self._lock:
             if relation not in self.index_highwater:
                 disk_pages = max(0, (file_size(relation.fd) - BPlusTree.Header.size()) // PAGE_SIZE)
